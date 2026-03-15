@@ -1,0 +1,36 @@
+{
+  "name": "@vnatures/test-kit-redis",
+  "version": "0.1.0",
+  "description": "In-memory Redis cache for test-kit component tests",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "!dist/**/*.test.*"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "npm run clean && tsc -p ./tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ioredis-mock": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.24",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
