@@ -1,32 +1,32 @@
-import { createProbePair, whenCalled, alwaysReturn, alwaysReject, alwaysCall } from "../src";
+import { createProbePair } from "../src";
 
 type DemoService = {
   getById(id: number): Promise<{ id: number }>;
   getName(id: number): Promise<string>;
 };
 
-describe("whenCalled (one-shot porcelain)", () => {
+describe("probe.whenCalled (one-shot)", () => {
   it("thenReturn() auto-resolves the next call", async () => {
-    const { fake } = createProbePair<DemoService>();
-    whenCalled(fake, "getName").thenReturn("gilad");
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.whenCalled("getName").thenReturn("gilad");
     await expect(fake.getName(1)).resolves.toBe("gilad");
   });
 
   it("thenReject() auto-rejects the next call", async () => {
-    const { fake } = createProbePair<DemoService>();
-    whenCalled(fake, "getName").thenReject(new Error("forbidden"));
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.whenCalled("getName").thenReject(new Error("forbidden"));
     await expect(fake.getName(1)).rejects.toThrow("forbidden");
   });
 
   it("thenCall() delegates to function", async () => {
-    const { fake } = createProbePair<DemoService>();
-    whenCalled(fake, "getById").thenCall(async (id) => ({ id: id + 100 }));
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.whenCalled("getById").thenCall(async (id) => ({ id: id + 100 }));
     await expect(fake.getById(3)).resolves.toEqual({ id: 103 });
   });
 
   it("is consumed after one call — second call has no planned behavior", async () => {
     const { fake, probe } = createProbePair<DemoService>();
-    whenCalled(fake, "getName").thenReturn("first");
+    probe.whenCalled("getName").thenReturn("first");
     await expect(fake.getName(1)).resolves.toBe("first");
 
     void fake.getName(2);
@@ -43,10 +43,10 @@ describe("whenCalled (one-shot porcelain)", () => {
   });
 });
 
-describe("alwaysReturn / alwaysReject / alwaysCall (permanent porcelain)", () => {
+describe("probe.alwaysReturn / alwaysReject / alwaysCall (permanent)", () => {
   it("alwaysReturn answers every call to that method", async () => {
-    const { fake } = createProbePair<DemoService>();
-    alwaysReturn(fake, "getName", "permanent");
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.alwaysReturn("getName", "permanent");
 
     await expect(fake.getName(1)).resolves.toBe("permanent");
     await expect(fake.getName(2)).resolves.toBe("permanent");
@@ -54,25 +54,25 @@ describe("alwaysReturn / alwaysReject / alwaysCall (permanent porcelain)", () =>
   });
 
   it("alwaysReject rejects every call to that method", async () => {
-    const { fake } = createProbePair<DemoService>();
-    alwaysReject(fake, "getName", new Error("always fails"));
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.alwaysReject("getName", new Error("always fails"));
 
     await expect(fake.getName(1)).rejects.toThrow("always fails");
     await expect(fake.getName(2)).rejects.toThrow("always fails");
   });
 
   it("alwaysCall delegates every call to that method", async () => {
-    const { fake } = createProbePair<DemoService>();
-    alwaysCall(fake, "getById", async (id) => ({ id: id * 10 }));
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.alwaysCall("getById", async (id) => ({ id: id * 10 }));
 
     await expect(fake.getById(1)).resolves.toEqual({ id: 10 });
     await expect(fake.getById(5)).resolves.toEqual({ id: 50 });
   });
 
   it("one-shot whenCalled takes priority over alwaysReturn", async () => {
-    const { fake } = createProbePair<DemoService>();
-    alwaysReturn(fake, "getName", "permanent");
-    whenCalled(fake, "getName").thenReturn("override");
+    const { fake, probe } = createProbePair<DemoService>();
+    probe.alwaysReturn("getName", "permanent");
+    probe.whenCalled("getName").thenReturn("override");
 
     await expect(fake.getName(1)).resolves.toBe("override");
     await expect(fake.getName(2)).resolves.toBe("permanent");

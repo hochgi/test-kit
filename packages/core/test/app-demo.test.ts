@@ -2,9 +2,11 @@
  * Realistic component test demo: OrderService
  *
  * Demonstrates how to test a service with multiple dependencies using probe pairs.
- * All dependencies are probed — no real IO, no real clock.
+ * The fake is injected into the component and then forgotten — all test interaction
+ * goes through the probe only (pre-programming, observation, assertion).
+ * No real IO, no real clock.
  */
-import { createProbePair, whenCalled, alwaysReturn, alwaysCall, PendingCall } from "../src";
+import { createProbePair } from "../src";
 
 // ── Domain types ──
 
@@ -90,7 +92,7 @@ class OrderService {
     }
 }
 
-// ── Helpers ──
+// ── Test fixtures ──
 
 const testUser: User = { id: 1, name: "Gilad", email: "gilad@versatile.ai" };
 const testProducts: Product[] = [
@@ -102,6 +104,8 @@ const testItems: OrderItem[] = [
     { productId: 102, qty: 5 },
 ];
 
+// ── Harness — fakes are injected here and never returned to tests ──
+
 function createHarness() {
     const { fake: users, probe: usersProbe } = createProbePair<UserService>();
     const { fake: products, probe: productsProbe } = createProbePair<ProductService>();
@@ -110,22 +114,23 @@ function createHarness() {
 
     const service = new OrderService(users, products, payments, events);
 
-    return { service, users, products, payments, events, usersProbe, productsProbe, paymentsProbe, eventsProbe };
+    // Only probes are returned — fakes stay in the harness, never touched in tests
+    return { service, usersProbe, productsProbe, paymentsProbe, eventsProbe };
 }
 
 // ── Tests ──
 
-describe("OrderService — porcelain style (pre-programmed responses)", () => {
-    it("creates an order with all dependencies pre-programmed", async () => {
-        const { service, users, products, payments, events } = createHarness();
+describe("OrderService — porcelain style (pre-programmed via probe)", () => {
+    it("creates an order with all deps pre-programmed", async () => {
+        const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        whenCalled(users, "getUser").thenReturn(testUser);
-        whenCalled(products, "getProduct").thenReturn(testProducts[0]);
-        whenCalled(products, "getProduct").thenReturn(testProducts[1]);
-        whenCalled(products, "reserveStock").thenReturn(true);
-        whenCalled(products, "reserveStock").thenReturn(true);
-        whenCalled(payments, "charge").thenReturn({ success: true, transactionId: "TXN-1" });
-        whenCalled(events, "publish").thenReturn(undefined);
+        usersProbe.whenCalled("getUser").thenReturn(testUser);
+        productsProbe.whenCalled("getProduct").thenReturn(testProducts[0]);
+        productsProbe.whenCalled("getProduct").thenReturn(testProducts[1]);
+        productsProbe.whenCalled("reserveStock").thenReturn(true);
+        productsProbe.whenCalled("reserveStock").thenReturn(true);
+        paymentsProbe.whenCalled("charge").thenReturn({ success: true, transactionId: "TXN-1" });
+        eventsProbe.whenCalled("publish").thenReturn(undefined);
 
         const order = await service.createOrder(1, testItems);
 
@@ -134,16 +139,15 @@ describe("OrderService — porcelain style (pre-programmed responses)", () => {
         expect(order.status).toBe("confirmed");
     });
 
-    it("uses alwaysReturn for precondition deps, focus on payment", async () => {
-        const { service, users, products, payments, events } = createHarness();
+    it("uses alwaysReturn for precondition deps, focuses on payment probe", async () => {
+        const { service, usersProbe, productsProbe, paymentsProbe } = createHarness();
 
-        alwaysReturn(users, "getUser", testUser);
-        alwaysReturn(products, "getProduct", testProducts[0]);
-        alwaysReturn(products, "reserveStock", true);
-        alwaysReturn(products, "releaseStock", undefined);
-        alwaysReturn(events, "publish", undefined);
+        usersProbe.alwaysReturn("getUser", testUser);
+        productsProbe.alwaysReturn("getProduct", testProducts[0]);
+        productsProbe.alwaysReturn("reserveStock", true);
+        productsProbe.alwaysReturn("releaseStock", undefined);
 
-        whenCalled(payments, "charge").thenReturn({ success: false, error: "insufficient funds" });
+        paymentsProbe.whenCalled("charge").thenReturn({ success: false, error: "insufficient funds" });
 
         await expect(service.createOrder(1, [{ productId: 101, qty: 1 }]))
             .rejects.toThrow("Payment failed: insufficient funds");
@@ -191,8 +195,7 @@ describe("OrderService — plumbing style (observe and control each call)", () =
 
         const orderPromise = service.createOrder(1, testItems).then(r => r);
 
-        const userCall = await usersProbe.expectNext();
-        userCall.answer(testUser);
+        (await usersProbe.expectNext()).answer(testUser);
 
         const product2Call = await productsProbe.expectMatching(
             (c) => c.method === "getProduct" && (c.args[0] as number) === 102,
@@ -204,16 +207,10 @@ describe("OrderService — plumbing style (observe and control each call)", () =
         product2Call.answer(testProducts[1]);
         product1Call.answer(testProducts[0]);
 
-        const r1 = await productsProbe.expectNext();
-        r1.answer(true);
-        const r2 = await productsProbe.expectNext();
-        r2.answer(true);
-
-        const pay = await paymentsProbe.expectNext();
-        pay.answer({ success: true, transactionId: "TXN-99" });
-
-        const evt = await eventsProbe.expectNext();
-        evt.answer(undefined);
+        (await productsProbe.expectNext()).answer(true);
+        (await productsProbe.expectNext()).answer(true);
+        (await paymentsProbe.expectNext()).answer({ success: true, transactionId: "TXN-99" });
+        (await eventsProbe.expectNext()).answer(undefined);
 
         const order = await orderPromise;
         expect(order.total).toBe(2 * 250 + 5 * 80);
@@ -232,8 +229,7 @@ describe("OrderService — payment failure rolls back stock", () => {
         (await productsProbe.expectNext()).answer(true);
         (await productsProbe.expectNext()).answer(true);
 
-        const payCall = await paymentsProbe.expectNext();
-        payCall.answer({ success: false, error: "card declined" });
+        (await paymentsProbe.expectNext()).answer({ success: false, error: "card declined" });
 
         const release1 = await productsProbe.expectNext();
         expect(release1.method).toBe("releaseStock");
@@ -266,7 +262,7 @@ describe("OrderService — timeout with fake clock", () => {
         (await productsProbe.expectNext()).answer(testProducts[0]);
         (await productsProbe.expectNext()).answer(true);
 
-        await paymentsProbe.expectNext();
+        await paymentsProbe.expectNext();      // observed — not answered
 
         jest.advanceTimersByTime(5000);
 
@@ -276,12 +272,12 @@ describe("OrderService — timeout with fake clock", () => {
 
 describe("OrderService — event bus assertions", () => {
     it("publishes OrderCreated event with correct payload", async () => {
-        const { service, users, products, payments, eventsProbe } = createHarness();
+        const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        alwaysReturn(users, "getUser", testUser);
-        alwaysReturn(products, "getProduct", testProducts[0]);
-        alwaysReturn(products, "reserveStock", true);
-        alwaysReturn(payments, "charge", { success: true, transactionId: "TXN-1" });
+        usersProbe.alwaysReturn("getUser", testUser);
+        productsProbe.alwaysReturn("getProduct", testProducts[0]);
+        productsProbe.alwaysReturn("reserveStock", true);
+        paymentsProbe.alwaysReturn("charge", { success: true, transactionId: "TXN-1" });
 
         const orderPromise = service.createOrder(1, [{ productId: 101, qty: 1 }]).then(r => r);
 
@@ -298,13 +294,13 @@ describe("OrderService — event bus assertions", () => {
     });
 
     it("does not publish event when payment fails", async () => {
-        const { service, users, products, payments, eventsProbe } = createHarness();
+        const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        alwaysReturn(users, "getUser", testUser);
-        alwaysReturn(products, "getProduct", testProducts[0]);
-        alwaysReturn(products, "reserveStock", true);
-        alwaysReturn(products, "releaseStock", undefined);
-        whenCalled(payments, "charge").thenReturn({ success: false, error: "declined" });
+        usersProbe.alwaysReturn("getUser", testUser);
+        productsProbe.alwaysReturn("getProduct", testProducts[0]);
+        productsProbe.alwaysReturn("reserveStock", true);
+        productsProbe.alwaysReturn("releaseStock", undefined);
+        paymentsProbe.whenCalled("charge").thenReturn({ success: false, error: "declined" });
 
         await expect(service.createOrder(1, [{ productId: 101, qty: 1 }])).rejects.toThrow();
 

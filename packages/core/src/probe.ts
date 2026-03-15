@@ -41,10 +41,12 @@ type Waiter = {
   timer?: ReturnType<typeof realSetTimeout>;
 };
 
-type PairController = {
-  planBehavior: (method: string, behavior: PlannedBehavior) => void;
-  planPermanentBehavior: (method: string, behavior: PlannedBehavior) => void;
-};
+// Type utilities for type-safe porcelain methods
+type MethodKeys<T> = {
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+}[keyof T];
+type MethodArgs<T, K extends keyof T> = T[K] extends (...args: infer A) => any ? A : never;
+type MethodReturn<T, K extends keyof T> = T[K] extends (...args: any[]) => infer R ? Awaited<R> : never;
 
 const PASSTHROUGH_PROPS = new Set([
   "then", "catch", "finally",
@@ -53,8 +55,6 @@ const PASSTHROUGH_PROPS = new Set([
   "asymmetricMatch", "hasAttribute",
   "constructor", "prototype",
 ]);
-
-const fakeToController = new WeakMap<object, PairController>();
 
 function createDeferred<T>(): Deferred<T> {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -96,13 +96,15 @@ function makePendingCall(internal: CallInternal): PendingCall {
   };
 }
 
-export class TestProbe {
+export class TestProbe<T extends object = object> {
   private readonly queue: CallInternal[] = [];
   private readonly consumed = new Set<number>();
   private readonly waiters: Waiter[] = [];
   private readonly plannedByMethod = new Map<string, PlannedBehavior[]>();
   private readonly permanentByMethod = new Map<string, PlannedBehavior>();
   private nextIndex = 0;
+
+  // ── Observation ──────────────────────────────────────────────────────────
 
   recordCall(method: string, args: unknown[], deferred: Deferred<unknown>): void {
     const index = this.nextIndex++;
@@ -169,9 +171,7 @@ export class TestProbe {
   pendingCount(): number {
     let count = 0;
     for (const internal of this.queue) {
-      if (!this.consumed.has(internal.index)) {
-        count++;
-      }
+      if (!this.consumed.has(internal.index)) count++;
     }
     return count;
   }
@@ -197,32 +197,64 @@ export class TestProbe {
     });
   }
 
-  planBehavior(method: string, behavior: PlannedBehavior): void {
+  // ── Porcelain (pre-programming) ───────────────────────────────────────────
+
+  whenCalled<K extends MethodKeys<T>>(method: K) {
+    const methodName = String(method);
+    return {
+      thenReturn: (value: MethodReturn<T, K>): void => {
+        this.addPlannedBehavior(methodName, { type: "return", value });
+      },
+      thenReject: (error: unknown): void => {
+        this.addPlannedBehavior(methodName, { type: "reject", error });
+      },
+      thenCall: (fn: (...args: MethodArgs<T, K>) => MethodReturn<T, K> | Promise<MethodReturn<T, K>>): void => {
+        this.addPlannedBehavior(methodName, {
+          type: "call",
+          fn: (...args) => fn(...(args as MethodArgs<T, K>)),
+        });
+      },
+    };
+  }
+
+  alwaysReturn<K extends MethodKeys<T>>(method: K, value: MethodReturn<T, K>): void {
+    this.permanentByMethod.set(String(method), { type: "return", value });
+  }
+
+  alwaysReject<K extends MethodKeys<T>>(method: K, error: unknown): void {
+    this.permanentByMethod.set(String(method), { type: "reject", error });
+  }
+
+  alwaysCall<K extends MethodKeys<T>>(
+    method: K,
+    fn: (...args: MethodArgs<T, K>) => MethodReturn<T, K> | Promise<MethodReturn<T, K>>,
+  ): void {
+    this.permanentByMethod.set(String(method), {
+      type: "call",
+      fn: (...args) => fn(...(args as MethodArgs<T, K>)),
+    });
+  }
+
+  // ── Private ───────────────────────────────────────────────────────────────
+
+  private addPlannedBehavior(method: string, behavior: PlannedBehavior): void {
     const list = this.plannedByMethod.get(method) ?? [];
     list.push(behavior);
     this.plannedByMethod.set(method, list);
-  }
-
-  planPermanentBehavior(method: string, behavior: PlannedBehavior): void {
-    this.permanentByMethod.set(method, behavior);
   }
 
   private resolveBehavior(method: string): PlannedBehavior | undefined {
     const list = this.plannedByMethod.get(method);
     if (list && list.length > 0) {
       const behavior = list.shift();
-      if (list.length === 0) {
-        this.plannedByMethod.delete(method);
-      }
+      if (list.length === 0) this.plannedByMethod.delete(method);
       return behavior;
     }
     return this.permanentByMethod.get(method);
   }
 
   private applyBehavior(call: CallInternal, behavior: PlannedBehavior): void {
-    if (call.settled) {
-      return;
-    }
+    if (call.settled) return;
     call.settled = true;
     if (behavior.type === "return") {
       call.deferred.resolve(behavior.value);
@@ -247,33 +279,25 @@ export class TestProbe {
 
   private removeWaiter(waiter: Waiter): void {
     const index = this.waiters.indexOf(waiter);
-    if (index >= 0) {
-      this.waiters.splice(index, 1);
-    }
+    if (index >= 0) this.waiters.splice(index, 1);
   }
 }
 
 function getAdvanceByTimeFn(): ((ms: number) => void) | undefined {
   const jestGlobal = (globalThis as { jest?: { advanceTimersByTime?: (ms: number) => void } }).jest;
-  if (jestGlobal?.advanceTimersByTime) {
-    return jestGlobal.advanceTimersByTime.bind(jestGlobal);
-  }
+  if (jestGlobal?.advanceTimersByTime) return jestGlobal.advanceTimersByTime.bind(jestGlobal);
 
   try {
     const jestFromModule = require("@jest/globals")?.jest as
       | { advanceTimersByTime?: (ms: number) => void }
       | undefined;
-    if (jestFromModule?.advanceTimersByTime) {
-      return jestFromModule.advanceTimersByTime.bind(jestFromModule);
-    }
+    if (jestFromModule?.advanceTimersByTime) return jestFromModule.advanceTimersByTime.bind(jestFromModule);
   } catch {
     // not running under jest globals module
   }
 
   const viGlobal = (globalThis as { vi?: { advanceTimersByTime?: (ms: number) => void } }).vi;
-  if (viGlobal?.advanceTimersByTime) {
-    return viGlobal.advanceTimersByTime.bind(viGlobal);
-  }
+  if (viGlobal?.advanceTimersByTime) return viGlobal.advanceTimersByTime.bind(viGlobal);
 
   return undefined;
 }
@@ -290,8 +314,8 @@ function advanceVirtualTime(ms: number): void {
   }
 }
 
-export function createProbePair<T extends object>(): { fake: T; probe: TestProbe } {
-  const probe = new TestProbe();
+export function createProbePair<T extends object>(): { fake: T; probe: TestProbe<T> } {
+  const probe = new TestProbe<T>();
   const fake = new Proxy(
     {},
     {
@@ -308,18 +332,5 @@ export function createProbePair<T extends object>(): { fake: T; probe: TestProbe
     },
   ) as T;
 
-  fakeToController.set(fake as object, {
-    planBehavior: (method, behavior) => probe.planBehavior(method, behavior),
-    planPermanentBehavior: (method, behavior) => probe.planPermanentBehavior(method, behavior),
-  });
-
   return { fake, probe };
-}
-
-export function getProbeController(fake: object): PairController {
-  const controller = fakeToController.get(fake);
-  if (!controller) {
-    throw new Error("Object is not a fake created by createProbePair().");
-  }
-  return controller;
 }
