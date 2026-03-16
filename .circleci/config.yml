@@ -1,26 +1,33 @@
 version: 2.1
-orbs:
-  node: circleci/node@7.2.1
+setup: true
 
-jobs:
-  ci:
-    machine:
-      image: ubuntu-2204:2023.04.2
-    steps:
-      - checkout
-      - node/install:
-          node-version: "22"
-      - run:
-          name: "Run CI workflow"
-          command: ./.circleci/ci.sh
+orbs:
+  path-filtering: circleci/path-filtering@3.0.0
+  vn-ci: versatile/vn-ci@0.0.30
 
 workflows:
-  test-build-publish:
+  init:
     jobs:
-      - ci:
-          context:
-            - base-context
+      - path-filtering/filter:
+          name: check changes
+          base-revision: main
+          config-path: .circleci/ci.yml
+          mapping: |
+            packages/core/.* build_core true
+            packages/redis/.* build_redis true
+
+  backup:
+    jobs:
+      - vn-ci/backup-code:
+          context: base-context
           filters:
             branches:
-              ignore:
-                - dependabot/**
+              only: [main]
+
+  audit:
+    jobs:
+      - vn-ci/npm-audit:
+          context: base-context
+          filters:
+            branches:
+              only: [main]

@@ -1,7 +1,9 @@
 {
   "name": "test-kit",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces",

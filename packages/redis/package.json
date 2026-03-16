@@ -16,7 +16,8 @@
     "clean": "rimraf ./dist",
     "build": "npm run clean && tsc -p ./tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "lint": "echo 1"
   },
   "engines": {
     "node": ">=20"

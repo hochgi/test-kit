@@ -1,0 +1,38 @@
+version: 2.1
+
+parameters:
+  build_core:
+    type: boolean
+    default: false
+  build_redis:
+    type: boolean
+    default: false
+
+orbs:
+  vn-ci: versatile/vn-ci@0.0.30
+
+workflows:
+  core:
+    when: <<pipeline.parameters.build_core>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/core"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+  redis:
+    when: <<pipeline.parameters.build_redis>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/redis"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
