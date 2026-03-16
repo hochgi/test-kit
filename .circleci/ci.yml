@@ -9,7 +9,7 @@ parameters:
     default: false
 
 orbs:
-  vn-ci: versatile/vn-ci@0.0.30
+  vn-ci: versatile/vn-ci@0.0.31
 
 workflows:
   core:
