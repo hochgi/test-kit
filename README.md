@@ -7,7 +7,7 @@ Probe-driven component testing for TypeScript services. Test real components wit
 | Package | Description | Status |
 | :--- | :--- | :---: |
 | `@vnatures/test-kit` | Core: probe pairs, porcelain helpers | Published |
-| `@vnatures/test-kit-redis` | In-memory Redis cache (ioredis-mock wrapper) | Local only |
+| `@vnatures/test-kit-redis` | In-memory Redis cache (ioredis-mock wrapper) | Published |
 
 ## Install
 
