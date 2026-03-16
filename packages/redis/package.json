@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-redis",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "In-memory Redis cache for test-kit component tests",
   "license": "UNLICENSED",
   "main": "./dist/index.js",
