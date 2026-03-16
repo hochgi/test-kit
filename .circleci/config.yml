@@ -3,7 +3,7 @@ setup: true
 
 orbs:
   path-filtering: circleci/path-filtering@3.0.0
-  vn-ci: versatile/vn-ci@0.0.31
+  vn-ci: versatile/vn-ci@0.0.32
 
 workflows:
   init:
