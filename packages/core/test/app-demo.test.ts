@@ -6,7 +6,7 @@
  * goes through the probe only (pre-programming, observation, assertion).
  * No real IO, no real clock.
  */
-import { createProbePair } from "../src";
+import { createProbePair } from '../src';
 
 // ── Domain types ──
 
@@ -55,8 +55,8 @@ class OrderService {
         const total = items.reduce((sum, item, i) => sum + products[i].price * item.qty, 0);
 
         for (const item of items) {
-            const reserved = await this.products.reserveStock(item.productId, item.qty);
-            if (!reserved) {
+            const isReserved = await this.products.reserveStock(item.productId, item.qty);
+            if (!isReserved) {
                 throw new Error(`Insufficient stock for product ${item.productId}`);
             }
         }
@@ -74,10 +74,10 @@ class OrderService {
             userId,
             items,
             total,
-            status: "confirmed",
+            status: 'confirmed',
         };
 
-        await this.events.publish("orders", { type: "OrderCreated", order, user });
+        await this.events.publish('orders', { type: 'OrderCreated', order, user });
 
         return order;
     }
@@ -86,7 +86,7 @@ class OrderService {
         return Promise.race([
             this.createOrder(userId, items),
             new Promise<Order>((_, reject) =>
-                setTimeout(() => reject(new Error("Order creation timed out")), timeoutMs),
+                setTimeout(() => reject(new Error('Order creation timed out')), timeoutMs),
             ),
         ]);
     }
@@ -94,10 +94,10 @@ class OrderService {
 
 // ── Test fixtures ──
 
-const testUser: User = { id: 1, name: "Gilad", email: "gilad@versatile.ai" };
+const testUser: User = { id: 1, name: 'Gilad', email: 'gilad@versatile.ai' };
 const testProducts: Product[] = [
-    { id: 101, name: "Steel Beam", price: 250, stock: 50 },
-    { id: 102, name: "Concrete Block", price: 80, stock: 200 },
+    { id: 101, name: 'Steel Beam', price: 250, stock: 50 },
+    { id: 102, name: 'Concrete Block', price: 80, stock: 200 },
 ];
 const testItems: OrderItem[] = [
     { productId: 101, qty: 2 },
@@ -120,88 +120,89 @@ function createHarness() {
 
 // ── Tests ──
 
-describe("OrderService — porcelain style (pre-programmed via probe)", () => {
-    it("creates an order with all deps pre-programmed", async () => {
+describe('OrderService — porcelain style (pre-programmed via probe)', () => {
+    it('creates an order with all deps pre-programmed', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        usersProbe.whenCalled("getUser").thenReturn(testUser);
-        productsProbe.whenCalled("getProduct").thenReturn(testProducts[0]);
-        productsProbe.whenCalled("getProduct").thenReturn(testProducts[1]);
-        productsProbe.whenCalled("reserveStock").thenReturn(true);
-        productsProbe.whenCalled("reserveStock").thenReturn(true);
-        paymentsProbe.whenCalled("charge").thenReturn({ success: true, transactionId: "TXN-1" });
-        eventsProbe.whenCalled("publish").thenReturn(undefined);
+        usersProbe.whenCalled('getUser').thenReturn(testUser);
+        productsProbe.whenCalled('getProduct').thenReturn(testProducts[0]);
+        productsProbe.whenCalled('getProduct').thenReturn(testProducts[1]);
+        productsProbe.whenCalled('reserveStock').thenReturn(true);
+        productsProbe.whenCalled('reserveStock').thenReturn(true);
+        paymentsProbe.whenCalled('charge').thenReturn({ success: true, transactionId: 'TXN-1' });
+        eventsProbe.whenCalled('publish').thenReturn(undefined);
 
         const order = await service.createOrder(1, testItems);
 
         expect(order.userId).toBe(1);
         expect(order.total).toBe(2 * 250 + 5 * 80);
-        expect(order.status).toBe("confirmed");
+        expect(order.status).toBe('confirmed');
     });
 
-    it("uses alwaysReturn for precondition deps, focuses on payment probe", async () => {
+    it('uses alwaysReturn for precondition deps, focuses on payment probe', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe } = createHarness();
 
-        usersProbe.alwaysReturn("getUser", testUser);
-        productsProbe.alwaysReturn("getProduct", testProducts[0]);
-        productsProbe.alwaysReturn("reserveStock", true);
-        productsProbe.alwaysReturn("releaseStock", undefined);
+        usersProbe.alwaysReturn('getUser', testUser);
+        productsProbe.alwaysReturn('getProduct', testProducts[0]);
+        productsProbe.alwaysReturn('reserveStock', true);
+        productsProbe.alwaysReturn('releaseStock', undefined);
 
-        paymentsProbe.whenCalled("charge").thenReturn({ success: false, error: "insufficient funds" });
+        paymentsProbe.whenCalled('charge').thenReturn({ success: false, error: 'insufficient funds' });
 
-        await expect(service.createOrder(1, [{ productId: 101, qty: 1 }]))
-            .rejects.toThrow("Payment failed: insufficient funds");
+        await expect(service.createOrder(1, [{ productId: 101, qty: 1 }])).rejects.toThrow(
+            'Payment failed: insufficient funds',
+        );
     });
 });
 
-describe("OrderService — plumbing style (observe and control each call)", () => {
-    it("verifies the exact sequence of dependency calls", async () => {
+describe('OrderService — plumbing style (observe and control each call)', () => {
+    it('verifies the exact sequence of dependency calls', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        const orderPromise = service.createOrder(1, [{ productId: 101, qty: 2 }]).then(r => r);
+        const orderPromise = service.createOrder(1, [{ productId: 101, qty: 2 }]).then((r) => r);
 
         const userCall = await usersProbe.expectNext();
-        expect(userCall.method).toBe("getUser");
+        expect(userCall.method).toBe('getUser');
         expect(userCall.args).toEqual([1]);
         userCall.answer(testUser);
 
         const productCall = await productsProbe.expectNext();
-        expect(productCall.method).toBe("getProduct");
+        expect(productCall.method).toBe('getProduct');
         expect(productCall.args).toEqual([101]);
         productCall.answer(testProducts[0]);
 
         const reserveCall = await productsProbe.expectNext();
-        expect(reserveCall.method).toBe("reserveStock");
+        expect(reserveCall.method).toBe('reserveStock');
         expect(reserveCall.args).toEqual([101, 2]);
         reserveCall.answer(true);
 
         const payCall = await paymentsProbe.expectNext();
-        expect(payCall.method).toBe("charge");
+        expect(payCall.method).toBe('charge');
         expect(payCall.args).toEqual([1, 500]);
-        payCall.answer({ success: true, transactionId: "TXN-42" });
+        payCall.answer({ success: true, transactionId: 'TXN-42' });
 
         const eventCall = await eventsProbe.expectNext();
-        expect(eventCall.method).toBe("publish");
-        expect(eventCall.args[0]).toBe("orders");
-        expect((eventCall.args[1] as any).type).toBe("OrderCreated");
+        expect(eventCall.method).toBe('publish');
+        expect(eventCall.args[0]).toBe('orders');
+        expect((eventCall.args[1] as any).type).toBe('OrderCreated');
         eventCall.answer(undefined);
 
         const order = await orderPromise;
-        expect(order.status).toBe("confirmed");
+        expect(order.status).toBe('confirmed');
     });
 
-    it("answers concurrent product lookups out of order", async () => {
+    it('answers concurrent product lookups out of order', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        const orderPromise = service.createOrder(1, testItems).then(r => r);
+        const orderPromise = service.createOrder(1, testItems).then((r) => r);
 
         (await usersProbe.expectNext()).answer(testUser);
 
         const product2Call = await productsProbe.expectMatching(
-            (c) => c.method === "getProduct" && (c.args[0] as number) === 102,
+            (c) => c.method === 'getProduct' && (c.args[0] as number) === 102,
         );
         const product1Call = await productsProbe.expectMatching(
-            (c) => c.method === "getProduct" && (c.args[0] as number) === 101,
+            (c) => c.method === 'getProduct' && (c.args[0] as number) === 101,
         );
 
         product2Call.answer(testProducts[1]);
@@ -209,7 +210,7 @@ describe("OrderService — plumbing style (observe and control each call)", () =
 
         (await productsProbe.expectNext()).answer(true);
         (await productsProbe.expectNext()).answer(true);
-        (await paymentsProbe.expectNext()).answer({ success: true, transactionId: "TXN-99" });
+        (await paymentsProbe.expectNext()).answer({ success: true, transactionId: 'TXN-99' });
         (await eventsProbe.expectNext()).answer(undefined);
 
         const order = await orderPromise;
@@ -217,8 +218,8 @@ describe("OrderService — plumbing style (observe and control each call)", () =
     });
 });
 
-describe("OrderService — payment failure rolls back stock", () => {
-    it("releases stock for all items when payment fails", async () => {
+describe('OrderService — payment failure rolls back stock', () => {
+    it('releases stock for all items when payment fails', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
         const orderPromise = service.createOrder(1, testItems).catch((e) => e);
@@ -229,31 +230,31 @@ describe("OrderService — payment failure rolls back stock", () => {
         (await productsProbe.expectNext()).answer(true);
         (await productsProbe.expectNext()).answer(true);
 
-        (await paymentsProbe.expectNext()).answer({ success: false, error: "card declined" });
+        (await paymentsProbe.expectNext()).answer({ success: false, error: 'card declined' });
 
         const release1 = await productsProbe.expectNext();
-        expect(release1.method).toBe("releaseStock");
+        expect(release1.method).toBe('releaseStock');
         expect(release1.args).toEqual([101, 2]);
         release1.answer(undefined);
 
         const release2 = await productsProbe.expectNext();
-        expect(release2.method).toBe("releaseStock");
+        expect(release2.method).toBe('releaseStock');
         expect(release2.args).toEqual([102, 5]);
         release2.answer(undefined);
 
         const error = await orderPromise;
         expect(error).toBeInstanceOf(Error);
-        expect(error.message).toContain("card declined");
+        expect(error.message).toContain('card declined');
 
         await eventsProbe.expectNoMsgWithin(0);
     });
 });
 
-describe("OrderService — timeout with fake clock", () => {
+describe('OrderService — timeout with fake clock', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());
 
-    it("times out when payment gateway does not respond", async () => {
+    it('times out when payment gateway does not respond', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe } = createHarness();
 
         const orderPromise = service.createOrderWithTimeout(1, [{ productId: 101, qty: 1 }], 5000);
@@ -262,45 +263,45 @@ describe("OrderService — timeout with fake clock", () => {
         (await productsProbe.expectNext()).answer(testProducts[0]);
         (await productsProbe.expectNext()).answer(true);
 
-        await paymentsProbe.expectNext();      // observed — not answered
+        await paymentsProbe.expectNext(); // observed — not answered
 
         jest.advanceTimersByTime(5000);
 
-        await expect(orderPromise).rejects.toThrow("Order creation timed out");
+        await expect(orderPromise).rejects.toThrow('Order creation timed out');
     });
 });
 
-describe("OrderService — event bus assertions", () => {
-    it("publishes OrderCreated event with correct payload", async () => {
+describe('OrderService — event bus assertions', () => {
+    it('publishes OrderCreated event with correct payload', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        usersProbe.alwaysReturn("getUser", testUser);
-        productsProbe.alwaysReturn("getProduct", testProducts[0]);
-        productsProbe.alwaysReturn("reserveStock", true);
-        paymentsProbe.alwaysReturn("charge", { success: true, transactionId: "TXN-1" });
+        usersProbe.alwaysReturn('getUser', testUser);
+        productsProbe.alwaysReturn('getProduct', testProducts[0]);
+        productsProbe.alwaysReturn('reserveStock', true);
+        paymentsProbe.alwaysReturn('charge', { success: true, transactionId: 'TXN-1' });
 
-        const orderPromise = service.createOrder(1, [{ productId: 101, qty: 1 }]).then(r => r);
+        const orderPromise = service.createOrder(1, [{ productId: 101, qty: 1 }]).then((r) => r);
 
         const eventCall = await eventsProbe.expectNext();
-        expect(eventCall.args[0]).toBe("orders");
+        expect(eventCall.args[0]).toBe('orders');
 
         const payload = eventCall.args[1] as { type: string; order: Order; user: User };
-        expect(payload.type).toBe("OrderCreated");
+        expect(payload.type).toBe('OrderCreated');
         expect(payload.order.total).toBe(250);
-        expect(payload.user.email).toBe("gilad@versatile.ai");
+        expect(payload.user.email).toBe('gilad@versatile.ai');
 
         eventCall.answer(undefined);
         await orderPromise;
     });
 
-    it("does not publish event when payment fails", async () => {
+    it('does not publish event when payment fails', async () => {
         const { service, usersProbe, productsProbe, paymentsProbe, eventsProbe } = createHarness();
 
-        usersProbe.alwaysReturn("getUser", testUser);
-        productsProbe.alwaysReturn("getProduct", testProducts[0]);
-        productsProbe.alwaysReturn("reserveStock", true);
-        productsProbe.alwaysReturn("releaseStock", undefined);
-        paymentsProbe.whenCalled("charge").thenReturn({ success: false, error: "declined" });
+        usersProbe.alwaysReturn('getUser', testUser);
+        productsProbe.alwaysReturn('getProduct', testProducts[0]);
+        productsProbe.alwaysReturn('reserveStock', true);
+        productsProbe.alwaysReturn('releaseStock', undefined);
+        paymentsProbe.whenCalled('charge').thenReturn({ success: false, error: 'declined' });
 
         await expect(service.createOrder(1, [{ productId: 101, qty: 1 }])).rejects.toThrow();
 

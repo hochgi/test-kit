@@ -6,8 +6,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
     "test": "npm test --workspaces",
-    "clean": "npm run clean --workspaces"
+    "clean": "npm run clean --workspaces",
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "prettify": "npm run prettify --workspaces"
   },
   "engines": {
     "node": ">=20"

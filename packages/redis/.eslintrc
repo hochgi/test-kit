@@ -1,0 +1,28 @@
+{
+    "root": true,
+    "extends": ["@vnatures/eslint-config"],
+    "overrides": [
+        {
+            "files": ["*.ts"],
+            "parserOptions": {
+                "project": "./tsconfig.eslint.json"
+            },
+            "rules": {
+                "import/extensions": "off",
+                "no-process-env": "off",
+                "@typescript-eslint/no-explicit-any": "off",
+                "@typescript-eslint/no-unsafe-assignment": "off",
+                "@typescript-eslint/no-unsafe-call": "off",
+                "@typescript-eslint/no-unsafe-member-access": "off",
+                "@typescript-eslint/no-unsafe-return": "off",
+                "no-param-reassign": "off"
+            }
+        },
+        {
+            "files": ["test/**/*.ts"],
+            "rules": {
+                "@typescript-eslint/require-await": "off"
+            }
+        }
+    ]
+}
