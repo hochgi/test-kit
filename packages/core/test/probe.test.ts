@@ -1,4 +1,4 @@
-import { createProbePair, PendingCall } from '../src';
+import { createProbePair, extractFakes, extractProbes, PendingCall } from '../src';
 
 type DemoService = {
     getById(id: number): Promise<{ id: number }>;
@@ -235,6 +235,32 @@ describe('createProbePair / TestProbe', () => {
             const { fake, probe } = createProbePair<DemoService>();
             expect(() => JSON.stringify({ service: fake })).not.toThrow();
             expect(probe.calls).toHaveLength(0);
+        });
+    });
+
+    describe('extractFakes', () => {
+        it('returns all fakes keyed by name', () => {
+            const pairs = {
+                alpha: createProbePair<{ greet(): string }>(),
+                beta: createProbePair<{ count(): number }>(),
+            };
+            const fakes = extractFakes(pairs);
+            expect(Object.keys(fakes)).toEqual(['alpha', 'beta']);
+            expect(fakes.alpha).toBe(pairs.alpha.fake);
+            expect(fakes.beta).toBe(pairs.beta.fake);
+        });
+    });
+
+    describe('extractProbes', () => {
+        it('returns all probes keyed by name', () => {
+            const pairs = {
+                alpha: createProbePair<{ greet(): string }>(),
+                beta: createProbePair<{ count(): number }>(),
+            };
+            const probes = extractProbes(pairs);
+            expect(Object.keys(probes)).toEqual(['alpha', 'beta']);
+            expect(probes.alpha).toBe(pairs.alpha.probe);
+            expect(probes.beta).toBe(pairs.beta.probe);
         });
     });
 });
