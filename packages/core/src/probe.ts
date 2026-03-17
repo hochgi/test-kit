@@ -359,8 +359,8 @@ export function createProbePair<T extends object>(): { fake: T; probe: TestProbe
     return { fake, probe };
 }
 
-export type ProbePairMap<T extends Record<string, object>> = {
-    [K in keyof T]: { fake: T[K]; probe: TestProbe<T[K]> };
+export type ProbePairMap<T> = {
+    [K in keyof T]: T[K] extends object ? { fake: T[K]; probe: TestProbe<T[K]> } : never;
 };
 
 export function extractFakes<T extends Record<string, { fake: unknown }>>(pairs: T): { [K in keyof T]: T[K]['fake'] } {
