@@ -363,18 +363,16 @@ export type ProbePairMap<T extends Record<string, object>> = {
     [K in keyof T]: { fake: T[K]; probe: TestProbe<T[K]> };
 };
 
-export function extractFakes<T extends Record<string, { fake: unknown }>>(
-    pairs: T,
-): { [K in keyof T]: T[K]['fake'] } {
-    return Object.fromEntries(
-        Object.entries(pairs).map(([k, { fake }]) => [k, fake]),
-    ) as { [K in keyof T]: T[K]['fake'] };
+export function extractFakes<T extends Record<string, { fake: unknown }>>(pairs: T): { [K in keyof T]: T[K]['fake'] } {
+    return Object.fromEntries(Object.entries(pairs).map(([k, { fake }]) => [k, fake])) as {
+        [K in keyof T]: T[K]['fake'];
+    };
 }
 
 export function extractProbes<T extends Record<string, { probe: unknown }>>(
     pairs: T,
 ): { [K in keyof T]: T[K]['probe'] } {
-    return Object.fromEntries(
-        Object.entries(pairs).map(([k, { probe }]) => [k, probe]),
-    ) as { [K in keyof T]: T[K]['probe'] };
+    return Object.fromEntries(Object.entries(pairs).map(([k, { probe }]) => [k, probe])) as {
+        [K in keyof T]: T[K]['probe'];
+    };
 }
