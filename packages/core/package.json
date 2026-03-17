@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Probe-driven component testing utilities",
   "license": "UNLICENSED",
   "main": "./dist/index.js",
