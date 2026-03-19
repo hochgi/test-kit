@@ -1,10 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import Redis from 'ioredis-mock';
 
-type CacheKeyInput = string | { format: string; args?: string[] };
-type TtlResolver<T> = number | ((result: T) => number);
+export type CacheKeyInput = string | { format: string; args?: string[] };
+export type TtlResolver<T> = number | ((result: T) => number);
 
-function formatKey(input: CacheKeyInput): string {
+export function formatKey(input: CacheKeyInput): string {
     if (typeof input === 'string') {
         return input;
     }
@@ -20,13 +20,13 @@ function formatKey(input: CacheKeyInput): string {
     return args.length > 0 ? `${input.format}:${args.join(':')}` : input.format;
 }
 
-function toStoredValue(value: unknown): string {
+export function toStoredValue(value: unknown): string {
     return JSON.stringify(value);
 }
 
-function fromStoredValue<T>(value: string | null): T {
+export function fromStoredValue<T>(value: string | null): T | null {
     if (value === null) {
-        return value as T;
+        return null;
     }
     try {
         return JSON.parse(value) as T;
@@ -38,17 +38,15 @@ function fromStoredValue<T>(value: string | null): T {
 export type InMemoryCache = {
     client: any;
     set<T>(input: { key: CacheKeyInput; val: T }, ttlMs?: number): Promise<boolean>;
-    get<T>(key: CacheKeyInput): Promise<T>;
+    get<T>(key: CacheKeyInput): Promise<T | null>;
     del(key: CacheKeyInput): Promise<void>;
     setnx<T>(input: { key: CacheKeyInput; val: T }, options?: { mode?: 'PX' | 'EX'; ttl: number }): Promise<T>;
     getSet<T>(cacheKey: CacheKeyInput, apiFunc: () => Promise<T>, options?: { ttl?: TtlResolver<T> }): Promise<T>;
 };
 
-export function createInMemoryCache(): InMemoryCache {
-    const client = new Redis();
-
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export function buildCacheOperations(client: any): Omit<InMemoryCache, 'client'> {
     return {
-        client,
         async set<T>(input: { key: CacheKeyInput; val: T }, ttlMs?: number): Promise<boolean> {
             const key = formatKey(input.key);
             if (ttlMs && ttlMs > 0) {
@@ -58,8 +56,9 @@ export function createInMemoryCache(): InMemoryCache {
             const result = await client.set(key, toStoredValue(input.val));
             return result === 'OK';
         },
-        async get<T>(keyInput: CacheKeyInput): Promise<T> {
+        async get<T>(keyInput: CacheKeyInput): Promise<T | null> {
             const value = await client.get(formatKey(keyInput));
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             return fromStoredValue<T>(value);
         },
         async del(keyInput: CacheKeyInput): Promise<void> {
@@ -85,7 +84,8 @@ export function createInMemoryCache(): InMemoryCache {
             }
 
             const existing = await client.get(key);
-            return fromStoredValue<T>(existing);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            return fromStoredValue<T>(existing) as T;
         },
         async getSet<T>(
             cacheKey: CacheKeyInput,
@@ -95,7 +95,8 @@ export function createInMemoryCache(): InMemoryCache {
             const key = formatKey(cacheKey);
             const cached = await client.get(key);
             if (cached !== null) {
-                return fromStoredValue<T>(cached);
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                return fromStoredValue<T>(cached) as T;
             }
 
             const value = await apiFunc();
@@ -109,4 +110,9 @@ export function createInMemoryCache(): InMemoryCache {
             return value;
         },
     };
+}
+
+export function createInMemoryCache(): InMemoryCache {
+    const client = new Redis();
+    return { client, ...buildCacheOperations(client) };
 }
