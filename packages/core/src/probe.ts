@@ -1,12 +1,4 @@
-const realSetTimeout = globalThis.setTimeout;
-const realClearTimeout = globalThis.clearTimeout;
-const realSetImmediate = globalThis.setImmediate;
-
-type Deferred<T> = {
-    promise: Promise<T>;
-    resolve: (value: T | PromiseLike<T>) => void;
-    reject: (reason?: unknown) => void;
-};
+import { realSetTimeout, realClearTimeout, realSetImmediate, type Deferred, createDeferred, toError } from './internal';
 
 type CallInternal = {
     index: number;
@@ -64,20 +56,6 @@ const passthroughProps = new Set([
     'constructor',
     'prototype',
 ]);
-
-function createDeferred<T>(): Deferred<T> {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<T>((res, rej) => {
-        resolve = res;
-        reject = rej;
-    });
-    return { promise, resolve, reject };
-}
-
-function toError(error: unknown): Error {
-    return error instanceof Error ? error : new Error(String(error));
-}
 
 async function flushMicrotasks(): Promise<void> {
     await new Promise<void>((resolve) => realSetImmediate(resolve));
