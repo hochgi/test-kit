@@ -50,12 +50,11 @@ Test-kit provides two ways to interact with probes:
 
 Test-kit is a monorepo containing specialized packages for different types of boundaries.
 
-*(Note: This is an initial list. While `pg-kysely` serves repos using Kysely, we will likely add `pg-sequelize`, `pg-knex`, etc., in the future as needed.)*
-
 | Package | Description |
 | :--- | :--- |
 | [`@vnatures/test-kit`](packages/core/README.md) | **Core:** Provides `createProbePair` for faking standard TypeScript interfaces (e.g., REST API boundaries), plus the Porcelain/Plumbing helpers. |
 | [`@vnatures/test-kit-pg-kysely`](packages/pg-kysely/README.md) | **Database:** A probed fake for `Kysely<Database>`, backed by an in-memory PGlite instance. |
+| [`@vnatures/test-kit-pg-knex`](packages/pg-knex/README.md) | **Database:** A probed fake for Knex, backed by an in-memory PGlite instance (`knex-pglite`). |
 | [`@vnatures/test-kit-redis`](packages/redis/README.md) | **Cache:** A probed fake for a focused caching interface, backed by `ioredis-mock`. |
 
 ## General Usage Pattern

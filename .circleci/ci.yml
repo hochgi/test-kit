@@ -10,6 +10,9 @@ parameters:
   build_pg_kysely:
     type: boolean
     default: false
+  build_pg_knex:
+    type: boolean
+    default: false
 
 orbs:
   vn-ci: versatile/vn-ci@0.0.32
@@ -46,6 +49,18 @@ workflows:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>
           package_json_dir: "packages/pg-kysely"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+  pg-knex:
+    when: <<pipeline.parameters.build_pg_knex>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/pg-knex"
       - vn-ci/build-publish:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>

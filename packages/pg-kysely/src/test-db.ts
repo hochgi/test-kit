@@ -52,6 +52,7 @@ export interface TestDb<DB> {
 
 export async function createTestDb<DB>(options: TestDbOptions<DB>): Promise<TestDb<DB>> {
     const pglite = new PGlite();
+    await pglite.waitReady;
     const db = new Kysely<DB>({ dialect: new PGliteDialect(pglite) });
 
     try {
@@ -59,8 +60,13 @@ export async function createTestDb<DB>(options: TestDbOptions<DB>): Promise<Test
     } catch (err) {
         try {
             await db.destroy();
-        } finally {
+        } catch {
+            /* ignore */
+        }
+        try {
             await pglite.close();
+        } catch {
+            /* ignore */
         }
         throw err;
     }
@@ -97,8 +103,13 @@ export async function createTestDb<DB>(options: TestDbOptions<DB>): Promise<Test
         async close() {
             try {
                 await db.destroy();
-            } finally {
+            } catch {
+                /* PGlite may already be closed */
+            }
+            try {
                 await pglite.close();
+            } catch {
+                /* may already be closed by destroy above */
             }
         },
     };

@@ -16,6 +16,7 @@ workflows:
             packages/core/.* build_core true
             packages/redis/.* build_redis true
             packages/pg-kysely/.* build_pg_kysely true
+            packages/pg-knex/.* build_pg_knex true
 
   backup:
     jobs:
