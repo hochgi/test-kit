@@ -107,6 +107,24 @@ the DI token with the probed instance. Key APIs:
 - Maintenance operations (`bootstrap`, `seed`, `reset`) use an unprobed
   connection so they are never affected by probe behavior.
 
+**Example — Postgres with Knex:**
+
+Inject `Knex` (or your DI token for it) as the boundary — same Goldilocks idea as
+Kysely: not raw `pg.Pool`, not a fat repository facade that hides every query.
+
+**Using `test-kit-pg-knex`:** `@vnatures/test-kit-pg-knex` provides
+`createProbedTestDb`, which returns a PGlite-backed `Knex` instance plus the same
+`DbProbe` API as Kysely (`alwaysForward`, `alwaysReject`, `whenQueried`,
+`expectNext`, `expectMatching`, `clearBehavior`). Pass `knexConfig` when production
+uses plugins such as `knex-stringcase` so tests match runtime column naming.
+For tests that only need an isolated in-memory DB without intercepting queries,
+use `createTestDb` instead of `createProbedTestDb`.
+
+**`DbProbe` and types:** `DbProbe`, `QueryCall`, and `PendingQuery` live in
+`@vnatures/test-kit` and are re-exported from `@vnatures/test-kit-pg-kysely` and
+`@vnatures/test-kit-pg-knex`. Import from the pg package that matches your stack;
+import from core only if you wire a custom DB layer around `DbProbe.recordQuery`.
+
 ### Decision checklist
 
 Before extracting a boundary, ask:
