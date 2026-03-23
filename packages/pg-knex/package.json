@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-pg-knex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PGlite-backed Knex test database for component tests",
   "license": "UNLICENSED",
   "main": "./dist/index.js",
