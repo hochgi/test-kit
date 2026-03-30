@@ -8,6 +8,28 @@ export interface BootstrapFn<DB> {
 
 export interface TestDbOptions<DB> {
     /**
+     * PGlite extensions to load at database construction time.
+     * Pass extension objects from `@electric-sql/pglite/contrib/*` or other
+     * PGlite extension packages. Extensions are loaded before any SQL runs.
+     *
+     * After loading, activate with `CREATE EXTENSION IF NOT EXISTS "..."` in
+     * your `bootstrap` function.
+     *
+     * ```typescript
+     * import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
+     *
+     * createTestDb<DB>({
+     *     extensions: { uuid_ossp },
+     *     bootstrap: async (db) => {
+     *         await sql.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').execute(db);
+     *         // ... create tables ...
+     *     },
+     * });
+     * ```
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extensions?: Record<string, any>;
+    /**
      * DDL bootstrap: create tables, indexes, etc.
      * Called once at creation and again after each reset.
      * Should be idempotent (use IF NOT EXISTS).
@@ -51,7 +73,7 @@ export interface TestDb<DB> {
 }
 
 export async function createTestDb<DB>(options: TestDbOptions<DB>): Promise<TestDb<DB>> {
-    const pglite = new PGlite();
+    const pglite = new PGlite(options.extensions ? { extensions: options.extensions } : undefined);
     await pglite.waitReady;
     const db = new Kysely<DB>({ dialect: new PGliteDialect(pglite) });
 

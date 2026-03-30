@@ -119,6 +119,9 @@ class ProbedDialect implements Dialect {
 // ── Public factory ────────────────────────────────────────────────────────────
 
 export interface ProbedTestDbOptions<DB> {
+    /** PGlite extensions to load. See `TestDbOptions.extensions`. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extensions?: Record<string, any>;
     bootstrap: BootstrapFn<DB>;
 }
 
@@ -127,7 +130,7 @@ export interface ProbedTestDb<DB> extends TestDb<DB> {
 }
 
 export async function createProbedTestDb<DB>(options: ProbedTestDbOptions<DB>): Promise<ProbedTestDb<DB>> {
-    const pglite = new PGlite();
+    const pglite = new PGlite(options.extensions ? { extensions: options.extensions } : undefined);
     await pglite.waitReady;
     const probe = new DbProbe();
     const dialect = new ProbedDialect(pglite, probe);

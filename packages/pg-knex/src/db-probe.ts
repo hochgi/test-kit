@@ -48,6 +48,9 @@ function createProbedPgliteKnex(pglite: PGlite, probe: DbProbe, extraConfig?: Pa
 // ── Public factory ────────────────────────────────────────────────────────────
 
 export interface ProbedTestDbOptions {
+    /** PGlite extensions to load. See `TestDbOptions.extensions`. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extensions?: Record<string, any>;
     bootstrap: BootstrapFn;
     knexConfig?: Partial<Knex.Config>;
 }
@@ -57,7 +60,7 @@ export interface ProbedTestDb extends TestDb {
 }
 
 export async function createProbedTestDb(options: ProbedTestDbOptions): Promise<ProbedTestDb> {
-    const pglite = new PGlite();
+    const pglite = new PGlite(options.extensions ? { extensions: options.extensions } : undefined);
     await pglite.waitReady;
     const probe = new DbProbe();
     const db = createProbedPgliteKnex(pglite, probe, options.knexConfig);

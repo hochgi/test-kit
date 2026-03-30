@@ -31,10 +31,30 @@ const testDb = await createTestDb({
 });
 ```
 
+## PGlite Extensions
+
+PGlite ships with [many bundled extensions](https://pglite.dev/extensions/) (`uuid-ossp`, `pgcrypto`, `hstore`, `ltree`, `pgvector`, etc.). Pass them via `extensions` — they are loaded at PGlite construction time. Then activate them with `CREATE EXTENSION` in your `bootstrap`:
+
+```typescript
+import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
+
+const testDb = await createTestDb({
+    extensions: { uuid_ossp },
+    bootstrap: async (db) => {
+        await db.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+        await db.schema.createTable('users', (t) => {
+            t.uuid('id').defaultTo(db.raw('uuid_generate_v4()')).primary();
+            t.string('name').notNullable();
+        });
+    },
+});
+```
+
 ## API
 
 ### `createTestDb(options)`
 
+- `extensions?`: PGlite extensions to load (e.g. `{ uuid_ossp }`). See [PGlite Extensions](https://pglite.dev/extensions/).
 - `bootstrap(db: Knex)`: idempotent DDL (use `IF NOT EXISTS` where needed).
 - `knexConfig?`: merged into the internal config; `client`, `connection`, and `pool` are ignored.
 
@@ -47,7 +67,7 @@ Returns `TestDb`:
 
 ### `createProbedTestDb(options)`
 
-Same options as `createTestDb`, plus `probe: DbProbe` on the returned object. Application code should use `db`; `reset` / `seed` use an internal unprobed Knex so cleanup is not blocked by probe behavior.
+Same options as `createTestDb` (including `extensions?`), plus `probe: DbProbe` on the returned object. Application code should use `db`; `reset` / `seed` use an internal unprobed Knex so cleanup is not blocked by probe behavior.
 
 ### `DbProbe`
 

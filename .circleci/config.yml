@@ -17,6 +17,7 @@ workflows:
             packages/redis/.* build_redis true
             packages/pg-kysely/.* build_pg_kysely true
             packages/pg-knex/.* build_pg_knex true
+            packages/pg-sequelize/.* build_pg_sequelize true
 
   backup:
     jobs:

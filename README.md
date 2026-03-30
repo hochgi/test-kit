@@ -55,6 +55,7 @@ Test-kit is a monorepo containing specialized packages for different types of bo
 | [`@vnatures/test-kit`](packages/core/README.md) | **Core:** Provides `createProbePair` for faking standard TypeScript interfaces (e.g., REST API boundaries), plus the Porcelain/Plumbing helpers. |
 | [`@vnatures/test-kit-pg-kysely`](packages/pg-kysely/README.md) | **Database:** A probed fake for `Kysely<Database>`, backed by an in-memory PGlite instance. |
 | [`@vnatures/test-kit-pg-knex`](packages/pg-knex/README.md) | **Database:** A probed fake for Knex, backed by an in-memory PGlite instance (`knex-pglite`). |
+| [`@vnatures/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | **Database:** A probed fake for Sequelize v6, backed by PGlite via `pglite-pg-adapter`. See [APPENDIX.md](APPENDIX.md) for the adapter landscape and future ORM recommendations. |
 | [`@vnatures/test-kit-redis`](packages/redis/README.md) | **Cache:** A probed fake for a focused caching interface, backed by `ioredis-mock`. |
 
 ## General Usage Pattern

@@ -130,6 +130,67 @@ describe('createTestDb', () => {
         });
     });
 
+    describe('extensions option', () => {
+        it('loads uuid-ossp extension and uuid_generate_v4() works', async () => {
+            // @ts-expect-error — TS "node" moduleResolution can't resolve wildcard package exports
+            const { uuid_ossp } = await import('@electric-sql/pglite/contrib/uuid_ossp');
+
+            const extDb = await createTestDb({
+                extensions: { uuid_ossp },
+                bootstrap: async (db: Knex) => {
+                    await db.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+                    await db.raw(`
+                        CREATE TABLE IF NOT EXISTS uuid_test (
+                            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+                            label VARCHAR NOT NULL
+                        )
+                    `);
+                },
+            });
+
+            try {
+                await extDb.seed('uuid_test', [{ label: 'auto-uuid' }]);
+                const rows = await extDb.db('uuid_test').select('id', 'label');
+                expect(rows).toHaveLength(1);
+                expect(rows[0].label).toBe('auto-uuid');
+                expect(rows[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+            } finally {
+                await extDb.close();
+            }
+        });
+
+        it('extensions survive reset()', async () => {
+            // @ts-expect-error — TS "node" moduleResolution can't resolve wildcard package exports
+            const { uuid_ossp } = await import('@electric-sql/pglite/contrib/uuid_ossp');
+
+            const extDb = await createTestDb({
+                extensions: { uuid_ossp },
+                bootstrap: async (db: Knex) => {
+                    await db.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+                    await db.raw(`
+                        CREATE TABLE IF NOT EXISTS uuid_test (
+                            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+                            label VARCHAR NOT NULL
+                        )
+                    `);
+                },
+            });
+
+            try {
+                await extDb.seed('uuid_test', [{ label: 'before-reset' }]);
+                await extDb.reset();
+                await extDb.seed('uuid_test', [{ label: 'after-reset' }]);
+
+                const rows = await extDb.db('uuid_test').select('id', 'label');
+                expect(rows).toHaveLength(1);
+                expect(rows[0].label).toBe('after-reset');
+                expect(rows[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-/i);
+            } finally {
+                await extDb.close();
+            }
+        });
+    });
+
     describe('JSONB filter queries', () => {
         it('filters by JSONB text extraction with integer cast', async () => {
             await testDb.seed('orders', [

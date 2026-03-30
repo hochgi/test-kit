@@ -76,6 +76,28 @@ it('seeds and queries', async () => {
 });
 ```
 
+## PGlite Extensions
+
+PGlite ships with [many bundled extensions](https://pglite.dev/extensions/) (`uuid-ossp`, `pgcrypto`, `hstore`, `ltree`, `pgvector`, etc.). Pass them via `extensions` — they are loaded at PGlite construction time. Then activate them with `CREATE EXTENSION` in your `bootstrap`:
+
+```typescript
+import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
+import { sql } from 'kysely';
+
+const testDb = await createTestDb<DB>({
+    extensions: { uuid_ossp },
+    bootstrap: async (db) => {
+        await sql.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').execute(db);
+        await sql.raw(`
+            CREATE TABLE users (
+                id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+                name VARCHAR NOT NULL
+            )
+        `).execute(db);
+    },
+});
+```
+
 ## API
 
 ### `createTestDb<DB>(options)` — simple passthrough
@@ -84,6 +106,7 @@ Creates a fresh in-memory PGlite database and returns a `TestDb` handle. All que
 
 | Option | Type | Description |
 | :--- | :--- | :--- |
+| `extensions` | `Record<string, any>` | PGlite extensions to load (e.g. `{ uuid_ossp }`). See [PGlite Extensions](https://pglite.dev/extensions/). |
 | `bootstrap` | `(db: Kysely<DB>) => Promise<void>` | DDL setup: create tables, indexes, etc. Should be idempotent. |
 
 ### `TestDb<DB>`
@@ -99,7 +122,7 @@ Creates a fresh in-memory PGlite database and returns a `TestDb` handle. All que
 
 Creates the same PGlite-backed database, but with a `DbProbe` interceptor between Kysely and PGlite. This is the database equivalent of core test-kit's `createProbePair` — you can observe, reject, or forward individual queries. Starts in `alwaysForward()` mode so setup code (bootstrap, seed, reset) works transparently.
 
-Returns a `ProbedTestDb<DB>` which extends `TestDb<DB>` with a `probe` property.
+Same options as `createTestDb` (including `extensions?`). Returns a `ProbedTestDb<DB>` which extends `TestDb<DB>` with a `probe` property.
 
 ### `DbProbe`
 
