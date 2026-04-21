@@ -19,6 +19,22 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-s3
 
 Peer dependencies (consumer must provide): `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`.
 
+### `npm audit` note
+
+`mock-aws-s3-v3` transitively depends on `mock-aws-s3@4.0.2`, which pins
+`underscore@1.12.1` — a version flagged by [GHSA-qpx9-hpmf-5gmw](https://github.com/advisories/GHSA-qpx9-hpmf-5gmw)
+(DoS via unbounded recursion in `_.flatten` / `_.isEqual`). The affected code
+paths aren't reached by the fake, but `npm audit` still flags it. Add an
+override to your consumer `package.json` to pull the patched release:
+
+```jsonc
+{
+    "overrides": {
+        "underscore": "^1.13.8"
+    }
+}
+```
+
 ## Quick start
 
 ```typescript
