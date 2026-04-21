@@ -55,6 +55,11 @@ const passthroughProps = new Set([
     'hasAttribute',
     'constructor',
     'prototype',
+    'onModuleInit',
+    'onApplicationBootstrap',
+    'onModuleDestroy',
+    'beforeApplicationShutdown',
+    'onApplicationShutdown',
 ]);
 
 async function flushMicrotasks(): Promise<void> {

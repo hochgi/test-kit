@@ -236,6 +236,29 @@ describe('createProbePair / TestProbe', () => {
             expect(() => JSON.stringify({ service: fake })).not.toThrow();
             expect(probe.calls).toHaveLength(0);
         });
+
+        it('NestJS lifecycle hook names are passthrough (undefined, not a function)', () => {
+            type FakeWithLifecycle = DemoService & {
+                onModuleInit?: () => void;
+                onApplicationBootstrap?: () => void;
+                onModuleDestroy?: () => void;
+                beforeApplicationShutdown?: (signal?: string) => void;
+                onApplicationShutdown?: (signal?: string) => void;
+                send?: (cmd: unknown) => Promise<unknown>;
+            };
+            const { fake, probe } = createProbePair<FakeWithLifecycle>();
+
+            expect(fake.onModuleInit).toBeUndefined();
+            expect(fake.onApplicationBootstrap).toBeUndefined();
+            expect(fake.onModuleDestroy).toBeUndefined();
+            expect(fake.beforeApplicationShutdown).toBeUndefined();
+            expect(fake.onApplicationShutdown).toBeUndefined();
+
+            expect(typeof fake.send).toBe('function');
+            void fake.send?.({ foo: 'bar' });
+            expect(probe.calls).toHaveLength(1);
+            expect(probe.calls[0]).toEqual({ method: 'send', args: [{ foo: 'bar' }] });
+        });
     });
 
     describe('extractFakes', () => {

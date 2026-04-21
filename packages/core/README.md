@@ -241,6 +241,7 @@ Internal implementation details:
 - `expectNext()` / `expectMatching()` timeout uses `realSetTimeout` (captured at module load) so it fires in real wall-clock time even under fake timers.
 - `expectNoMsgWithin(ms)` advances fake timers by `ms`, then flushes microtasks via `realSetImmediate` before checking.
 - The Proxy filters out `then`, `toJSON`, `toString`, etc. so fakes are safe to `await`, `JSON.stringify`, and `console.log`.
+- The Proxy also filters out NestJS lifecycle hook names (`onModuleInit`, `onApplicationBootstrap`, `onModuleDestroy`, `beforeApplicationShutdown`, `onApplicationShutdown`) so fakes are safe to use as NestJS provider values (e.g. `.overrideProvider(TOKEN).useValue(fake)`) without `app.init()` hanging on an unresolved probe call.
 
 **Supertest gotcha:** when using plumbing probes with `supertest`, append `.then(r => r)` to start the request eagerly:
 
