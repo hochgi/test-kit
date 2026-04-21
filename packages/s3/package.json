@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-s3",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Disk-backed S3 fake for test-kit component tests",
   "license": "UNLICENSED",
   "main": "./dist/index.js",
