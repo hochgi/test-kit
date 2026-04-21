@@ -18,6 +18,7 @@ workflows:
             packages/pg-kysely/.* build_pg_kysely true
             packages/pg-knex/.* build_pg_knex true
             packages/pg-sequelize/.* build_pg_sequelize true
+            packages/s3/.* build_s3 true
 
   backup:
     jobs:

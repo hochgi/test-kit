@@ -16,6 +16,9 @@ parameters:
   build_pg_sequelize:
     type: boolean
     default: false
+  build_s3:
+    type: boolean
+    default: false
 
 orbs:
   vn-ci: versatile/vn-ci@0.0.32
@@ -76,6 +79,18 @@ workflows:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>
           package_json_dir: "packages/pg-sequelize"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+  s3:
+    when: <<pipeline.parameters.build_s3>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/s3"
       - vn-ci/build-publish:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>
