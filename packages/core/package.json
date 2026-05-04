@@ -8,10 +8,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -21,7 +25,7 @@
     "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build",
     "test": "vitest run",
