@@ -1,102 +1,99 @@
 # @vnatures/test-kit-redis
 
-An in-memory Redis cache fake for component tests, backed by `ioredis-mock`.
+In-memory cache adapter for component tests, backed by `ioredis-mock`
+behind a focused `InMemoryCache` interface.
 
-## Why a specific cache interface?
+## Why a focused cache interface?
 
-When testing a component that uses Redis, what is the correct "Application Boundary" to fake? We need to find the "Goldilocks" seam:
+The right boundary for a cache is **not** the raw Redis network
+protocol (too low-level, infra-fragile) and **not** a sprawling
+`IRedisClient` exposing hundreds of commands (too broad, ties your
+application logic to a specific driver). The just-right seam is a
+domain-agnostic interface — `get` / `set` / `del` / `setnx` / `getSet`
+— that production wires into either Redis or anything else.
 
-- **Too Thin (Too Low-Level):** Faking the raw Redis network protocol. This is too low-level, making tests fragile to infrastructure changes.
-- **Too Fat (Too Broad):** Faking a generic `IRedisClient` (like `ioredis` or `redis` packages). This exposes hundreds of Redis-specific commands that most applications never use, making it hard to fake and test reliably, and tying your application logic to a specific Redis driver.
-
-**Just Right:** The correct boundary is a focused, domain-agnostic caching interface that the application depends on (e.g., `get`, `set`, `del`). This package provides exactly that: an `InMemoryCache` interface and a `createProbedCache()` function to fake it.
+This package provides that interface (`InMemoryCache`) and a
+probe-driven adapter for it.
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit-redis
+npm install --save-dev @vnatures/test-kit @vnatures/test-kit-redis
 ```
 
-## Quick Start
+## Quick start
 
 ```typescript
-import { createProbedCache, ProbedCache, CacheProbe } from '@vnatures/test-kit-redis';
+import { createHarness } from "@vnatures/test-kit";
+import { createProbedCacheAdapter } from "@vnatures/test-kit-redis";
 
-let cache: ProbedCache;
-let probe: CacheProbe;
+const harness = createHarness();
+const cache = harness.attach(createProbedCacheAdapter({ harness }));
 
-beforeEach(() => {
-    cache = createProbedCache();
-    probe = cache.probe;
-    // Starts in alwaysForward() mode — calls pass through to the in-memory store
-});
+// Default rule is forward — calls pass through to the in-memory store.
+await cache.adapter.set({ key: "user:1", val: { name: "Alice" } });
+const user = await cache.adapter.get<{ name: string }>("user:1");
+expect(user).toEqual({ name: "Alice" });
 
-it('stores and retrieves data', async () => {
-    await cache.set({ key: 'user:1', val: { name: 'Alice' } });
-    const user = await cache.get<{ name: string }>('user:1');
-    expect(user).toEqual({ name: 'Alice' });
-});
+await harness.close();
 ```
 
-## Probed Fake Examples
-
-Because `createProbedCache()` returns a probed fake, you can intercept cache calls to simulate network errors or race conditions.
-
-### Simulating a Cache Error
+## What the adapter returns
 
 ```typescript
-it('handles Redis connection errors gracefully', async () => {
-    // Reject the next call to simulate a transient Redis failure
-    probe.whenCalled().thenReject(new Error('Redis connection lost'));
-
-    await expect(cache.get('user:1')).rejects.toThrow('Redis connection lost');
-});
+const { adapter, probe, close } = createProbedCacheAdapter({ harness });
 ```
 
-### Intercepting and Inspecting Calls (Plumbing)
+- `adapter: InMemoryCache` — inject this into production wiring. Default
+  rule forwards to the in-memory store, so production code "just works"
+  without any test programming.
+- `probe: MethodProbe<InMemoryCache>` — `.on(method)`, `.calls`,
+  `.expect.*`, `.drain()`, `.drainAndReject(error)`.
+- `close()` — disposes the underlying store. Handled automatically by
+  `harness.close()` if attached.
+
+## The `InMemoryCache` interface
 
 ```typescript
-it('intercepts a cache set', async () => {
-    probe.clearBehavior(); // Stop auto-forwarding
-
-    // Register the waiter
-    const pendingPromise = probe.expectNext();
-
-    // Trigger the cache call (e.g., via your application)
-    const setPromise = cache.set({ key: 'user:1', val: { name: 'Alice' } });
-
-    // Inspect the intercepted call
-    const pending = await pendingPromise;
-    expect(pending.method).toBe('set');
-    expect(pending.args[0]).toMatchObject({ key: 'user:1' });
-
-    // Forward it to the in-memory store
-    pending.forward();
-    await setPromise;
-});
+interface InMemoryCache {
+    get<T>(key: CacheKeyInput): Promise<T | null>;
+    set<T>(input: { key: CacheKeyInput; val: T }, ttlMs?: number): Promise<boolean>;
+    del(key: CacheKeyInput): Promise<void>;
+    setnx<T>(
+        input: { key: CacheKeyInput; val: T },
+        options?: { mode?: "PX" | "EX"; ttl: number },
+    ): Promise<T>;
+    getSet<T>(
+        cacheKey: CacheKeyInput,
+        apiFunc: () => Promise<T>,
+        options?: { ttl?: number | ((result: T) => number) },
+    ): Promise<T>;
+}
 ```
 
-## API
+## Programming cache calls
 
-### `createProbedCache()`
+```typescript
+// Simulate a transient Redis failure for the next call.
+cache.probe.on("get").once().reject(new Error("connection lost"));
 
-Returns a `ProbedCache` object containing the cache implementation and its probe.
+// Reject every set indefinitely.
+cache.probe.on("set").always().reject(new Error("read-only mode"));
 
-### `InMemoryCache` (The Boundary)
+// Plumbing — capture and forward manually.
+const promise = cache.adapter.set({ key: "user:1", val: { name: "Alice" } });
+const pending = await cache.probe.on("set").expect.intercept();
+expect(pending.args[0]).toMatchObject({ key: "user:1" });
+pending.forward();
+await promise;
+```
 
-The interface your application should depend on:
+`cache.probe.calls` is a read-only array of every recorded call,
+useful for shape assertions.
 
-- `get<T>(key: CacheKeyInput): Promise<T | null>`
-- `set<T>(input: { key: CacheKeyInput; val: T }, ttlMs?: number): Promise<boolean>`
-- `del(key: CacheKeyInput): Promise<void>`
-- `setnx<T>(input: { key: CacheKeyInput; val: T }, options?: { mode?: 'PX' | 'EX'; ttl: number }): Promise<T>`
-- `getSet<T>(cacheKey: CacheKeyInput, apiFunc: () => Promise<T>, options?: { ttl?: number | ((result: T) => number) }): Promise<T>`
+## See also
 
-### `CacheProbe`
-
-The probe API follows the same Porcelain/Plumbing pattern as `DbProbe` in `@vnatures/test-kit-pg-kysely`, with method names contextualised for cache calls:
-
-- **Porcelain:** `alwaysForward()`, `alwaysReject(error)`, `whenCalled().thenForward()`, `whenCalled().thenReject(error)`, `clearBehavior()`
-- **Plumbing:** `expectNext()`, `expectMatching(predicate)`
-- **Observation:** `calls`, `pendingCount()`
-- **Drain helpers:** `drainAndForwardAll()`, `drainAndRejectAll(error?)`
+- [`@vnatures/test-kit-mock`](../mock/README.md) for non-cache
+  boundaries.
+- [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
+  reference.

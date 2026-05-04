@@ -1,5 +1,9 @@
-export { createTestDb } from './test-db';
-export type { TestDb, TestDbOptions, BootstrapFn, ModelCtor, SequelizeCtor } from './test-db';
+export { createProbedSequelizeAdapter } from './factory.js';
+export type {
+    CreateProbedSequelizeAdapterOptions,
+    ProbedSequelizeAdapter,
+    ModelCtor,
+    SequelizeCtor,
+} from './factory.js';
 
-export { createProbedTestDb, DbProbe } from './db-probe';
-export type { ProbedTestDb, ProbedTestDbOptions, PendingQuery, QueryCall } from './db-probe';
+export type { QueryCall, QueryPendingCall, QueryProbe, SqlDriver } from '@vnatures/test-kit-sql';

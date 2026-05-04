@@ -1,5 +1,4 @@
-export { createInMemoryCache } from './cache';
-export type { InMemoryCache, CacheKeyInput, TtlResolver } from './cache';
+export type { CacheAdapter, CacheCall, CacheKeyInput, CacheMethod, CachePendingCall, CacheProbe } from './types.js';
 
-export { createProbedCache, CacheProbe } from './cache-probe';
-export type { ProbedCache, PendingCacheCall, CacheCall, CacheMethod } from './cache-probe';
+export { createProbedCacheAdapter } from './factory.js';
+export type { CreateProbedCacheAdapterOptions, ProbedCacheAdapter } from './factory.js';

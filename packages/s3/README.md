@@ -1,15 +1,25 @@
 # @vnatures/test-kit-s3
 
-A disk-backed S3 fake and presigner fake for component tests, built on [`mock-aws-s3-v3`](https://www.npmjs.com/package/mock-aws-s3-v3).
+S3 client and presigner adapters for component tests, with an
+in-memory backing — no disk, no network, no module-global state. The
+backing dispatches on `command.constructor.name` (a string) so the
+adapter is robust to having multiple `@aws-sdk/client-s3` copies in the
+same test process.
 
 ## Why two seams?
 
 S3 consumers in production touch two independent SDK surfaces:
 
-- **`S3Client`** from `@aws-sdk/client-s3` — handles real requests (`PutObject`, `GetObject`, ...).
-- **`getSignedUrl`** from `@aws-sdk/s3-request-presigner` — a standalone module-level function that constructs a pre-signed URL. It is **not** routed through `S3Client.send`, so no `S3Client` mock can intercept it.
+- **`S3Client`** from `@aws-sdk/client-s3` — handles real requests
+  (`PutObject`, `GetObject`, …).
+- **`getSignedUrl`** from `@aws-sdk/s3-request-presigner` — a standalone
+  module-level function that constructs a pre-signed URL. It is **not**
+  routed through `S3Client.send`, so no `S3Client` mock can intercept
+  it.
 
-This package therefore exposes two probed fakes — a probed `S3Client` and a probed `Presigner` — each with its own `S3Probe`. Your application code should depend on both boundaries via DI; production wires the real SDK, tests wire the probes.
+This package exposes two adapters — `createProbedS3Adapter` and
+`createProbedPresignerAdapter` — each with its own probe. Production
+wires the real SDK; tests wire the probes via DI.
 
 ## Install
 
@@ -17,119 +27,146 @@ This package therefore exposes two probed fakes — a probed `S3Client` and a pr
 npm install --save-dev @vnatures/test-kit @vnatures/test-kit-s3
 ```
 
-Peer dependencies (consumer must provide): `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`.
-
-### `npm audit` note
-
-`mock-aws-s3-v3` transitively depends on `mock-aws-s3@4.0.2`, which pins
-`underscore@1.12.1` — a version flagged by [GHSA-qpx9-hpmf-5gmw](https://github.com/advisories/GHSA-qpx9-hpmf-5gmw)
-(DoS via unbounded recursion in `_.flatten` / `_.isEqual`). The affected code
-paths aren't reached by the fake, but `npm audit` still flags it. Add an
-override to your consumer `package.json` to pull the patched release:
-
-```jsonc
-{
-    "overrides": {
-        "underscore": "^1.13.8"
-    }
-}
-```
+Peer dependencies (consumer must provide): `@aws-sdk/client-s3`,
+`@aws-sdk/s3-request-presigner`.
 
 ## Quick start
 
 ```typescript
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { createProbedS3Client, createProbedPresigner } from '@vnatures/test-kit-s3';
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createHarness } from "@vnatures/test-kit";
+import {
+    createProbedS3Adapter,
+    createProbedPresignerAdapter,
+} from "@vnatures/test-kit-s3";
 
-const probedS3 = createProbedS3Client({ bucket: 'my-bucket' });
-const probedPresigner = createProbedPresigner();
+const harness = createHarness();
+const s3 = harness.attach(
+    createProbedS3Adapter({ harness, bucket: "my-bucket" }),
+);
+const presigner = harness.attach(
+    createProbedPresignerAdapter({ harness }),
+);
 
-// Default behavior for S3Client: alwaysForward — commands go through mock-aws-s3-v3,
-// persisted to a per-instance tmpdir.
-await probedS3.client.send(new PutObjectCommand({ Bucket: 'my-bucket', Key: 'a', Body: 'hello' }));
-const res = await probedS3.client.send(new GetObjectCommand({ Bucket: 'my-bucket', Key: 'a' }));
-await res.Body!.transformToString(); // 'hello'
+// Default rule for s3.adapter is forward — commands hit the in-memory backing.
+await s3.adapter.send(
+    new PutObjectCommand({ Bucket: "my-bucket", Key: "a", Body: "hello" }),
+);
+const get = await s3.adapter.send(
+    new GetObjectCommand({ Bucket: "my-bucket", Key: "a" }),
+);
+expect(await get.Body!.transformToString()).toBe("hello");
 
-// Default behavior for the presigner: forward throws NotImplementedError.
-// You MUST program answers.
-probedPresigner.probe.alwaysAnswer((call) => {
-    const { commandInput, options } = call.input as import('@vnatures/test-kit-s3').PresignCallInput;
+// Default rule for presigner is reject (NotImplementedError) — programming
+// an answer is mandatory.
+presigner.probe.always().answerWith((call) => {
+    const { commandInput, options } = call.input;
     const { Bucket, Key } = commandInput as { Bucket: string; Key: string };
     return `https://fake/${Bucket}/${Key}?expires=${options?.expiresIn ?? 0}`;
 });
 
-const url = await probedPresigner.presigner.signUrl(
-    probedS3.client,
-    new GetObjectCommand({ Bucket: 'my-bucket', Key: 'a' }),
+const url = await presigner.adapter.signUrl(
+    s3.adapter,
+    new GetObjectCommand({ Bucket: "my-bucket", Key: "a" }),
     { expiresIn: 3600 },
 );
-// 'https://fake/my-bucket/a?expires=3600'
+expect(url).toBe("https://fake/my-bucket/a?expires=3600");
 
-// Clean up between tests.
-probedS3.reset();
-// Or at suite end:
-await probedS3.close();
+await harness.close();
 ```
 
-## The three verbs: `forward` / `answer` / `reject`
+## What each adapter returns
+
+```typescript
+const { adapter, probe, reset, close } =
+    createProbedS3Adapter({ harness, bucket });
+
+const { adapter, probe, close } =
+    createProbedPresignerAdapter({ harness });
+```
+
+- `s3.adapter: S3Client` — `.send(command)` returns a Promise that the
+  probe routes through.
+- `presigner.adapter: { signUrl }` — drop-in replacement for
+  `getSignedUrl`.
+- `probe` — `.calls`, `.command(CommandClass)`, `.commandsOf(name)`,
+  `.expect.*`, `.drain()`, `.drainAndReject(error)`.
+- `reset()` (S3 only) — clears the in-memory store; useful between
+  tests.
+- `close()` — disposes; `harness.close()` runs it automatically.
+
+## Three verbs: `forward` / `answer` / `reject`
 
 Every intercepted call can be settled three ways:
 
-- **`forward()`** — execute the "real" backend:
-  - For `createProbedS3Client`: routes to the `mock-aws-s3-v3`-backed client. Works for the 12 commands it implements; any other command throws `NotImplementedError`.
-  - For `createProbedPresigner`: always throws `NotImplementedError` — generating a real signed URL needs real credentials and network I/O. Always program an `answer` for presign calls.
-- **`answer(output)`** — resolve the call with a caller-provided value. Essential for unsupported S3 commands and for all presign calls.
+- **`forward`** — execute the in-memory backing.
+  - `createProbedS3Adapter` supports `PutObject`, `GetObject`,
+    `HeadObject`, `DeleteObject`, `DeleteObjects`, `ListObjects`,
+    `ListObjectsV2`, `CopyObject`, `GetObjectTagging`,
+    `PutObjectTagging`, `CreateBucket`, `DeleteBucket`. Any other
+    command throws `NotImplementedError`; tests must program an
+    explicit `answer` or `reject`. This is by design — no silent
+    partial fakes.
+  - `createProbedPresignerAdapter` always rejects on `forward` —
+    generating a real signed URL needs real credentials. Tests must
+    program an `answer`.
+- **`answerWith((call) => out)`** / **`answer(out)`** — resolve with a
+  caller-provided value.
 - **`reject(error)`** — fail the call.
 
-## Porcelain API (pre-programmed behavior)
+## Programming calls
 
 ```typescript
-const { probe } = probedS3;
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
-// Permanent defaults (set one at a time; last write wins):
-probe.alwaysForward();                 // default for probedS3
-probe.alwaysAnswer((call) => ({ /* ... */ }));  // dynamic default
-probe.alwaysReject(new Error('outage'));
+// Reject every Get; default-forward stays for everything else.
+s3.probe.command(GetObjectCommand).always().reject(new Error("s3 outage"));
 
-// One-shot overrides (FIFO queue per command name):
-probe.whenCalled(GetObjectCommand).thenForward();
-probe.whenCalled(GetObjectCommand).thenAnswer({ /* ... */ });
-probe.whenCalled(GetObjectCommand).thenReject(new Error('s3 down'));
+// One-shot: the next Put is rejected, then forwarding resumes.
+s3.probe.command(PutObjectCommand).once().reject(new Error("transient"));
 
-probe.clearBehavior();  // reset both permanent default and queued one-shots
-```
-
-## Plumbing API (inspect / capture calls)
-
-```typescript
-// Wait for the next call of any kind:
-const pending = await probe.expectNext();
-expect(pending.commandName).toBe('PutObjectCommand');
-pending.forward();   // or pending.answer(out) / pending.reject(err)
-
-// Wait for a specific call:
-const getPending = await probe.expectMatching((c) => c.commandName === 'GetObjectCommand');
-
-// Observe without capturing:
-probe.calls;                 // ReadonlyArray<S3Call>
-probe.callsOf(PutObjectCommand);
-probe.pendingCount();
+// Plumbing: capture and forward manually.
+const promise = s3.adapter.send(new GetObjectCommand({ Bucket: "b", Key: "k" }));
+const next = await s3.probe.command(GetObjectCommand).expect.intercept();
+expect(next.input).toMatchObject({ Bucket: "b", Key: "k" });
+next.forward();
+await promise;
 ```
 
 ## Recorded shape
 
-- **`createProbedS3Client`** records each call as `{ commandName, input }` where `input` is the exact `command.input` the caller built. Asserting on this replaces the "was this call made?" questions the old fat-mock patterns couldn't answer.
-- **`createProbedPresigner`** records each call as `{ commandName, input: PresignCallInput }` where `PresignCallInput = { commandInput, options }`. Tests can inspect `options.expiresIn` alongside `commandInput.Key`.
+Each call is recorded as `{ commandName, command, input, options }`:
 
-## `forward` is loud when it can't satisfy a call
+- `commandName: string` — `command.constructor.name` (e.g.
+  `"PutObjectCommand"`). Used by `command(...)` and `commandsOf(...)`.
+- `command` — the original command instance.
+- `input` — the command's `input` property (for S3) or the original
+  call's command-input (for the presigner).
+- `options` — only present on presigner calls; carries `expiresIn`,
+  etc.
 
-`mock-aws-s3-v3` implements: `PutObject`, `GetObject`, `HeadObject`, `CopyObject`, `CreateBucket`, `DeleteBucket`, `DeleteObject`, `DeleteObjects`, `ListObjects`, `ListObjectsV2`, `GetObjectTagging`, `PutObjectTagging`. Anything else (e.g. `CreateMultipartUploadCommand`) throws `NotImplementedError` on forward — the test must program an explicit `answer` or `reject`. This is by design (BSSN): no silent partial fakes.
+Querying:
 
-## Isolation notes
+```typescript
+s3.probe.calls;                                  // ReadonlyArray
+s3.probe.command(GetObjectCommand);              // filtered selection
+s3.probe.commandsOf("GetObjectCommand");         // string filter (minified bundles)
+```
 
-- `mock-aws-s3-v3` keys its internal bucket contexts by bucket name in a module-global Map. `createProbedS3Client` calls `resetMocks(bucket)` at construction to flush any stale state. Between tests in the same suite, call `.reset()`; at suite teardown, call `.close()`.
-- Within a single Jest worker, tests run serially. Across workers, each worker has its own process and its own tmpdir, so isolation holds.
+## In-memory backing
 
-## Command-name reflection
+Replaces the older `mock-aws-s3-v3` dependency. Highlights:
 
-Calls are recorded via `command.constructor.name` (e.g. `'GetObjectCommand'`). This is reliable for the first-party AWS SDK commands shipped in `@aws-sdk/client-s3`. If your test bundle aggressively minifies class names, pass the command name as a string to `whenCalled('GetObjectCommand').thenAnswer(...)` and assert via `probe.callsOf('GetObjectCommand')`.
+- Map-based store keyed by `${bucket}/${key}`.
+- Dispatches on `command.constructor.name` (string), so the adapter
+  works even when the consumer's `@aws-sdk/client-s3` version differs
+  from any version this package may have installed transitively.
+- Bodies returned by `GetObject` are `Readable` streams with
+  `transformToString` and `transformToByteArray` helpers, just like the
+  real SDK.
+- `NoSuchKey` is thrown using the SDK's own class for missing keys.
+
+## See also
+
+- [`docs/api-surface.md`](../../docs/api-surface.md) — full reference.
+- [`docs/concepts.md`](../../docs/concepts.md) — mental model.

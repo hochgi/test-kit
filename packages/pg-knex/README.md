@@ -1,89 +1,103 @@
 # @vnatures/test-kit-pg-knex
 
-PGlite-backed **Knex** test database for component tests, with optional **DbProbe** (same plumbing/porcelain model as `@vnatures/test-kit-pg-kysely`).
-
-Uses [`knex-pglite`](https://www.npmjs.com/package/knex-pglite) and requires **Knex 3.x**.
+PGlite-backed Knex adapter for component tests, with the same probe
+model as [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md). Uses
+[`knex-pglite`](https://www.npmjs.com/package/knex-pglite); requires
+**Knex 3.x**.
 
 ## Install
 
 ```bash
-npm install @vnatures/test-kit-pg-knex knex
+npm install --save-dev @vnatures/test-kit @vnatures/test-kit-pg-knex knex
 ```
 
 ## Quick start
 
 ```typescript
-import knexStringcase from 'knex-stringcase';
-import { createTestDb } from '@vnatures/test-kit-pg-knex';
-import type { Knex } from 'knex';
+import { createHarness } from "@vnatures/test-kit";
+import { createProbedKnexAdapter } from "@vnatures/test-kit-pg-knex";
+import knexStringcase from "knex-stringcase";
+import type { Knex } from "knex";
 
 async function bootstrap(db: Knex) {
-    await db.schema.createTable('users', (t) => {
-        t.increments('id').primary();
-        t.string('name').notNullable();
+    await db.schema.createTable("users", (t) => {
+        t.increments("id").primary();
+        t.string("name").notNullable();
     });
 }
 
-const testDb = await createTestDb({
-    // Same camelCase ↔ snake_case behavior as production `Knex(knexStringcase({...}))`
-    knexConfig: knexStringcase({}),
-    bootstrap,
-});
+const harness = createHarness();
+const db = await harness.attach(
+    createProbedKnexAdapter({
+        harness,
+        // Same camelCase ↔ snake_case behavior as production `Knex(knexStringcase({...}))`
+        knexConfig: knexStringcase({}),
+        bootstrap,
+    }),
+);
+
+await db.seed("users", [{ name: "Alice" }]);
+const rows = await db.adapter("users").select("*");
+expect(rows).toEqual([{ id: 1, name: "Alice" }]);
+
+await harness.close();
 ```
 
-## PGlite Extensions
-
-PGlite ships with [many bundled extensions](https://pglite.dev/extensions/) (`uuid-ossp`, `pgcrypto`, `hstore`, `ltree`, `pgvector`, etc.). Pass them via `extensions` — they are loaded at PGlite construction time. Then activate them with `CREATE EXTENSION` in your `bootstrap`:
+## What the adapter returns
 
 ```typescript
-import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
-
-const testDb = await createTestDb({
-    extensions: { uuid_ossp },
-    bootstrap: async (db) => {
-        await db.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-        await db.schema.createTable('users', (t) => {
-            t.uuid('id').defaultTo(db.raw('uuid_generate_v4()')).primary();
-            t.string('name').notNullable();
-        });
-    },
-});
+const { adapter, probe, seed, reset, close } =
+    await createProbedKnexAdapter({
+        harness,
+        bootstrap,
+        knexConfig,  // optional; merged into the internal config (client/connection/pool ignored)
+        extensions,  // optional PGlite extensions
+    });
 ```
 
-## API
+- `adapter: Knex` — inject this into production wiring.
+- `probe: QueryProbe` — same surface as the Kysely adapter.
+- `seed(table, rows)` — insert helper; JSON-serializes plain objects for
+  JSONB columns. Uses an unprobed Knex internally so cleanup is not
+  blocked by probe rules.
+- `reset({ keepRules? })` — drops user tables in `public` and re-runs
+  `bootstrap`.
+- `close()` — destroys Knex and closes PGlite.
 
-### `createTestDb(options)`
-
-- `extensions?`: PGlite extensions to load (e.g. `{ uuid_ossp }`). See [PGlite Extensions](https://pglite.dev/extensions/).
-- `bootstrap(db: Knex)`: idempotent DDL (use `IF NOT EXISTS` where needed).
-- `knexConfig?`: merged into the internal config; `client`, `connection`, and `pool` are ignored.
-
-Returns `TestDb`:
-
-- `db`: `Knex` instance (PGlite).
-- `reset()`: drop user tables in `public`, re-run `bootstrap`.
-- `seed(table, rows)`: insert rows; JSON-serializes plain objects for JSONB-like columns.
-- `close()`: destroy Knex / close PGlite.
-
-### `createProbedTestDb(options)`
-
-Same options as `createTestDb` (including `extensions?`), plus `probe: DbProbe` on the returned object. Application code should use `db`; `reset` / `seed` use an internal unprobed Knex so cleanup is not blocked by probe behavior.
-
-### `DbProbe`
-
-Same semantics as pg-kysely: `expectNext`, `expectMatching`, `whenQueried`, `alwaysForward`, `alwaysReject`, `clearBehavior`, `drain*`, `queries`, etc.
-
-## Plumbing: `expectNext` and Knex scheduling
-
-Knex may start the query runner in the same synchronous turn as building the chain. Register the waiter **before** the query is scheduled, e.g.:
+## PGlite extensions
 
 ```typescript
-const pendingPromise = probe.expectNext();
+import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
+
+const db = await harness.attach(
+    createProbedKnexAdapter({
+        harness,
+        extensions: { uuid_ossp },
+        bootstrap: async (k) => {
+            await k.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+            await k.schema.createTable("users", (t) => {
+                t.uuid("id").defaultTo(k.raw("uuid_generate_v4()")).primary();
+                t.string("name").notNullable();
+            });
+        },
+    }),
+);
+```
+
+## Plumbing tip: registering the waiter before Knex runs the query
+
+Knex can dispatch a query in the same synchronous turn as the chain is
+built. To intercept it, register the `expect.intercept` waiter
+**before** the query is scheduled:
+
+```typescript
+const pendingPromise = db.probe.expect.intercept();
 const queryPromise = new Promise((resolve, reject) => {
     setImmediate(() => {
-        appDb('orders').select('*').then(resolve).catch(reject);
+        db.adapter("orders").select("*").then(resolve).catch(reject);
     });
 });
+
 const pending = await pendingPromise;
 pending.forward();
 await queryPromise;
@@ -91,8 +105,13 @@ await queryPromise;
 
 ## Why `connection` is a function
 
-Knex deep-clones a plain `{ pglite }` connection object, which breaks PGlite internals. This package uses `connection: () => ({ pglite })`, as supported by `knex-pglite`.
+Knex deep-clones a plain `{ pglite }` connection object, which breaks
+PGlite internals. This package uses `connection: () => ({ pglite })`,
+as supported by `knex-pglite`.
 
-## Scripts
+## See also
 
-`npm test` sets `NODE_OPTIONS=--experimental-vm-modules` (required by `@electric-sql/pglite`).
+- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md) — the same
+  model with a Kysely-typed adapter; identical probe surface.
+- [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
+  reference.

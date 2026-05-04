@@ -4,6 +4,12 @@ parameters:
   build_core:
     type: boolean
     default: false
+  build_mock:
+    type: boolean
+    default: false
+  build_sql:
+    type: boolean
+    default: false
   build_redis:
     type: boolean
     default: false
@@ -14,6 +20,9 @@ parameters:
     type: boolean
     default: false
   build_pg_sequelize:
+    type: boolean
+    default: false
+  build_pglite_driver:
     type: boolean
     default: false
   build_s3:
@@ -36,6 +45,39 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main
+  mock:
+    when: <<pipeline.parameters.build_mock>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/mock"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
+  sql:
+    when: <<pipeline.parameters.build_sql>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/sql"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
   redis:
     when: <<pipeline.parameters.build_redis>>
     jobs:
@@ -48,6 +90,9 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main
   pg-kysely:
     when: <<pipeline.parameters.build_pg_kysely>>
     jobs:
@@ -60,6 +105,9 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main
   pg-knex:
     when: <<pipeline.parameters.build_pg_knex>>
     jobs:
@@ -72,6 +120,9 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main
   pg-sequelize:
     when: <<pipeline.parameters.build_pg_sequelize>>
     jobs:
@@ -84,6 +135,24 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main
+  pglite-driver:
+    when: <<pipeline.parameters.build_pglite_driver>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/pglite-driver"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
   s3:
     when: <<pipeline.parameters.build_s3>>
     jobs:
@@ -96,3 +165,6 @@ workflows:
           is_default_branch: <<pipeline.git.branch.is_default>>
           requires:
             - vn-ci/init
+          filters:
+            branches:
+              only: main

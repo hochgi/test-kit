@@ -1,5 +1,56 @@
-export { TestProbe, createProbePair, extractFakes, extractProbes } from './probe';
-export type { ProbeCall, PendingCall, ProbePairMap } from './probe';
+// Public API of @vnatures/test-kit core.
 
-export { DbProbe } from './db-probe';
-export type { QueryCall, PendingQuery } from './db-probe';
+// ── Duration ────────────────────────────────────────────────────────────────
+export type { Duration } from './duration.js';
+export { milliseconds, seconds, minutes } from './duration.js';
+
+// ── Clock ───────────────────────────────────────────────────────────────────
+export type { Clock, ManualClock, SinonFakeTimers } from './clock.js';
+export { realClock, jestFakeClock, viFakeClock, sinonFakeClock, manualClock, autoDetectClock } from './clock.js';
+
+// ── Errors (exported for diagnostics) ──────────────────────────────────────
+export { errors, toError } from './errors.js';
+
+// ── Public types ────────────────────────────────────────────────────────────
+export type {
+    CallMatcher,
+    CallTypeGuard,
+    ExpectOptions,
+    RequiredWithinOptions,
+    PendingCallBase,
+    ForwardablePendingCall,
+    PendingAnswer,
+    NarrowPending,
+    RuleBuilder,
+    ForwardableRuleBuilder,
+    Expectations,
+    Selection,
+    ForwardableSelection,
+    Probe,
+    ForwardableProbe,
+    ProbeAdmin,
+    ProbedAdapter,
+    ProbedResource,
+    ProbedAdapterWithLifecycle,
+    // Internal types exposed for domain-package consumption:
+    FilterChain,
+    Deferred,
+    CallRecord,
+    RuleAction,
+    RuleEntry,
+    WaiterEntry,
+    ObserverEntry,
+    CallNotifier,
+    HarnessRef,
+    ProbeRootConfig,
+    ProbeRoot,
+} from './types.js';
+
+export { emptyFilterChain } from './types.js';
+
+// ── Probe engine ────────────────────────────────────────────────────────────
+export { createProbeRoot, createDeferred, makePendingBase, makeForwardablePending } from './probe-engine.js';
+
+// ── Harness (skeleton; full implementation in step 4) ──────────────────────
+export type { Harness, CreateHarnessOptions, HarnessExpectations, Observation, SequenceResult } from './harness.js';
+export { createHarness, observation } from './harness.js';

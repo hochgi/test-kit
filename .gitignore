@@ -2,3 +2,7 @@ dist
 node_modules
 .idea
 *.tsbuildinfo
+
+# Keep v1 source backups outside of git
+.v1-backup/
+.claude/

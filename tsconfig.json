@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/mock" },
+    { "path": "./packages/sql" },
+    { "path": "./packages/pglite-driver" },
+    { "path": "./packages/pg-kysely" },
+    { "path": "./packages/pg-knex" },
+    { "path": "./packages/pg-sequelize" },
+    { "path": "./packages/redis" },
+    { "path": "./packages/s3" },
+    { "path": "./examples/grpc-client" }
+  ]
+}

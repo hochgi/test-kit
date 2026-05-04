@@ -1,10 +1,16 @@
-export { NotImplementedError } from './errors';
+export type {
+    S3Call,
+    S3CommandConstructor,
+    S3PendingCall,
+    S3Probe,
+    PresignCall,
+    PresignPendingCall,
+    PresignerAdapter,
+    PresignerProbe,
+} from './types.js';
 
-export { S3Probe } from './s3-probe';
-export type { S3Call, PendingS3Call, AnswerFn, CommandCtor } from './s3-probe';
+export { createProbedS3Adapter } from './s3-client/factory.js';
+export type { CreateProbedS3AdapterOptions, ProbedS3Adapter } from './s3-client/factory.js';
 
-export { createProbedS3Client } from './probed-s3-client';
-export type { ProbedS3, ProbedS3ClientOptions } from './probed-s3-client';
-
-export { createProbedPresigner } from './probed-presigner';
-export type { Presigner, ProbedPresigner, PresignCallInput } from './probed-presigner';
+export { createProbedPresignerAdapter } from './presigner/factory.js';
+export type { CreateProbedPresignerAdapterOptions, ProbedPresignerAdapter } from './presigner/factory.js';

@@ -1,10 +1,11 @@
 ---
 name: component-testing
 description: >-
-  Guide for writing component tests using @vnatures/test-kit with probed fakes.
-  Covers Goldilocks boundary design, harness patterns, retry/timeout/partial-failure
-  recipes, and fake-timer interop. Use when creating or refactoring component tests,
-  extracting application boundaries, or writing test harnesses.
+  Guide for writing component tests using @vnatures/test-kit (v1.0.0) with
+  probed adapters. Covers Goldilocks boundary design, harness patterns,
+  retry/timeout/partial-failure recipes, and fake-timer interop. Use when
+  creating or refactoring component tests, extracting application boundaries,
+  or writing test harnesses.
 ---
 
 # Component Testing with test-kit
@@ -21,8 +22,9 @@ logic with no boundaries, a plain unit test is sufficient.
 ## The Goldilocks Principle for Application Boundaries
 
 Every external dependency needs an application boundary interface — the seam
-where production code meets the outside world, and where tests inject fakes.
-Choosing the wrong abstraction level makes tests awkward or defeats their purpose.
+where production code meets the outside world, and where tests inject
+adapters. Choosing the wrong abstraction level makes tests awkward or defeats
+their purpose.
 
 ### Too Thin
 
@@ -93,37 +95,43 @@ the right leaf dependency. `PostgresService` becomes a provider that creates
 the `Kysely` instance and exposes it through DI, but consumers never depend
 on `PostgresService` itself.
 
-**Using `test-kit-pg-kysely`:** The `@vnatures/test-kit-pg-kysely` package
-provides `createProbedTestDb` which gives you a real PGlite-backed
-`Kysely<Database>` plus a `DbProbe` to intercept queries. In tests, override
-the DI token with the probed instance. Key APIs:
+**Using `@vnatures/test-kit-pg-kysely`:** the package exposes
+`createProbedKyselyAdapter` which gives you a real PGlite-backed
+`Kysely<Database>` plus a `QueryProbe` to intercept queries. In tests,
+override the DI token with `db.adapter`. Default rule is `always().forward()`
+so bootstrap, seed, and reset run transparently. Useful idioms:
 
-- `alwaysForward()` — pass queries through to PGlite (default happy path).
-- `alwaysReject(error)` — simulate DB outage on every query.
-- `whenQueried().thenReject(error)` — one-shot query failure (e.g. first
-  query fails, subsequent ones succeed via `alwaysForward`).
-- `expectNext()` / `expectMatching()` — intercept a query in flight, inspect
-  it, then `forward()` to PGlite or `reject()`.
-- Maintenance operations (`bootstrap`, `seed`, `reset`) use an unprobed
-  connection so they are never affected by probe behavior.
+- `db.probe.always().reject(new Error('outage'))` — simulate DB outage on
+  every query.
+- `db.probe.once().reject(new Error('transient'))` — one-shot query failure
+  before the default-forward resumes.
+- `db.probe.expect.intercept()` (optionally chained off `.filter(...)`) —
+  pull a query in flight, inspect it, then `forward()` to PGlite or
+  `reject()`.
+- `db.probe.queries` — read-only array of every recorded
+  `{ sql, parameters }` for shape assertions.
+- `db.seed`, `db.reset`, `db.close` use an unprobed maintenance connection
+  so cleanup is never blocked by probe rules.
 
 **Example — Postgres with Knex:**
 
 Inject `Knex` (or your DI token for it) as the boundary — same Goldilocks idea as
 Kysely: not raw `pg.Pool`, not a fat repository facade that hides every query.
+`@vnatures/test-kit-pg-knex` provides `createProbedKnexAdapter` with the same
+probe API as Kysely. Pass `knexConfig` when production uses plugins such as
+`knex-stringcase` so tests match runtime column naming.
 
-**Using `test-kit-pg-knex`:** `@vnatures/test-kit-pg-knex` provides
-`createProbedTestDb`, which returns a PGlite-backed `Knex` instance plus the same
-`DbProbe` API as Kysely (`alwaysForward`, `alwaysReject`, `whenQueried`,
-`expectNext`, `expectMatching`, `clearBehavior`). Pass `knexConfig` when production
-uses plugins such as `knex-stringcase` so tests match runtime column naming.
-For tests that only need an isolated in-memory DB without intercepting queries,
-use `createTestDb` instead of `createProbedTestDb`.
+**Example — Postgres with Sequelize:**
 
-**`DbProbe` and types:** `DbProbe`, `QueryCall`, and `PendingQuery` live in
-`@vnatures/test-kit` and are re-exported from `@vnatures/test-kit-pg-kysely` and
-`@vnatures/test-kit-pg-knex`. Import from the pg package that matches your stack;
-import from core only if you wire a custom DB layer around `DbProbe.recordQuery`.
+Inject `Sequelize` as the boundary. `@vnatures/test-kit-pg-sequelize` provides
+`createProbedSequelizeAdapter`; pass `models` (sequelize-typescript classes)
+or a raw `bootstrap` to set up the schema, and the same `QueryProbe` API
+applies.
+
+**Probe types:** `QueryProbe`, `QueryCall`, and `QueryPendingCall` live in
+`@vnatures/test-kit-sql` and are re-exported from each `pg-*` package. Import
+from the pg package that matches your stack; import from `-sql` only if you
+wire a custom DB layer around `SqlDriver`.
 
 ### Decision checklist
 
@@ -133,7 +141,7 @@ Before extracting a boundary, ask:
    → too thin.
 2. Does it implement retry, timeout, or orchestration?
    → too fat.
-3. Can a test program the fake without conjuring infrastructure artifacts?
+3. Can a test program the adapter without conjuring infrastructure artifacts?
    → sweet spot.
 4. Is `withTimeout()` on the call site or inside the boundary?
    Keep it on the call site so a probe that parks genuinely triggers the
@@ -144,80 +152,129 @@ Before extracting a boundary, ask:
 ## Harness Factory Pattern
 
 Every component test file has a companion harness that constructs the real
-component with all leaf boundaries probe-faked.
+component with all leaf boundaries probe-faked. Use a single `Harness`
+instance per test for shared timeouts, lifecycle, and cross-probe
+expectations.
 
 ```typescript
-import { createProbePair } from '@vnatures/test-kit';
+import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createProbedMock, type MethodProbe } from '@vnatures/test-kit-mock';
 
 function createMyHarness() {
-    const { fake: dep1, probe: dep1Probe } = createProbePair<IDep1>();
-    const { fake: dep2, probe: dep2Probe } = createProbePair<IDep2>();
+    const tk = createHarness();
 
-    const service = new MyService({ dep1, dep2 });
+    const dep1 = tk.attach(createProbedMock<IDep1>({
+        harness: tk,
+        methods: ['fetchThing', 'sendThing'],
+    }));
+    const dep2 = tk.attach(createProbedMock<IDep2>({
+        harness: tk,
+        methods: ['publish'],
+    }));
 
-    return { service, dep1Probe, dep2Probe };
+    const service = new MyService({
+        dep1: dep1.adapter,
+        dep2: dep2.adapter,
+    });
+
+    return {
+        service,
+        dep1Probe: dep1.probe,
+        dep2Probe: dep2.probe,
+        harness: tk,
+    };
 }
 ```
 
 Key conventions:
 
-- **Disposable:** each `it` block creates its own harness. No shared state
-  between tests.
+- **Disposable:** each `it` block creates its own harness. Call
+  `harness.close()` in `afterEach` (or `try/finally`) so attached resources
+  tear down LIFO.
 - **Leaf boundaries only:** probe-fake leaf dependencies (the external seams).
-  Composite services that orchestrate other services are constructed from fakes,
-  not faked themselves — their real logic is what you are testing.
-- **Destructured return:** `const { service, dep1Probe, dep2Probe } = createMyHarness()`.
+  Composite services that orchestrate other services are constructed from
+  adapters, not faked themselves — their real logic is what you are testing.
+- **Explicit `methods`:** `createProbedMock` requires the async method
+  allowlist on `T`. Sync methods are rejected at compile time with a branded
+  error; for sync deps, use the real implementation.
+- **Destructured return:** keep call sites readable —
+  `const { service, dep1Probe, dep2Probe } = createMyHarness()`.
 
 ---
 
 ## Probe API Quick Reference
 
+`probe.on('methodName')` returns a typed selection. From there you program a
+rule (porcelain) or pull a call (plumbing).
+
 ### Porcelain (pre-programmed happy path)
 
 ```typescript
-probe.alwaysReturn('methodName', returnValue);
-probe.alwaysReject('methodName', new Error('fail'));
-probe.alwaysCall('methodName', (...args) => computeResult(args));
+// Permanent rule — repeats indefinitely (lower priority than one-shots).
+probe.on('methodName').always().answer(returnValue);
+probe.on('methodName').always().reject(new Error('fail'));
+probe.on('methodName').always().answerWith((c) => computeResult(c.args));
 ```
 
-### Plumbing (one-shot behaviors, consumed in order)
+### Plumbing rules (one-shot, FIFO)
 
 ```typescript
-probe.whenCalled('methodName').thenReturn(value);
-probe.whenCalled('methodName').thenReject(new Error('once'));
-probe.whenCalled('methodName').thenCall((...args) => result);
+probe.on('methodName').once().answer(value);
+probe.on('methodName').once().reject(new Error('once'));
+probe.on('methodName').once().answerWith((c) => result(c.args));
 ```
 
-One-shot behaviors are consumed first-in-first-out. Once exhausted, the
-permanent behavior (if any) takes over.
+One-shot rules are consumed first-in-first-out. Once exhausted, any
+permanent rule takes over. A one-shot always wins over a permanent rule.
 
-### Interactive call control (Plumbing — in-flight inspection)
+### Interactive call control (plumbing — in-flight inspection)
 
-`expectNext()` and `expectMatching()` return a `PendingCall` that lets you
-inspect or answer the call while it is still in flight. The component is
-blocked until you respond.
+`probe.expect.intercept()` (optionally chained off `.on(...)` or
+`.filter(...)`) returns a `MethodPendingCall` while the call is still in
+flight. The component is blocked until you respond.
 
 ```typescript
-// Wait for the next call (any method) and answer it
-const call = await probe.expectNext();
-expect(call.method).toBe('download');
+import { milliseconds } from '@vnatures/test-kit';
+
+// Wait for the next call to `download` and answer it.
+const call = await probe.on('download').expect.intercept();
 expect(call.args[0]).toBe('https://example.com/img.png');
 call.answer({ buffer: Buffer.from('ok'), contentType: 'image/png' });
 
-// Wait for a specific call by predicate
-const call = await probe.expectMatching((c) => c.args[0] === 'https://example.com/specific.png');
-call.answer(result);
+// Filter a captured call by argument predicate.
+const specific = await probe
+    .on('download')
+    .filter((c) => c.args[0] === 'https://example.com/specific.png', 'url=specific.png')
+    .expect.intercept({ within: milliseconds(500) });
+specific.answer(result);
 
-// Reject an in-flight call to simulate a network error
-const call = await probe.expectNext();
-call.reject(new Error('ECONNRESET'));
+// Reject an in-flight call to simulate a network error.
+const failing = await probe.on('download').expect.intercept();
+failing.reject(new Error('ECONNRESET'));
 ```
 
-**Timeout by not answering:** If you never call `answer()` or `reject()` on
-a `PendingCall`, the component's `withTimeout()` wrapper (on the call site)
-will fire after the configured duration. Combined with fake timers, this
-is the cleanest way to test timeout behavior — no manual deferred-promise
-plumbing needed.
+Use `expect.observe()` instead of `expect.intercept()` when you only want to
+inspect the call shape and let an existing rule answer it (observers are
+notify-only and fire before rules — tier 1a vs tier 2 in resolution order).
+
+**Timeout by not answering:** if you never call `answer()` or `reject()` on
+a captured pending call, the component's `withTimeout()` wrapper (on the
+call site) will fire after the configured duration. Combined with
+`harness.clock.advance(...)`, this is the cleanest way to test timeout
+behavior — no manual deferred-promise plumbing needed.
+
+### Negative and cardinality assertions
+
+```typescript
+import { milliseconds } from '@vnatures/test-kit';
+
+// Fail if any call to 'delete' arrives in the next 100ms.
+await probe.on('delete').expect.none({ within: milliseconds(100) });
+
+// Cardinality.
+await probe.on('publish').expect.atLeast(2);
+await probe.on('publish').expect.exactly(3);
+```
 
 ### Post-hoc assertions
 
@@ -231,10 +288,11 @@ expect(probe.calls[0].args[0]).toBe('https://example.com/img.png');
 
 ## When to Extract a Boundary (Refactoring Trigger)
 
-If a component mixes calls to injected boundary services (or just regular buisiness logic like parsing/caching/validating/etc'…) with **inlined
-infrastructure calls** (e.g. a private `axios.get`, a raw `fetch`, and sometimes even a direct
-`fs.readFile`), the inlined call is an unfakeable seam. This blocks
-component testing.
+If a component mixes calls to injected boundary services (or just regular
+business logic like parsing/caching/validating/etc.) with **inlined
+infrastructure calls** (e.g. a private `axios.get`, a raw `fetch`, and
+sometimes even a direct `fs.readFile`), the inlined call is an unfakeable
+seam. This blocks component testing.
 
 ### The signal
 
@@ -279,40 +337,42 @@ boundary extraction opportunity.
 
 ```typescript
 jest.useFakeTimers();
+try {
+    probe.on('download').once().reject(new Error('ECONNRESET'));
+    probe.on('download').once().answer(successResult);
 
-probe.whenCalled('download').thenReject(new Error('ECONNRESET'));
-probe.whenCalled('download').thenReturn(successResult);
+    let caught: unknown;
+    const promise = service.doWork().catch((e) => { caught = e; });
 
-let caught: unknown;
-const promise = service.doWork().catch((e) => { caught = e; });
+    // Advance past the retry backoff delay
+    await jest.advanceTimersByTimeAsync(1000);
 
-// Advance past the retry backoff delay
-await jest.advanceTimersByTimeAsync(1000);
-
-const result = await promise;
-expect(result).toBeDefined();
-expect(probe.calls).toHaveLength(2);
-
-jest.useRealTimers();
+    const result = await promise;
+    expect(result).toBeDefined();
+    expect(probe.calls).toHaveLength(2);
+} finally {
+    jest.useRealTimers();
+}
 ```
 
 ### Timeout: probe parks, real withTimeout fires
 
 ```typescript
 jest.useFakeTimers();
+try {
+    // Probe never answers — call parks indefinitely
+    probe.on('download').always().answerWith(() => new Promise<never>(() => {}));
 
-// Probe never answers — call parks indefinitely
-probe.alwaysCall('download', () => new Promise<never>(() => {}));
+    let caught: unknown;
+    const promise = service.doWork().catch((e) => { caught = e; });
 
-let caught: unknown;
-const promise = service.doWork().catch((e) => { caught = e; });
+    await jest.advanceTimersByTimeAsync(TIMEOUT_MS + 100);
+    await promise;
 
-await jest.advanceTimersByTimeAsync(TIMEOUT_MS + 100);
-await promise;
-
-expect(caught).toBeInstanceOf(TimeoutError);
-
-jest.useRealTimers();
+    expect(caught).toBeInstanceOf(TimeoutError);
+} finally {
+    jest.useRealTimers();
+}
 ```
 
 This only works when `withTimeout()` wraps the probe call **on the call site**
@@ -321,22 +381,24 @@ This only works when `withTimeout()` wraps the probe call **on the call site**
 ### Partial failure: discriminate by argument
 
 ```typescript
-probe.alwaysCall('download', (...args: unknown[]) => {
-    const url = args[0] as string;
-    if (url.includes('bad')) return Promise.reject(new Error('fail'));
-    return Promise.resolve(successResult);
+probe.on('download').always().answerWith((c) => {
+    const url = c.args[0] as string;
+    if (url.includes('bad')) return Promise.reject(new Error('fail')) as never;
+    return Promise.resolve(successResult) as never;
 });
 ```
 
 ### Concurrent fan-out: independent probe programming
 
-Each boundary is pre-programmed independently via `alwaysReturn`. Execution
-order does not matter — no fragile positional `mockResolvedValueOnce` chains.
+Each boundary is pre-programmed independently via `on(method).always().answer(...)`.
+Execution order does not matter — no fragile positional `mockResolvedValueOnce`
+chains. For order-sensitive scenarios, capture each call with
+`.filter(...).expect.intercept()` and answer them in any order.
 
 ### No-retry on validation errors: assert call count
 
 ```typescript
-probe.alwaysReturn('download', { buffer: oversizedBuffer, contentType: 'image/png' });
+probe.on('download').always().answer({ buffer: oversizedBuffer, contentType: 'image/png' });
 
 await expect(service.doWork()).rejects.toThrow();
 
@@ -344,25 +406,48 @@ await expect(service.doWork()).rejects.toThrow();
 expect(probe.calls).toHaveLength(1);
 ```
 
+### Cross-probe ordering
+
+```typescript
+import { milliseconds } from '@vnatures/test-kit';
+
+// Wait for a sequence across probes; fails fast on out-of-order or missing.
+await harness.expect.sequence([
+    authProbe.on('verifyToken'),
+    usersProbe.on('getUser'),
+    paymentsProbe.on('charge'),
+], { within: milliseconds(2_000) });
+```
+
 ---
 
 ## Fake Timer Interop
 
-- Always use `jest.advanceTimersByTimeAsync()` (not the sync version) to ensure
-  microtask continuations flush between timer ticks.
-- Attach a `.catch()` handler to the promise **before** advancing timers to
-  prevent unhandled rejection warnings.
-- Pattern:
+- The harness auto-detects `vi.useFakeTimers()` and `jest.useFakeTimers()`.
+  Use `harness.clock.advance(duration)` (or the test runner's
+  `advanceTimersByTimeAsync`) to drive the SUT's timers.
+- `expect.intercept` / `expect.observe` deadlines run on real wall-clock
+  time, so a forgotten `clock.advance` produces a clean timeout diagnostic
+  instead of a 30-second hang.
+- Always use the **async** advance variant
+  (`jest.advanceTimersByTimeAsync` / `harness.clock.advance`) so microtask
+  continuations flush between timer ticks.
+- Attach a `.catch()` handler (or set up the `.rejects.toThrow` assertion)
+  on the promise **before** advancing timers, otherwise the rejection can
+  surface as a transient unhandled rejection between the timer firing and
+  the test's `await`.
 
 ```typescript
 jest.useFakeTimers();
+try {
+    let caught: unknown;
+    const promise = service.doWork().catch((e) => { caught = e; });
 
-let caught: unknown;
-const promise = service.doWork().catch((e) => { caught = e; });
+    await jest.advanceTimersByTimeAsync(delayMs);
+    await promise;
 
-await jest.advanceTimersByTimeAsync(delayMs);
-await promise;
-
-// Now assert on `caught` or the resolved value.
-jest.useRealTimers();
+    // Now assert on `caught` or the resolved value.
+} finally {
+    jest.useRealTimers();
+}
 ```
