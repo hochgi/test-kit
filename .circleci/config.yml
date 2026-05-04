@@ -12,12 +12,6 @@ workflows:
           name: check changes
           base-revision: main
           config-path: .circleci/ci.yml
-          # Wave-gated rollout for the v1.0.0 publish bootstrap. To advance
-          # a wave, add its lines into the mapping below AND touch a file in
-          # each newly-included package directory so path-filter actually
-          # detects a change vs main. build-publish is filtered to main-only
-          # in ci.yml, so feature-branch CI runs only init (lint+test) for
-          # any package it fires; publishing happens exclusively on main.
           mapping: |
             packages/core/.* build_core true
             packages/pglite-driver/.* build_pglite_driver true
@@ -25,10 +19,9 @@ workflows:
             packages/sql/.* build_sql true
             packages/redis/.* build_redis true
             packages/s3/.* build_s3 true
-          # Wave 3 (final PR):
-          #   packages/pg-kysely/.* build_pg_kysely true
-          #   packages/pg-knex/.* build_pg_knex true
-          #   packages/pg-sequelize/.* build_pg_sequelize true
+            packages/pg-kysely/.* build_pg_kysely true
+            packages/pg-knex/.* build_pg_knex true
+            packages/pg-sequelize/.* build_pg_sequelize true
 
   backup:
     jobs:

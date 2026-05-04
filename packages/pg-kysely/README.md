@@ -188,3 +188,4 @@ order is preserved.
 - [`docs/concepts.md`](../../docs/concepts.md) for the mental model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full
   `QueryProbe` API.
+

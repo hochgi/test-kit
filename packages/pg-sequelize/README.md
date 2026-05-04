@@ -187,3 +187,4 @@ await queryPromise;
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.
 - [`APPENDIX.md`](../../APPENDIX.md) — adapter-landscape evaluation.
+

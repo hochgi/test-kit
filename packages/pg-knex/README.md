@@ -115,3 +115,4 @@ as supported by `knex-pglite`.
   model with a Kysely-typed adapter; identical probe surface.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.
+
