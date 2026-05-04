@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-mock",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Probe-driven component testing — programmable mock adapters",
   "license": "UNLICENSED",
   "type": "module",
