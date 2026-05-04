@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-redis",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Probe-driven cache adapter backed by ioredis-mock",
   "license": "UNLICENSED",
   "type": "module",
