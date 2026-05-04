@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Probe-driven component testing — core engine",
   "license": "UNLICENSED",
   "type": "module",
