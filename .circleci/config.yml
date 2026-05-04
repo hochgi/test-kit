@@ -21,11 +21,10 @@ workflows:
           mapping: |
             packages/core/.* build_core true
             packages/pglite-driver/.* build_pglite_driver true
-          # Wave 2 (next PR):
-          #   packages/mock/.* build_mock true
-          #   packages/sql/.* build_sql true
-          #   packages/redis/.* build_redis true
-          #   packages/s3/.* build_s3 true
+            packages/mock/.* build_mock true
+            packages/sql/.* build_sql true
+            packages/redis/.* build_redis true
+            packages/s3/.* build_s3 true
           # Wave 3 (final PR):
           #   packages/pg-kysely/.* build_pg_kysely true
           #   packages/pg-knex/.* build_pg_knex true

@@ -217,3 +217,4 @@ For Sinon, pass an installed `FakeTimers` instance explicitly:
 - [`docs/concepts.md`](../../docs/concepts.md) — mental model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — exhaustive API
   reference.
+

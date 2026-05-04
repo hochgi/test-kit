@@ -170,3 +170,4 @@ Replaces the older `mock-aws-s3-v3` dependency. Highlights:
 
 - [`docs/api-surface.md`](../../docs/api-surface.md) — full reference.
 - [`docs/concepts.md`](../../docs/concepts.md) — mental model.
+

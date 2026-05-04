@@ -39,3 +39,4 @@ To add a new SQL ORM (e.g. Drizzle, TypeORM):
 See [`docs/architecture.md`](../../docs/architecture.md) and
 [`docs/internal/tech-design.md`](../../docs/internal/tech-design.md) for
 the full contributor walkthrough.
+
