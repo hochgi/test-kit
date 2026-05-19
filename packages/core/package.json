@@ -3,6 +3,11 @@
   "version": "1.0.4",
   "description": "Probe-driven component testing — core engine",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vnatures/test-kit.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
