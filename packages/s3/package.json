@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-s3",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Probe-driven S3 adapter with an in-memory backing",
   "license": "UNLICENSED",
   "repository": {
