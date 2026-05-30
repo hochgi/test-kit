@@ -3,6 +3,11 @@
   "version": "1.0.2",
   "description": "Internal PGlite lifecycle helper shared across pg-* packages",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vnatures/test-kit.git",
+    "directory": "packages/pglite-driver"
+  },
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

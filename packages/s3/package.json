@@ -3,6 +3,11 @@
   "version": "1.0.3",
   "description": "Probe-driven S3 adapter with an in-memory backing",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vnatures/test-kit.git",
+    "directory": "packages/s3"
+  },
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -3,6 +3,11 @@
   "version": "1.0.2",
   "description": "Probe-driven Kysely adapter backed by PGlite",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vnatures/test-kit.git",
+    "directory": "packages/pg-kysely"
+  },
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
