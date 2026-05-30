@@ -27,8 +27,11 @@ wires the real SDK; tests wire the probes via DI.
 npm install --save-dev @vnatures/test-kit @vnatures/test-kit-s3
 ```
 
-Peer dependencies (consumer must provide): `@aws-sdk/client-s3`,
-`@aws-sdk/s3-request-presigner`.
+Peer dependencies (consumer must provide): `@aws-sdk/client-s3`.
+`@aws-sdk/s3-request-presigner` is an **optional** peer — it's only needed if
+you use `createProbedPresignerAdapter`. It's a type-only import in this
+package (erased at runtime), so S3-only consumers can omit it; it's marked
+`peerDependenciesMeta.optional` so npm won't auto-install or warn about it.
 
 ## Quick start
 
