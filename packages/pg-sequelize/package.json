@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-pg-sequelize",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Probe-driven Sequelize adapter backed by PGlite",
   "license": "UNLICENSED",
   "repository": {
