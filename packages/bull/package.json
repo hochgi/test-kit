@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-bull",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Probe-driven Bull Queue adapter with an in-memory backing",
   "license": "UNLICENSED",
   "repository": {
