@@ -61,6 +61,7 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 | [`@vnatures/test-kit-pg-knex`](packages/pg-knex/README.md) | `createProbedKnexAdapter` — Knex-typed PGlite-backed adapter. |
 | [`@vnatures/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | `createProbedSequelizeAdapter` — Sequelize v6 PGlite-backed adapter. |
 | [`@vnatures/test-kit-redis`](packages/redis/README.md) | `createProbedCacheAdapter` — focused cache interface backed by `ioredis-mock`. |
+| [`@vnatures/test-kit-bull`](packages/bull/README.md) | `createProbedBullQueue` — drop-in probed Bull `Queue` with an in-memory backing. |
 | [`@vnatures/test-kit-s3`](packages/s3/README.md) | `createProbedS3Adapter` and `createProbedPresignerAdapter` with an in-memory backing. |
 
 The package family is intentionally small. Each domain adapter targets the

@@ -15,6 +15,7 @@ Test-kit ships as a small family of packages:
 - `@vnatures/test-kit-pg-knex`: Knex + PGlite backed adapter.
 - `@vnatures/test-kit-pg-sequelize`: Sequelize v6 + PGlite backed adapter.
 - `@vnatures/test-kit-redis`: cache adapter backed by a Redis-compatible fake.
+- `@vnatures/test-kit-bull`: Bull `Queue` adapter with an in-memory backing.
 - `@vnatures/test-kit-s3`: S3 and presigner adapters.
 
 ## Design Overview
@@ -1136,6 +1137,78 @@ Usage:
 const cache = harness.attach(createProbedCacheAdapter({ harness }));
 
 cache.probe.on('get').once().reject(new Error('redis down'));
+```
+
+## Bull Queue Adapter API
+
+Package: `@vnatures/test-kit-bull`.
+
+```typescript
+export type BullQueueMethod = 'add' | 'process';
+
+export type BullQueueCall = {
+    readonly method: BullQueueMethod;
+    readonly args: ReadonlyArray<unknown>;
+};
+
+export interface BullQueuePendingCall<TResult = unknown>
+    extends ForwardablePendingCall<BullQueueCall, TResult> {
+    readonly method: BullQueueMethod;
+    readonly args: ReadonlyArray<unknown>;
+}
+
+export interface BullQueueProbe extends ForwardableProbe<BullQueueCall, BullQueuePendingCall> {
+    on(method: BullQueueMethod): ForwardableSelection<BullQueueCall, BullQueuePendingCall>;
+}
+
+export type ProbedBullQueue<TData = unknown> = ProbedAdapter<Queue<TData>, BullQueueProbe> &
+    ProbedResource & { readonly name: string };
+
+// Job options accepted by `add` (and `defaultJobOptions`). `delay` and `jobId`
+// are honored by the in-memory backing; other Bull options are recorded but
+// not interpreted.
+export type AddOptions = {
+    readonly delay?: number;
+    readonly jobId?: string | number;
+    readonly [key: string]: unknown;
+};
+
+export type CreateProbedBullQueueOptions<TData = unknown> = {
+    readonly harness: Harness;
+    readonly name?: string;
+    readonly defaultJobOptions?: AddOptions;
+    readonly defaultTimeout?: Duration;
+    // Inject a custom/pre-seeded in-memory backing (advanced; defaults to a
+    // fresh InMemoryBullQueue).
+    readonly backing?: InMemoryBullQueue<TData>;
+};
+
+export function createProbedBullQueue<TData = unknown>(
+    options: CreateProbedBullQueueOptions<TData>,
+): ProbedBullQueue<TData>;
+
+export function maxRetriesPerRequestError(message?: string): Error;
+```
+
+Behavior:
+
+- The factory installs a default `probe.always().forward()` rule.
+- `add` is the primary probed seam for failure/hang injection.
+- `process` supports unnamed and named handlers (`process(name, handler)`);
+  named jobs are consumed only by their matching processor, as in Bull. The
+  `concurrency` overload arg is accepted but ignored (no observable effect in a
+  deterministic in-memory runner).
+- The adapter exposes `name` (the queue identifier), matching `bull.Queue`.
+- Unsupported `Queue` methods throw `errors.unsupportedForward('Bull', method)`.
+- `reset()` empties the in-memory queue.
+- `close()` disposes the backing.
+
+Usage:
+
+```typescript
+const queue = harness.attach(createProbedBullQueue({ harness, name: 'exports' }));
+
+queue.probe.on('add').once().reject(maxRetriesPerRequestError());
 ```
 
 ## S3 Adapter API

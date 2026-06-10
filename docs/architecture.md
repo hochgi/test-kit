@@ -32,6 +32,8 @@ contracts (function signatures, file layouts, etc.) are described in
        │
        ├── @vnatures/test-kit-redis               ← createProbedCacheAdapter
        │
+       ├── @vnatures/test-kit-bull                ← createProbedBullQueue
+       │
        └── @vnatures/test-kit-s3                  ← createProbedS3Adapter + createProbedPresignerAdapter
 ```
 
@@ -40,7 +42,7 @@ Two horizontal layers:
 - **Core layer** (`@vnatures/test-kit`): generic probe engine, lifecycle,
   time abstraction, shared types. No domain knowledge.
 - **Domain layer** (`@vnatures/test-kit-mock`, `@vnatures/test-kit-sql`,
-  `@vnatures/test-kit-redis`, `@vnatures/test-kit-s3`): per-boundary
+  `@vnatures/test-kit-redis`, `@vnatures/test-kit-bull`, `@vnatures/test-kit-s3`): per-boundary
   packages that wrap the core engine with domain-specific call shapes,
   filter sugars, and adapter factories.
 

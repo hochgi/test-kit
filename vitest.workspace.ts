@@ -6,6 +6,7 @@ export default defineWorkspace([
   'packages/sql',
   'packages/pglite-driver',
   'packages/redis',
+  'packages/bull',
   'packages/s3',
   'packages/pg-kysely',
   'packages/pg-knex',

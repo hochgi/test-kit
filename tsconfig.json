@@ -9,6 +9,7 @@
     { "path": "./packages/pg-knex" },
     { "path": "./packages/pg-sequelize" },
     { "path": "./packages/redis" },
+    { "path": "./packages/bull" },
     { "path": "./packages/s3" },
     { "path": "./examples/grpc-client" }
   ]
