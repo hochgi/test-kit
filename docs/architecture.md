@@ -113,9 +113,21 @@ internal-facing API to construct the underlying probe.
   `get` trap returns intercepting functions only for keys in `methods`;
   every other access returns `undefined`.
 - `factory.ts`: `createProbedMock<T, M>` and `CreateProbedMockOptions<T, M>`.
+- `stream-types.ts` / `stream-factory.ts`: `createProbedStreamMock<T, M>` —
+  the sibling factory for methods returning `AsyncIterable<...>` (e.g. an
+  `async *stream()` method). Built on core's `createStreamProbeRoot`
+  (`stream-probe-engine.ts`), a parallel engine to `createProbeRoot`: same
+  four-tier `FilterChain` matching, but settlement is a `push`/`end`/`error`
+  chunk channel instead of a single `Deferred`, since a stream call yields
+  zero-or-more values over time rather than resolving once. See that file's
+  header comment for why this isn't unified with the Promise-settlement
+  engine.
 - `index.ts`: re-exports the public API.
 
-This is the smallest domain package — probably <300 lines total.
+This is the smallest domain package — probably <300 lines total (the
+stream sibling roughly doubles that, but stays in the same package since
+both serve the same "fake any interface" concern, just for two method
+shapes).
 
 ### `@vnatures/test-kit-sql` — shared SQL probe surface and driver seam
 

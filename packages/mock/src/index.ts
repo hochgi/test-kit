@@ -15,3 +15,19 @@ export type {
 
 export { createProbedMock } from './factory.js';
 export type { CreateProbedMockOptions } from './factory.js';
+
+// ── Stream mocks (async-generator-shaped boundaries) ────────────────────────
+export type {
+    CheckedStreamMethods,
+    ProbedStreamMock,
+    StreamMethodArgs,
+    StreamMethodCall,
+    StreamMethodChunk,
+    StreamMethodName,
+    StreamMethodPendingCall,
+    StreamMethodProbe,
+    StreamMethodSelection,
+} from './stream-types.js';
+
+export { createProbedStreamMock } from './stream-factory.js';
+export type { CreateProbedStreamMockOptions } from './stream-factory.js';

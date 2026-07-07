@@ -14,13 +14,19 @@
 import type { Duration } from './duration.js';
 import { milliseconds, seconds } from './duration.js';
 import { errors, toError } from './errors.js';
+import {
+    appendFilter,
+    defaultLabel,
+    makeGenericExpectations,
+    matchesFilter,
+    matchingCalls,
+    type ExpectationHost,
+} from './expectation-engine.js';
 import type {
     CallMatcher,
     CallNotifier,
     CallRecord,
     Deferred,
-    ExpectOptions,
-    Expectations,
     FilterChain,
     ForwardablePendingCall,
     ForwardableSelection,
@@ -32,19 +38,12 @@ import type {
     ProbeAdmin,
     ProbeRoot,
     ProbeRootConfig,
-    RequiredWithinOptions,
     RuleAction,
     RuleBuilder,
     RuleEntry,
     Selection,
     WaiterEntry,
 } from './types.js';
-
-// Snapshot real timer functions BEFORE any test framework installs fake
-// timers. These are used for waiter/safety/none deadlines so the engine's
-// internal scheduling is never subject to virtual time.
-const realSetTimeout = globalThis.setTimeout.bind(globalThis);
-const realClearTimeout = globalThis.clearTimeout.bind(globalThis);
 
 // ── Internal state ──────────────────────────────────────────────────────────
 
@@ -80,29 +79,6 @@ export function createDeferred<T>(): Deferred<T> {
     return { promise, resolve, reject };
 }
 
-function matchesFilter<TCall>(chain: FilterChain<TCall>, call: TCall): boolean {
-    for (const p of chain.predicates) {
-        if (!p.fn(call)) return false;
-    }
-    return true;
-}
-
-function appendFilter<TCall>(
-    chain: FilterChain<TCall>,
-    predicate: (call: TCall) => boolean,
-    label: string,
-): FilterChain<TCall> {
-    const newPredicates = [...chain.predicates, { fn: predicate, label }];
-    const labels = newPredicates.map((p) => p.label);
-    const joined = labels.length === 0 ? '<all calls>' : labels.join(' AND ');
-    return { predicates: newPredicates, label: joined };
-}
-
-function defaultLabel(predicate: { name?: string }): string {
-    const n = predicate.name?.trim();
-    return n && n !== 'fn' ? n : '<anonymous predicate>';
-}
-
 function getDefaultTimeout<TCall, TPending extends PendingCallBase<TCall>>(
     state: ProbeState<TCall, TPending>,
 ): Duration {
@@ -117,6 +93,21 @@ function getSafetyTimeout<TCall, TPending extends PendingCallBase<TCall>>(
         return state.config.harness.safetyTimeout;
     }
     return seconds(30);
+}
+
+/** Adapter over the live state arrays for the shared expectation machinery. */
+function expectationHost<TCall, TPending extends PendingCallBase<TCall>>(
+    state: ProbeState<TCall, TPending>,
+): ExpectationHost<TCall, TPending, CallRecord<TCall, TPending>> {
+    return {
+        history: state.history,
+        capturingWaiters: state.capturingWaiters,
+        observingWaiters: state.observingWaiters,
+        callNotifiers: state.callNotifiers,
+        defaultTimeout: getDefaultTimeout(state),
+        safetyTimeout: getSafetyTimeout(state),
+        pendingFactory: state.config.pendingFactory,
+    };
 }
 
 // ── recordCall + applyRule ──────────────────────────────────────────────────
@@ -399,265 +390,11 @@ function makeRuleBuilder<TCall, TPending extends PendingCallBase<TCall>>(
     };
 }
 
-function makeExpectations<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-): Expectations<TCall, TPending> {
-    return {
-        intercept: (options?: ExpectOptions) => interceptImpl(state, filter, options),
-        observe: (options?: ExpectOptions) => observeImpl(state, filter, options),
-        none: (options: RequiredWithinOptions) => noneImpl(state, filter, options),
-        atLeast: (n: number, options?: ExpectOptions) => atLeastImpl(state, filter, n, options),
-        exactly: (n: number, options: RequiredWithinOptions) => exactlyImpl(state, filter, n, options),
-        calledTimes(n: number) {
-            const count = matchingCalls(state, filter).length;
-            if (count !== n) {
-                throw new Error(`Expected ${filter.label} to have been called ${n} times, got ${count}.`);
-            }
-        },
-        neverCalled() {
-            const count = matchingCalls(state, filter).length;
-            if (count !== 0) {
-                throw new Error(`Expected ${filter.label} to have never been called, got ${count} calls.`);
-            }
-        },
-        called() {
-            const count = matchingCalls(state, filter).length;
-            if (count === 0) {
-                throw new Error(`Expected ${filter.label} to have been called, got 0 calls.`);
-            }
-        },
-    };
-}
-
-function matchingCalls<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-): TCall[] {
-    return state.history.filter((r) => matchesFilter(filter, r.call)).map((r) => r.call);
-}
-
-function interceptImpl<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-    options?: ExpectOptions,
-): Promise<TPending> {
-    // Retroactive scan: oldest unrouted matching record wins.
-    for (const record of state.history) {
-        if (!record.routed && matchesFilter(filter, record.call)) {
-            record.routed = true;
-            return Promise.resolve(state.config.pendingFactory(record));
-        }
-    }
-
-    // Otherwise register a future waiter.
-    const within = options?.within ?? getDefaultTimeout(state);
-    const safety = getSafetyTimeout(state);
-
-    return new Promise<TPending>((resolve, reject) => {
-        let withinTimer: ReturnType<typeof realSetTimeout> | undefined;
-        let safetyTimer: ReturnType<typeof realSetTimeout> | undefined;
-
-        const cleanup = (): void => {
-            if (withinTimer !== undefined) {
-                realClearTimeout(withinTimer);
-                withinTimer = undefined;
-            }
-            if (safetyTimer !== undefined) {
-                realClearTimeout(safetyTimer);
-                safetyTimer = undefined;
-            }
-        };
-
-        const waiter: WaiterEntry<TCall, TPending> = {
-            filter,
-            resolve,
-            reject,
-            cleanup,
-        };
-
-        withinTimer = realSetTimeout(() => {
-            const idx = state.capturingWaiters.indexOf(waiter);
-            if (idx >= 0) state.capturingWaiters.splice(idx, 1);
-            cleanup();
-            reject(errors.timeout(filter.label, within.milliseconds));
-        }, within.milliseconds);
-
-        if (safety !== null) {
-            safetyTimer = realSetTimeout(() => {
-                const idx = state.capturingWaiters.indexOf(waiter);
-                if (idx >= 0) state.capturingWaiters.splice(idx, 1);
-                cleanup();
-                reject(errors.safetyTimeout(safety.milliseconds));
-            }, safety.milliseconds);
-        }
-
-        state.capturingWaiters.push(waiter);
-    });
-}
-
-function observeImpl<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-    options?: ExpectOptions,
-): Promise<TCall> {
-    // Per spec: observe does NOT scan history retroactively. It registers a
-    // waiter that fires on the next incoming matching call.
-    const within = options?.within ?? getDefaultTimeout(state);
-    const safety = getSafetyTimeout(state);
-
-    return new Promise<TCall>((resolve, reject) => {
-        let withinTimer: ReturnType<typeof realSetTimeout> | undefined;
-        let safetyTimer: ReturnType<typeof realSetTimeout> | undefined;
-
-        const cleanup = (): void => {
-            if (withinTimer !== undefined) {
-                realClearTimeout(withinTimer);
-                withinTimer = undefined;
-            }
-            if (safetyTimer !== undefined) {
-                realClearTimeout(safetyTimer);
-                safetyTimer = undefined;
-            }
-        };
-
-        const observer: ObserverEntry<TCall> = {
-            filter,
-            resolve,
-            reject,
-            cleanup,
-        };
-
-        withinTimer = realSetTimeout(() => {
-            const idx = state.observingWaiters.indexOf(observer);
-            if (idx >= 0) state.observingWaiters.splice(idx, 1);
-            cleanup();
-            reject(errors.timeout(filter.label, within.milliseconds));
-        }, within.milliseconds);
-
-        if (safety !== null) {
-            safetyTimer = realSetTimeout(() => {
-                const idx = state.observingWaiters.indexOf(observer);
-                if (idx >= 0) state.observingWaiters.splice(idx, 1);
-                cleanup();
-                reject(errors.safetyTimeout(safety.milliseconds));
-            }, safety.milliseconds);
-        }
-
-        state.observingWaiters.push(observer);
-    });
-}
-
-function noneImpl<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-    options: RequiredWithinOptions,
-): Promise<void> {
-    const { within } = options;
-
-    return new Promise<void>((resolve, reject) => {
-        realSetTimeout(() => {
-            // Drain microtasks before checking history.
-            queueMicrotask(() => {
-                const matching = matchingCalls(state, filter);
-                if (matching.length === 0) {
-                    resolve();
-                } else {
-                    reject(errors.none(filter.label, within.milliseconds, matching.length));
-                }
-            });
-        }, within.milliseconds);
-    });
-}
-
-function atLeastImpl<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-    n: number,
-    options?: ExpectOptions,
-): Promise<ReadonlyArray<TCall>> {
-    const within = options?.within ?? getDefaultTimeout(state);
-    const safety = getSafetyTimeout(state);
-
-    return new Promise<ReadonlyArray<TCall>>((resolve, reject) => {
-        let done = false;
-        // eslint-disable-next-line prefer-const -- declared up-front so cleanup can reference it; assigned once below.
-        let withinTimer: ReturnType<typeof realSetTimeout> | undefined;
-        let safetyTimer: ReturnType<typeof realSetTimeout> | undefined;
-
-        const initial = matchingCalls(state, filter);
-        if (initial.length >= n) {
-            resolve(initial);
-            return;
-        }
-
-        const notifier: CallNotifier<TCall> = {
-            onCall(call) {
-                if (done) return;
-                if (!matchesFilter(filter, call)) return;
-                const all = matchingCalls(state, filter);
-                if (all.length >= n) {
-                    done = true;
-                    cleanup();
-                    resolve(all);
-                }
-            },
-        };
-
-        const cleanup = (): void => {
-            const idx = state.callNotifiers.indexOf(notifier);
-            if (idx >= 0) state.callNotifiers.splice(idx, 1);
-            if (withinTimer !== undefined) realClearTimeout(withinTimer);
-            if (safetyTimer !== undefined) realClearTimeout(safetyTimer);
-        };
-
-        withinTimer = realSetTimeout(() => {
-            if (done) return;
-            done = true;
-            cleanup();
-            const got = matchingCalls(state, filter);
-            reject(errors.atLeast(filter.label, n, within.milliseconds, got.length));
-        }, within.milliseconds);
-
-        if (safety !== null) {
-            safetyTimer = realSetTimeout(() => {
-                if (done) return;
-                done = true;
-                cleanup();
-                reject(errors.safetyTimeout(safety.milliseconds));
-            }, safety.milliseconds);
-        }
-
-        state.callNotifiers.push(notifier);
-    });
-}
-
-function exactlyImpl<TCall, TPending extends PendingCallBase<TCall>>(
-    state: ProbeState<TCall, TPending>,
-    filter: FilterChain<TCall>,
-    n: number,
-    options: RequiredWithinOptions,
-): Promise<ReadonlyArray<TCall>> {
-    const { within } = options;
-
-    return new Promise<ReadonlyArray<TCall>>((resolve, reject) => {
-        realSetTimeout(() => {
-            queueMicrotask(() => {
-                const all = matchingCalls(state, filter);
-                if (all.length === n) {
-                    resolve(all);
-                } else {
-                    reject(errors.exactly(filter.label, n, within.milliseconds, all.length));
-                }
-            });
-        }, within.milliseconds);
-    });
-}
-
 function makeSelection<TCall, TPending extends PendingCallBase<TCall>>(
     state: ProbeState<TCall, TPending>,
     filter: FilterChain<TCall>,
 ): Selection<TCall, TPending> {
+    const host = expectationHost(state);
     const sel = {
         filter(predicate: CallMatcher<TCall>, label?: string) {
             const lbl = label ?? defaultLabel(predicate as { name?: string });
@@ -671,10 +408,10 @@ function makeSelection<TCall, TPending extends PendingCallBase<TCall>>(
             return makeRuleBuilder(state, filter, 'permanent', 'user');
         },
         get expect() {
-            return makeExpectations(state, filter);
+            return makeGenericExpectations(host, filter);
         },
         get calls() {
-            return matchingCalls(state, filter);
+            return matchingCalls(host, filter);
         },
         drain(handler?: (pending: TPending) => void) {
             for (const record of state.history) {

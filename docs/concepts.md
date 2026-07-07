@@ -189,6 +189,16 @@ The API uses `answer` consistently for "resolve with a value." Domain
 packages must not invent synonyms (`return`, `reply`, `respond`) for the same
 operation.
 
+This "settle once" model assumes the boundary is a Promise: one call, one
+eventual value. A method typed `(...) => AsyncIterable<T>` (an `async
+*stream()` generator) doesn't fit — it yields zero-or-more chunks over time,
+then completes or fails. `createProbedStreamMock` (see "Stream Mock Adapter
+API" in `api-surface.md`) is the sibling for that shape: the settlement
+verbs become `push(chunk)` / `end()` / `error()`, and a rule describes a
+sequence instead of a single value. Everything else in this document —
+tiers, retroactive intercept, filters, expectations — applies unchanged;
+only the verbs for "what happens to a matched call" differ.
+
 ## Test Adapter Categories
 
 The umbrella term in general testing literature is "test double." v2 uses

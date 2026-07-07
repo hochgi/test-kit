@@ -932,6 +932,117 @@ boundary surface the test exercises.
 If a future TC39 proposal ships runtime type information that survives
 type erasure, the design can be revisited.
 
+## Stream Mock Adapter API
+
+Package: `@vnatures/test-kit-mock`. Sibling of the Mock Adapter API above,
+for boundaries shaped `(...) => AsyncIterable<TChunk>` (typically an
+`async *stream()` generator method) rather than `(...) => Promise<T>`. A
+Promise settles once; a stream yields zero-or-more chunks over time and
+then completes or fails — `createProbedMock`'s `AsyncMethodName<T>`
+constraint rejects generator methods at compile time by design (see "Mock
+Adapter API" above), so this is a separate factory, not an option flag.
+
+```typescript
+export type StreamMethodCall<
+    TMethod extends string = string,
+    TArgs extends ReadonlyArray<unknown> = ReadonlyArray<unknown>,
+> = {
+    readonly method: TMethod;
+    readonly args: TArgs;
+};
+
+/** Method names on T whose return type is `AsyncIterable<...>`. This is the constraint applied to `methods`. */
+export type StreamMethodName<T> = {
+    [K in keyof T]: T[K] extends (...args: any[]) => AsyncIterable<any> ? Extract<K, string> : never;
+}[keyof T];
+
+export type StreamMethodArgs<T, K extends keyof T> = T[K] extends (...args: infer A) => any ? A : never;
+
+/** The chunk type yielded by T[K] — e.g. `ModelStreamEvent` for `stream(...): AsyncIterable<ModelStreamEvent>`. */
+export type StreamMethodChunk<T, K extends keyof T> =
+    T[K] extends (...args: any[]) => AsyncIterable<infer C> ? C : never;
+
+/** Same branded-error mechanism as `CheckedMethods` — see that entry for the rationale. */
+export type CheckedStreamMethods<T, M extends ReadonlyArray<string>> =
+    Exclude<M[number], StreamMethodName<T>> extends never
+        ? M
+        : ReadonlyArray<StreamMethodName<T>> & {
+              readonly __test_kit_error: 'createProbedStreamMock requires methods that return AsyncIterable<...> (e.g. an async generator method)';
+              readonly __non_stream_methods_cannot_be_probed: Exclude<M[number], StreamMethodName<T>>;
+              readonly __how_to_fix: 'For Promise-returning methods use createProbedMock. For sync dependencies, use the real implementation in tests.';
+          };
+
+export interface StreamMethodProbe<T extends object>
+    extends StreamProbe<StreamMethodCall<StreamMethodName<T>>, StreamMethodPendingCall<StreamMethodName<T>>> {
+    on<K extends StreamMethodName<T>>(method: K): StreamMethodSelection<T, K>;
+}
+
+export interface StreamMethodSelection<T extends object, K extends StreamMethodName<T>>
+    extends StreamSelection<
+        StreamMethodCall<K, StreamMethodArgs<T, K>>,
+        StreamMethodPendingCall<K, StreamMethodArgs<T, K>, StreamMethodChunk<T, K>>
+    > {
+    once(): StreamRuleBuilder<StreamMethodCall<K, StreamMethodArgs<T, K>>, StreamMethodChunk<T, K>>;
+    always(): StreamRuleBuilder<StreamMethodCall<K, StreamMethodArgs<T, K>>, StreamMethodChunk<T, K>>;
+}
+
+export type ProbedStreamMock<T extends object> = ProbedAdapter<T, StreamMethodProbe<T>> & ProbedResource;
+
+export type CreateProbedStreamMockOptions<T extends object, M extends readonly string[]> = {
+    readonly methods: CheckedStreamMethods<T, M>;
+    readonly defaultTimeout?: Duration;
+    /** Optional harness reference; inherits defaultTimeout / safetyTimeout / clock when provided. */
+    readonly harness?: HarnessRef;
+};
+
+export function createProbedStreamMock<
+    T extends object,
+    const M extends readonly string[] = readonly StreamMethodName<T>[],
+>(options: CreateProbedStreamMockOptions<T, M>): ProbedStreamMock<T>;
+```
+
+Behavior:
+
+- The adapter's proxied methods return the consumer-facing async iterable
+  **synchronously** — never a Promise — so `for await (const x of
+  adapter.method())` works immediately, matching a real generator method's
+  calling convention.
+- `StreamRuleBuilder` replaces `answer`/`answerWith`/`reject` semantics with
+  a sequence: `.answer(chunks)` pushes every chunk then ends; `.answerWith(fn)`
+  does the same with a call-derived source, and if that source throws
+  partway through, the consumer's iteration throws at that point instead of
+  completing — this is how "yields N chunks then fails" is expressed.
+  `.reject(error)` fails before any chunk is pushed. `.park()` never closes
+  (the consumer's `next()` hangs; pair with `expect.intercept` timeouts or
+  `harness.clock`).
+- The pending call from `expect.intercept()` exposes `push`/`end`/`error`
+  instead of `answer`/`reject`, so a test can interactively drive the
+  consumer's iteration one chunk at a time. `settled` flips to `true` only
+  on `end()`/`error()` — `push()` remains legal until then.
+- Built on a parallel core engine (`createStreamProbeRoot`), not a
+  generalization of `createProbeRoot`: see `stream-probe-engine.ts`'s header
+  comment for why the two settlement models (single Promise vs. multi-value
+  channel) aren't unified.
+- If the real dependency is a concrete class (e.g. an SDK's abstract `Model`
+  base class) rather than a plain interface, wrap the mock's `adapter` in a
+  thin subclass that delegates to it — see the `component-testing` skill's
+  "Streaming Boundaries" section for a worked example.
+
+Usage:
+
+```typescript
+interface Model {
+    stream(prompt: string): AsyncIterable<{ text: string }>;
+}
+
+const model = createProbedStreamMock<Model>({ methods: ['stream'] });
+model.probe.on('stream').always().answer([{ text: 'hel' }, { text: 'lo' }]);
+
+for await (const chunk of model.adapter.stream('hi')) {
+    // chunk.text: "hel", then "lo"
+}
+```
+
 ## Backed Database Adapters
 
 Packages: `@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`.

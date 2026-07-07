@@ -3,9 +3,10 @@ name: component-testing
 description: >-
   Guide for writing component tests using @vnatures/test-kit (v1.0.0) with
   probed adapters. Covers Goldilocks boundary design, harness patterns,
-  retry/timeout/partial-failure recipes, and fake-timer interop. Use when
-  creating or refactoring component tests, extracting application boundaries,
-  or writing test harnesses.
+  retry/timeout/partial-failure recipes, streaming/async-generator boundaries
+  (createProbedStreamMock), and fake-timer interop. Use when creating or
+  refactoring component tests, extracting application boundaries, or writing
+  test harnesses.
 ---
 
 # Component Testing with test-kit
@@ -120,6 +121,33 @@ Kysely: not raw `pg.Pool`, not a fat repository facade that hides every query.
 `@vnatures/test-kit-pg-knex` provides `createProbedKnexAdapter` with the same
 probe API as Kysely. Pass `knexConfig` when production uses plugins such as
 `knex-stringcase` so tests match runtime column naming.
+
+**Example — streaming boundary (LLM token stream, log tail, etc.):** a method
+typed `(...) => AsyncIterable<T>` (often an `async *stream()` generator) is
+not a Promise boundary — it yields zero or more chunks over time, then
+completes or fails. `createProbedMock` can't take this shape (it settles once
+via a Promise); use `createProbedStreamMock` instead. See "Streaming
+Boundaries" below.
+
+If the real dependency is a concrete class the component constructs via
+`new` (not a plain interface it receives via DI), inject a thin subclass
+that delegates to the mock's `adapter` — same Goldilocks idea as injecting
+`Kysely` instead of wrapping it, just applied to a class-shaped seam:
+
+```typescript
+// Strands' Model is an abstract class, not an interface — createProbedStreamMock
+// produces a plain object, so wrap it in a subclass that satisfies `instanceof Model`.
+class ProbedModel extends Model<BaseModelConfig> {
+    constructor(private readonly adapter: Pick<Model<BaseModelConfig>, 'stream'>) {
+        super();
+    }
+    updateConfig(): void {}
+    getConfig(): BaseModelConfig { return {}; }
+    stream(messages: Message[], options?: StreamOptions) {
+        return this.adapter.stream(messages, options);
+    }
+}
+```
 
 **Example — Postgres with Sequelize:**
 
@@ -285,6 +313,62 @@ expect(probe.calls[0].args[0]).toBe('https://example.com/img.png');
 ```
 
 ---
+
+## Streaming Boundaries: `createProbedStreamMock`
+
+For methods shaped `(...) => AsyncIterable<TChunk>` — `createProbedMock`
+requires a Promise-returning method and rejects generator methods at
+compile time. Use the sibling factory from `@vnatures/test-kit-mock`:
+
+```typescript
+import { createProbedStreamMock } from '@vnatures/test-kit-mock';
+
+const model = tk.attach(createProbedStreamMock<Model>({
+    harness: tk,
+    methods: ['stream'],
+}));
+```
+
+### Porcelain
+
+```typescript
+// Replay a scripted sequence, then end normally.
+model.probe.on('stream').always().answer([chunkA, chunkB]);
+
+// Derive chunks from the call; yield then throw to simulate a mid-stream
+// failure (e.g. a provider disconnect) after some chunks were delivered.
+model.probe.on('stream').once().answerWith(async function* (call) {
+    yield chunkFor(call.args[0]);
+    throw new Error('connection dropped');
+});
+
+// Fail before any chunk is pushed.
+model.probe.on('stream').once().reject(new Error('unauthorized'));
+
+// Never close — consumption hangs (for timeout tests, paired with clock.advance).
+model.probe.on('stream').always().park();
+```
+
+### Plumbing — interactive push/end/error
+
+The pending call exposes `push`/`end`/`error` instead of `answer`/`reject`,
+so a test can drive the consumer's `for await` one chunk at a time:
+
+```typescript
+const pending = await model.probe.on('stream').expect.intercept();
+expect(pending.args[0]).toEqual(expectedMessages);
+
+pending.push(chunkA);
+// ...assert on whatever side effect the SUT produced from chunkA...
+pending.push(chunkB);
+pending.end(); // or pending.error(new Error('...')) for a mid-stream failure
+```
+
+`pending.settled` flips to `true` only after `end()`/`error()` — `push()`
+remains legal (and required, for chunks after the first) until then.
+Everything else — `.filter(...)`, retroactive `intercept()`, `expect.none`,
+`expect.atLeast`/`exactly`, cross-probe `harness.expect.sequence` — works
+identically to the Promise-based probe; only the settlement verbs differ.
 
 ## When to Extract a Boundary (Refactoring Trigger)
 

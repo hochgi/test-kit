@@ -60,7 +60,7 @@ export const errors = {
     cannotForwardNoBacking: (): Error => new Error('Cannot forward: this probe has no backing.'),
 
     syncMethodNotDeclared: (method: string): Error =>
-        new Error(`Method '${method}' was not declared in createProbedMock methods.`),
+        new Error(`Method '${method}' was not declared in the mock's methods list.`),
 };
 
 /**

@@ -51,6 +51,27 @@ export { emptyFilterChain } from './types.js';
 // ── Probe engine ────────────────────────────────────────────────────────────
 export { createProbeRoot, createDeferred, makePendingBase, makeForwardablePending } from './probe-engine.js';
 
+// ── Stream probe engine (async-generator-shaped boundaries) ────────────────
+export type {
+    StreamPendingCallBase,
+    StreamRuleBuilder,
+    StreamExpectations,
+    StreamSelection,
+    StreamChunkOf,
+    StreamProbe,
+    // Internal types exposed for domain-package consumption:
+    StreamRecord,
+    StreamRuleAction,
+    StreamRuleEntry,
+    StreamWaiterEntry,
+    StreamObserverEntry,
+    StreamCallNotifier,
+    StreamChannel,
+    StreamProbeRootConfig,
+    StreamProbeRoot,
+} from './stream-types.js';
+export { createStreamProbeRoot, createChannel, makeStreamPendingBase } from './stream-probe-engine.js';
+
 // ── Harness (skeleton; full implementation in step 4) ──────────────────────
 export type { Harness, CreateHarnessOptions, HarnessExpectations, Observation, SequenceResult } from './harness.js';
 export { createHarness, observation } from './harness.js';

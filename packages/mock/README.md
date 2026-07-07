@@ -200,6 +200,75 @@ it("focuses on payment logic by pre-programming other deps", async () => {
 });
 ```
 
+## Streaming boundaries: `createProbedStreamMock`
+
+`createProbedMock` fakes methods that return `Promise<T>` — settle once,
+done. Some boundaries don't look like that: an `async *stream()` method
+(or anything typed `(...) => AsyncIterable<T>`) yields zero or more chunks
+over time and then completes or fails. `createProbedStreamMock` is the
+sibling factory for exactly that shape.
+
+```typescript
+import { createProbedStreamMock } from "@vnatures/test-kit-mock";
+
+interface Model {
+    stream(prompt: string): AsyncIterable<{ text: string }>;
+}
+
+const { adapter, probe } = createProbedStreamMock<Model>({
+    methods: ["stream"],
+});
+
+// Porcelain — replay a scripted sequence, then end normally.
+probe.on("stream").always().answer([{ text: "hel" }, { text: "lo" }]);
+
+for await (const chunk of adapter.stream("hi")) {
+    console.log(chunk.text); // "hel", then "lo"
+}
+```
+
+Rules mirror the Promise-based grammar but describe a sequence, not a
+single value:
+
+```typescript
+// Yield chunks, then end.
+probe.on("stream").once().answer(["a", "b"]);
+
+// Derive chunks from the call, optionally failing partway through — have
+// the source throw to simulate a mid-stream error (e.g. a provider
+// disconnect) after some chunks were already delivered.
+probe.on("stream").once().answerWith(async function* (call) {
+    yield `chunk-for-${call.args[0]}`;
+    throw new Error("connection dropped");
+});
+
+// Fail before any chunk is pushed.
+probe.on("stream").once().reject(new Error("unauthorized"));
+
+// Never close — consumption hangs (for timeout tests).
+probe.on("stream").always().park();
+```
+
+Plumbing works the same way, except the pending call exposes
+`push`/`end`/`error` instead of `answer`/`reject` — so a test can drive
+the consumer's `for await` one chunk at a time, on its own schedule:
+
+```typescript
+const pending = await probe.on("stream").expect.intercept();
+pending.push({ text: "first chunk" });
+// ...assert on side effects the consumer produced from the first chunk...
+pending.push({ text: "second chunk" });
+pending.end(); // or pending.error(new Error("..."))
+```
+
+Use `createProbedStreamMock` for the boundary itself; if the real
+dependency is a concrete class (not a plain interface) your SUT
+constructs via `new`, write a thin subclass that delegates to the
+mock's `adapter` — the same Goldilocks idea as injecting `Kysely`
+instead of wrapping it, just applied to a class-shaped seam. See the
+`component-testing` skill for a worked example against Strands'
+`Model.stream()`.
+
 ## Working with fake timers
 
 The harness auto-detects `vi.useFakeTimers()` and `jest.useFakeTimers()`
