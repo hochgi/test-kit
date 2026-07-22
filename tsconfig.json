@@ -11,6 +11,9 @@
     { "path": "./packages/redis" },
     { "path": "./packages/bull" },
     { "path": "./packages/s3" },
+    { "path": "./packages/sqs" },
+    { "path": "./packages/kafka" },
+    { "path": "./packages/mysql" },
     { "path": "./examples/grpc-client" }
   ]
 }

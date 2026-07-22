@@ -31,6 +31,15 @@ parameters:
   build_s3:
     type: boolean
     default: false
+  build_sqs:
+    type: boolean
+    default: false
+  build_kafka:
+    type: boolean
+    default: false
+  build_mysql:
+    type: boolean
+    default: false
 
 orbs:
   vn-ci: versatile/vn-ci@1
@@ -178,6 +187,51 @@ workflows:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>
           package_json_dir: "packages/s3"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
+  sqs:
+    when: <<pipeline.parameters.build_sqs>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/sqs"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
+  kafka:
+    when: <<pipeline.parameters.build_kafka>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/kafka"
+      - vn-ci/build-publish:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          requires:
+            - vn-ci/init
+          filters:
+            branches:
+              only: main
+  mysql:
+    when: <<pipeline.parameters.build_mysql>>
+    jobs:
+      - vn-ci/init:
+          context: base-context
+          is_default_branch: <<pipeline.git.branch.is_default>>
+          package_json_dir: "packages/mysql"
       - vn-ci/build-publish:
           context: base-context
           is_default_branch: <<pipeline.git.branch.is_default>>

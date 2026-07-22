@@ -94,6 +94,12 @@ const { adapter, probe, seed, reset, close } =
 - `reset({ keepRules? })` — drops user tables and re-runs `bootstrap`.
 - `close()` — disposes Kysely + PGlite. Handled automatically by
   `harness.close()` if attached.
+- `pglite` — the underlying `PgliteHandle` (see
+  `@vnatures/test-kit-pglite-driver`), shared with the probed Kysely.
+  Exposed so consumers can reach the SAME PGlite instance without
+  constructing a disconnected listener.
+- `notifications` — narrow LISTEN/NOTIFY façade over that same PGlite
+  instance (convenience alias for `db.pglite.notifications`).
 
 ## Programming queries
 
@@ -122,6 +128,42 @@ next.forward();
 `db.probe.queries` is a read-only array of every recorded
 `{ sql, parameters }` (consumed or not), useful for SQL-shape
 assertions.
+
+## LISTEN / NOTIFY on the same instance
+
+A `NOTIFY` issued through the probed Kysely cannot be observed on a
+separately created PGlite listener — that would be a *different*
+database. The probed pair exposes a notification façade backed by the
+SAME PGlite instance the adapter writes through, so post-commit
+delivery works exactly as in production:
+
+```typescript
+const db = await harness.attach(
+    createProbedKyselyAdapter<DB>({ harness, bootstrap }),
+);
+
+const received: string[] = [];
+const unlisten = await db.notifications.listen("work_ready", (payload) => {
+    received.push(payload);
+});
+
+// pg_notify inside a committed transaction — delivered post-commit.
+await sql`select pg_notify(${'work_ready'}, ${'hello'})`.execute(db.adapter);
+
+await flushAsync(); // PGlite delivers notifications on a later tick
+expect(received).toEqual(["hello"]);
+
+await unlisten();
+```
+
+Notes:
+
+- Use `pg_notify(channel, payload)` (the function form) when you need
+  bind parameters; PGlite 0.3.x rejects `NOTIFY` with bind params.
+- Notifications are delivered **after** the transaction commits. A
+  `pg_notify` inside a rolled-back transaction delivers nothing.
+- The probed SQL intercept still sees the `pg_notify` statement, so
+  `.filter` / `.expect.intercept` / `.always().reject` apply normally.
 
 ## PGlite extensions
 

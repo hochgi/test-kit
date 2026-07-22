@@ -110,6 +110,12 @@ Every intercepted call can be settled three ways:
     command throws `NotImplementedError`; tests must program an
     explicit `answer` or `reject`. This is by design — no silent
     partial fakes.
+  - `ListObjects`/`ListObjectsV2` honor real pagination: `MaxKeys`
+    (default 1000), `ContinuationToken` / `NextContinuationToken` (v2)
+    and `Marker` / `NextMarker` (v1), `StartAfter` (v2, fallback when no
+    `ContinuationToken`), `IsTruncated`, prefix filtering, `Delimiter` /
+    `CommonPrefixes` rollup, and stable UTF-8 byte lexicographic key
+    order across pages (matching S3's sort, not JavaScript's UTF-16).
   - `createProbedPresignerAdapter` always rejects on `forward` —
     generating a real signed URL needs real credentials. Tests must
     program an `answer`.

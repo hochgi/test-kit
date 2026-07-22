@@ -20,6 +20,9 @@ workflows:
             packages/redis/.* build_redis true
             packages/bull/.* build_bull true
             packages/s3/.* build_s3 true
+            packages/sqs/.* build_sqs true
+            packages/kafka/.* build_kafka true
+            packages/mysql/.* build_mysql true
             packages/pg-kysely/.* build_pg_kysely true
             packages/pg-knex/.* build_pg_knex true
             packages/pg-sequelize/.* build_pg_sequelize true

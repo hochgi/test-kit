@@ -17,6 +17,9 @@ Test-kit ships as a small family of packages:
 - `@vnatures/test-kit-redis`: cache adapter backed by a Redis-compatible fake.
 - `@vnatures/test-kit-bull`: Bull `Queue` adapter with an in-memory backing.
 - `@vnatures/test-kit-s3`: S3 and presigner adapters.
+- `@vnatures/test-kit-sqs`: SQS adapter with a functional in-memory backing.
+- `@vnatures/test-kit-kafka`: Kafka producer adapter with an in-memory topic log.
+- `@vnatures/test-kit-mysql`: real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam.
 
 ## Design Overview
 
@@ -1433,6 +1436,214 @@ Behavior:
   test answers or rejects them.
 - Selections do not implement `forward()`; the pending type is not
   `ForwardablePendingCall`.
+
+## SQS Adapter API
+
+Package: `@vnatures/test-kit-sqs`.
+
+```typescript
+export type SqsCall<TCommand = unknown> = {
+    readonly commandName: string;
+    readonly command: TCommand;
+    readonly input: unknown;
+};
+
+export interface SqsPendingCall<TCommand = unknown, TResult = unknown>
+    extends ForwardablePendingCall<SqsCall<TCommand>, TResult> {
+    readonly commandName: string;
+    readonly command: TCommand;
+    readonly input: unknown;
+}
+
+export type SqsCommandConstructor = new (...args: any[]) => {
+    readonly input: unknown;
+};
+
+export interface SqsProbe extends ForwardableProbe<SqsCall, SqsPendingCall> {
+    command<C extends SqsCommandConstructor>(
+        ctor: C,
+    ): ForwardableSelection<SqsCall<InstanceType<C>>, SqsPendingCall<InstanceType<C>>>;
+    command(name: string): ForwardableSelection<SqsCall, SqsPendingCall>;
+}
+
+export type ProbedSqsAdapter = ProbedAdapterWithLifecycle<SQSClient, SqsProbe> & {
+    readonly queueUrl: string;
+    readonly queueName: string;
+};
+
+export type CreateProbedSqsAdapterOptions = {
+    readonly harness: Harness;
+    readonly queueName?: string;            // default "test-queue"
+    readonly queueUrl?: string;             // default derived from queueName
+    readonly defaultVisibilityTimeoutSeconds?: number; // default 30
+    readonly defaultTimeout?: Duration;
+};
+
+export function createProbedSqsAdapter(options: CreateProbedSqsAdapterOptions): ProbedSqsAdapter;
+```
+
+Behavior:
+
+- The factory installs a default `probe.always().forward()` rule.
+- Supported commands: `SendMessageCommand`, `ReceiveMessageCommand`,
+  `DeleteMessageCommand`, `ChangeMessageVisibilityCommand`,
+  `GetQueueUrlCommand`, `CreateQueueCommand`. Any other command fails
+  loudly with the templated `unsupportedForward` error on `forward`.
+- The in-memory backing implements real standard-queue semantics:
+  visibility timeout (received message invisible until timeout, then
+  redelivered with incremented `ApproximateReceiveCount`), long-poll
+  receive (`WaitTimeSeconds` parks until a message arrives or the wait
+  elapses), `DeleteMessage` by current receipt handle (stale handle after
+  redelivery is a no-op), `ChangeMessageVisibility` (reschedules; `0` =
+  immediately visible), and `DelaySeconds` on send. FIFO is not
+  implemented.
+- Timing is fake-timer friendly: scheduling uses the ambient `setTimeout`
+  and deadlines use `harness.clock.now()`. Drive expiry with
+  `harness.clock.advance(...)` under fake timers.
+- `reset()` empties every queue and cancels pending timers.
+- `close()` disposes the backing.
+
+## Kafka Producer Adapter API
+
+Package: `@vnatures/test-kit-kafka`.
+
+```typescript
+export type KafkaMethod = 'send' | 'sendBatch' | 'connect' | 'disconnect';
+
+export interface KafkaProducer {
+    connect(): Promise<void>;
+    disconnect(): Promise<void>;
+    send(record: ProducerRecord): Promise<RecordMetadata[]>;
+    sendBatch(batch: ProducerBatch): Promise<RecordMetadata[]>;
+}
+
+export interface KafkaCall {
+    readonly method: KafkaMethod;
+    readonly topic: string | undefined;
+    readonly messages: ReadonlyArray<KafkaMessageInput> | undefined;
+    readonly args: ReadonlyArray<unknown>;
+}
+
+export interface KafkaPendingCall<TResult = unknown>
+    extends ForwardablePendingCall<KafkaCall, TResult> {
+    readonly method: KafkaMethod;
+    readonly topic: string | undefined;
+    readonly messages: ReadonlyArray<KafkaMessageInput> | undefined;
+    readonly args: ReadonlyArray<unknown>;
+}
+
+export interface KafkaProbe extends ForwardableProbe<KafkaCall, KafkaPendingCall> {
+    on(method: KafkaMethod): ForwardableSelection<KafkaCall, KafkaPendingCall>;
+    topic(name: string): ForwardableSelection<KafkaCall, KafkaPendingCall>;
+}
+
+export interface TopicLogEntry {
+    readonly topic: string;
+    readonly partition: number;
+    readonly offset: number;
+    readonly key: Buffer | null;
+    readonly value: Buffer | null;
+    readonly headers: Readonly<Record<string, Buffer | Buffer[]>>;
+    readonly timestamp: string;
+    readonly appendIndex: number;
+}
+
+export type ProbedKafkaProducer = ProbedAdapterWithLifecycle<KafkaProducer, KafkaProbe> & {
+    topicLog(topic: string): TopicLogEntry[];
+};
+
+export type CreateProbedKafkaProducerOptions = {
+    readonly harness: Harness;
+    readonly partitionsPerTopic?: number;  // default 4
+    readonly defaultTimeout?: Duration;
+};
+
+export function createProbedKafkaProducer(options: CreateProbedKafkaProducerOptions): ProbedKafkaProducer;
+
+export function brokerDownError(message?: string): Error;
+```
+
+Behavior:
+
+- The factory installs a default `probe.always().forward()` rule.
+- `send` / `sendBatch` append to an in-memory per-topic log; `connect` /
+  `disconnect` are no-ops that still go through the probe.
+- Partitioning matches kafkajs' default partitioner: explicit
+  `message.partition` wins (clamped), else keyed messages are
+  murmur2-hashed (same key ⇒ same partition ⇒ stable per-key ordering),
+  else partition 0.
+- Per-partition offsets are monotonic from 0.
+- No dedup: duplicate sends append (at-least-once is the consumer's
+  problem).
+- `topicLog(topic)` returns entries in global append order, each tagged
+  with `partition` and per-partition `offset`; bytes are normalized to
+  `Buffer` (or `null`).
+- `brokerDownError()` returns an `Error` with `name: 'KafkaJSBrokerNotFound'`
+  for simulating transport failures via `.reject(...)`.
+- `reset()` empties every topic log.
+- `close()` disposes the backing.
+
+## MySQL Adapter API
+
+Package: `@vnatures/test-kit-mysql`.
+
+A real MySQL 8 Testcontainer behind the `@vnatures/test-kit-sql` probe
+seam. Requires Docker; tests should use `describe.skipIf` when Docker is
+unavailable.
+
+```typescript
+export interface MysqlAdapter {
+    execute<T = unknown>(sql: string, params?: ReadonlyArray<unknown>): Promise<[T, unknown[]]>;
+    query<T = unknown>(sql: string, params?: ReadonlyArray<unknown>): Promise<[T, unknown[]]>;
+}
+
+export interface MaintenancePool {
+    execute<T = unknown>(sql: string, params?: ReadonlyArray<unknown>): Promise<[T, unknown[]]>;
+    query<T = unknown>(sql: string, params?: ReadonlyArray<unknown>): Promise<[T, unknown[]]>;
+}
+
+export interface MysqlContainerInfo {
+    readonly host: string;
+    readonly port: number;
+    readonly database: string;
+    readonly username: string;
+    readonly password: string;
+    readonly connectionUri: string;
+}
+
+export type ProbedMysqlAdapter = ProbedAdapterWithLifecycle<MysqlAdapter, QueryProbe> & {
+    seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
+    readonly container: MysqlContainerInfo;
+};
+
+export interface CreateProbedMysqlAdapterOptions {
+    readonly harness: Harness;
+    readonly bootstrap: (maintenance: MaintenancePool) => Promise<void>;
+    readonly image?: string;     // default "mysql:8.0"
+    readonly database?: string;  // default "testdb"
+    readonly username?: string;  // default "testuser"
+    readonly password?: string;  // default "testpass"
+    readonly defaultTimeout?: Duration;
+}
+
+export function createProbedMysqlAdapter(options: CreateProbedMysqlAdapterOptions): Promise<ProbedMysqlAdapter>;
+```
+
+Behavior:
+
+- The factory starts a MySQL 8 Testcontainer, creates two `mysql2/promise`
+  pools (application + maintenance), and wires the `SqlDriver` through
+  `createProbedSqlAdapter` from `@vnatures/test-kit-sql`.
+- The application pool routes `execute` / `query` through the probe; the
+  maintenance pool bypasses it for `bootstrap`, `seed`, and `reset`.
+- The probe surface is `QueryProbe` (same as pg-kysely / pg-knex /
+  pg-sequelize): `.sql(match)`, `.calls`, `.expect.*`, `.drain()`, with
+  the default `always().forward()` rule.
+- `reset()` truncates all user tables (`SET FOREIGN_KEY_CHECKS = 0`,
+  `TRUNCATE TABLE` per table from `information_schema`, re-enable FK
+  checks) and re-runs `bootstrap`.
+- `close()` closes both pools and stops the container.
+- `seed(table, rows)` batch-inserts via the maintenance pool.
 
 ## HTTP Client Adapter API (planned)
 

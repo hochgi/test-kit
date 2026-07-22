@@ -88,8 +88,10 @@ export class InMemoryS3Backing {
                 return this.handleDeleteMany(i);
 
             case 'ListObjectsCommand':
+                return this.handleList('ListObjectsCommand', i);
+
             case 'ListObjectsV2Command':
-                return this.handleList(i);
+                return this.handleList('ListObjectsV2Command', i);
 
             case 'CopyObjectCommand':
                 return this.handleCopy(i);
@@ -185,24 +187,140 @@ export class InMemoryS3Backing {
         return { Deleted: deleted };
     }
 
-    private handleList(input: Record<string, unknown>): Record<string, unknown> {
+    private handleList(commandName: 'ListObjectsCommand' | 'ListObjectsV2Command', input: Record<string, unknown>): Record<string, unknown> {
         const bucket = input.Bucket as string;
         const prefix = (input.Prefix as string | undefined) ?? '';
+        const delimiter = input.Delimiter as string | undefined;
         const idx = this.buckets.get(bucket);
-        const contents: Array<Record<string, unknown>> = [];
+
+        // Collect keys matching the prefix, in UTF-8 byte lexicographic order
+        // (S3 sorts by UTF-8 bytes, not UTF-16 code units).
+        const allKeys: string[] = [];
         if (idx) {
-            for (const [key, obj] of idx.objects) {
-                if (key.startsWith(prefix)) {
-                    contents.push({
-                        Key: key,
-                        Size: obj.body.byteLength,
-                        LastModified: obj.lastModified,
-                        ETag: makeEtag(key),
-                    });
-                }
+            for (const key of idx.objects.keys()) {
+                if (key.startsWith(prefix)) allKeys.push(key);
             }
         }
-        return { Contents: contents, KeyCount: contents.length, IsTruncated: false };
+        allKeys.sort(compareKeysUtf8);
+
+        const isV2 = commandName === 'ListObjectsV2Command';
+        const maxKeysRaw = input.MaxKeys as number | undefined;
+        const maxKeys = maxKeysRaw === undefined ? 1000 : Math.max(0, Math.floor(maxKeysRaw));
+
+        // Decode the continuation cursor. v2 uses ContinuationToken (opaque,
+        // base64-encoded); StartAfter is the fallback when no token is present
+        // (token takes precedence per AWS spec). v1 uses Marker (literal key).
+        const token = isV2 ? decodeCursor(input.ContinuationToken as string | undefined) : '';
+        const startAfter = isV2
+            ? (token || ((input.StartAfter as string | undefined) ?? ''))
+            : ((input.Marker as string | undefined) ?? '');
+
+        // Find the index of the first key strictly greater than the cursor
+        // (binary search, UTF-8 byte comparison to match the sort order).
+        let start = 0;
+        if (startAfter) {
+            let lo = 0;
+            let hi = allKeys.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (compareKeysUtf8(allKeys[mid], startAfter) <= 0) lo = mid + 1;
+                else hi = mid;
+            }
+            start = lo;
+        }
+
+        // ── No delimiter: flat key listing ─────────────────────────────
+        if (!delimiter) {
+            const slice = allKeys.slice(start, start + maxKeys);
+            // Only mark truncated / emit a token when the page actually
+            // contained keys (MaxKeys=0 → empty page, not truncated).
+            const truncated = slice.length > 0 && start + slice.length < allKeys.length;
+            const lastKey = slice.length > 0 ? slice[slice.length - 1] : startAfter;
+
+            const contents = slice.map((key) => this.shapeContent(idx!, key));
+            return this.shapeListResponse(isV2, contents, [], truncated, lastKey);
+        }
+
+        // ── With delimiter: Contents + CommonPrefixes rollup ───────────
+        // Keys whose post-Prefix remainder contains the delimiter roll up
+        // into a de-duped CommonPrefixes entry (prefix + text up to and
+        // including the first delimiter). Both Contents entries and common
+        // prefixes count toward MaxKeys.
+        const contents: Array<Record<string, unknown>> = [];
+        const commonPrefixes: string[] = [];
+        let processed = 0;
+        let lastProcessedKey = startAfter;
+        let truncated = false;
+
+        for (let i = start; i < allKeys.length; i += 1) {
+            const key = allKeys[i];
+            const remainder = key.slice(prefix.length);
+            const delimIdx = remainder.indexOf(delimiter);
+
+            if (delimIdx >= 0) {
+                const commonPrefix = prefix + remainder.slice(0, delimIdx + delimiter.length);
+                // Since keys are sorted, common prefixes are contiguous —
+                // only count a NEW common prefix.
+                if (commonPrefixes.length === 0 || commonPrefixes[commonPrefixes.length - 1] !== commonPrefix) {
+                    if (processed >= maxKeys) {
+                        truncated = true;
+                        break;
+                    }
+                    commonPrefixes.push(commonPrefix);
+                    processed += 1;
+                }
+            } else {
+                if (processed >= maxKeys) {
+                    truncated = true;
+                    break;
+                }
+                contents.push(this.shapeContent(idx!, key));
+                processed += 1;
+            }
+            lastProcessedKey = key;
+        }
+
+        // Only emit a token when the page actually contained results.
+        if (processed === 0) truncated = false;
+        const lastKey = processed > 0 ? lastProcessedKey : startAfter;
+
+        return this.shapeListResponse(isV2, contents, commonPrefixes, truncated, lastKey);
+    }
+
+    private shapeContent(idx: BucketIndex, key: string): Record<string, unknown> {
+        const obj = idx.objects.get(key)!;
+        return {
+            Key: key,
+            Size: obj.body.byteLength,
+            LastModified: obj.lastModified,
+            ETag: makeEtag(key),
+        };
+    }
+
+    private shapeListResponse(
+        isV2: boolean,
+        contents: Array<Record<string, unknown>>,
+        commonPrefixes: string[],
+        truncated: boolean,
+        lastKey: string,
+    ): Record<string, unknown> {
+        const cp = commonPrefixes.map((p) => ({ Prefix: p }));
+        if (isV2) {
+            return {
+                Contents: contents,
+                ...(cp.length > 0 ? { CommonPrefixes: cp } : {}),
+                KeyCount: contents.length + commonPrefixes.length,
+                IsTruncated: truncated,
+                ...(truncated ? { NextContinuationToken: encodeCursor(lastKey) } : {}),
+            };
+        }
+        // ListObjectsCommand (v1) uses Marker/NextMarker and omits KeyCount.
+        return {
+            Contents: contents,
+            ...(cp.length > 0 ? { CommonPrefixes: cp } : {}),
+            IsTruncated: truncated,
+            ...(truncated ? { NextMarker: lastKey } : {}),
+        };
     }
 
     private handleCopy(input: Record<string, unknown>): Record<string, unknown> {
@@ -313,4 +431,30 @@ function makeNoSuchKey(label: string): Error {
         message: `The specified key does not exist (${label}).`,
         $metadata: { httpStatusCode: 404 },
     });
+}
+
+/**
+ * Encode a ListObjectsV2 continuation cursor. The cursor is the last key
+ * returned on the current page, base64-encoded so it looks opaque to callers
+ * (matching AWS behavior) while remaining deterministically decodable here.
+ */
+/** Compare two S3 keys by UTF-8 byte order (S3's lexicographic order). */
+function compareKeysUtf8(a: string, b: string): number {
+    return Buffer.compare(Buffer.from(a, 'utf-8'), Buffer.from(b, 'utf-8'));
+}
+
+function encodeCursor(key: string): string {
+    return Buffer.from(key, 'utf-8').toString('base64');
+}
+
+/** Decode a continuation cursor back to the last-key boundary. */
+function decodeCursor(token: string | undefined): string {
+    if (!token) return '';
+    const buf = Buffer.from(token, 'base64');
+    // Node's base64 decoder is lenient and silently accepts malformed input,
+    // so a bogus ContinuationToken would otherwise resume from an arbitrary
+    // key. Validate with a round-trip: a token we issued re-encodes to itself;
+    // anything else is malformed, so restart from the beginning.
+    if (buf.toString('base64') !== token) return '';
+    return buf.toString('utf-8');
 }

@@ -1,7 +1,7 @@
 import { Kysely } from 'kysely';
 import { type Duration, type Harness, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
 import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type QueryProbe } from '@vnatures/test-kit-sql';
-import { createPgliteHandle } from '@vnatures/test-kit-pglite-driver';
+import { createPgliteHandle, type PgliteHandle } from '@vnatures/test-kit-pglite-driver';
 import { ProbedKyselyDialect, createKyselySqlDriver } from './driver.js';
 
 export interface CreateProbedKyselyAdapterOptions<DB> {
@@ -13,6 +13,18 @@ export interface CreateProbedKyselyAdapterOptions<DB> {
 
 export type ProbedKyselyAdapter<DB> = ProbedAdapterWithLifecycle<Kysely<DB>, QueryProbe> & {
     seed<Table extends keyof DB & string>(table: Table, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
+    /**
+     * The underlying PGlite lifecycle handle, shared with the probed Kysely.
+     * Exposed so consumers can reach the SAME PGlite instance — e.g. to run
+     * `LISTEN`/`NOTIFY` via {@link PgliteHandle.notifications} — without
+     * constructing a separate (and disconnected) listener.
+     */
+    readonly pglite: PgliteHandle;
+    /**
+     * Narrow LISTEN/NOTIFY façade over the same PGlite instance the probed
+     * Kysely writes through. Convenience alias for `pglite.notifications`.
+     */
+    readonly notifications: PgliteHandle['notifications'];
 };
 
 export async function createProbedKyselyAdapter<DB>(
@@ -72,6 +84,8 @@ export async function createProbedKyselyAdapter<DB>(
     return {
         adapter: kysely,
         probe: sqlAdapter.probe,
+        pglite: handle,
+        notifications: handle.notifications,
 
         async seed(table, rows) {
             await seedInto(maintenanceKysely, table as keyof DB & string, rows);

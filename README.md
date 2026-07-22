@@ -63,6 +63,9 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 | [`@vnatures/test-kit-redis`](packages/redis/README.md) | `createProbedCacheAdapter` — focused cache interface backed by `ioredis-mock`. |
 | [`@vnatures/test-kit-bull`](packages/bull/README.md) | `createProbedBullQueue` — drop-in probed Bull `Queue` with an in-memory backing. |
 | [`@vnatures/test-kit-s3`](packages/s3/README.md) | `createProbedS3Adapter` and `createProbedPresignerAdapter` with an in-memory backing. |
+| [`@vnatures/test-kit-sqs`](packages/sqs/README.md) | `createProbedSqsAdapter` — SQS `SQSClient` adapter with a functional in-memory backing (visibility timeout, long-poll, receipt-handle delete). |
+| [`@vnatures/test-kit-kafka`](packages/kafka/README.md) | `createProbedKafkaProducer` — kafkajs-shaped `Producer` adapter with an in-memory topic log (partitioning, per-partition offsets, byte-exact reads). |
+| [`@vnatures/test-kit-mysql`](packages/mysql/README.md) | `createProbedMysqlAdapter` — real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam (requires Docker). |
 
 The package family is intentionally small. Each domain adapter targets the
 "Goldilocks" boundary for its category — fat enough to skip noise (raw HTTP
