@@ -111,11 +111,13 @@ Every intercepted call can be settled three ways:
     explicit `answer` or `reject`. This is by design — no silent
     partial fakes.
   - `ListObjects`/`ListObjectsV2` honor real pagination: `MaxKeys`
-    (default 1000), `ContinuationToken` / `NextContinuationToken` (v2)
-    and `Marker` / `NextMarker` (v1), `StartAfter` (v2, fallback when no
-    `ContinuationToken`), `IsTruncated`, prefix filtering, `Delimiter` /
-    `CommonPrefixes` rollup, and stable UTF-8 byte lexicographic key
-    order across pages (matching S3's sort, not JavaScript's UTF-16).
+    (default **and hard cap** 1000 — values above 1000 are silently
+    clamped, matching real S3), `ContinuationToken` /
+    `NextContinuationToken` (v2) and `Marker` / `NextMarker` (v1),
+    `StartAfter` (v2, fallback when no `ContinuationToken`),
+    `IsTruncated`, prefix filtering, `Delimiter` / `CommonPrefixes`
+    rollup, and stable UTF-8 byte lexicographic key order across pages
+    (matching S3's sort, not JavaScript's UTF-16).
   - `createProbedPresignerAdapter` always rejects on `forward` —
     generating a real signed URL needs real credentials. Tests must
     program an `answer`.
@@ -173,7 +175,23 @@ Replaces the older `mock-aws-s3-v3` dependency. Highlights:
 - Bodies returned by `GetObject` are `Readable` streams with
   `transformToString` and `transformToByteArray` helpers, just like the
   real SDK.
+- **ETag** is the MD5 of the stored body, quoted
+  (`"${md5(body)}"`) — real AWS semantics for non-multipart objects.
+  Rewriting a key with different bytes yields a different ETag;
+  identical bytes under different keys share an ETag. Tagging does not
+  change the ETag. `CopyObject` reports the ETag of the copied body
+  (equals the source for a plain copy).
+- **Conditional requests** on `GetObject` / `HeadObject` / `PutObject`:
+  - `IfMatch` — 412 `PreconditionFailed` when the current ETag differs
+    (GET/HEAD/PUT compare-and-swap).
+  - `IfNoneMatch` — 304 `NotModified` on GET/HEAD when it matches;
+    `IfNoneMatch: '*'` on PUT is create-only (412 when the key exists).
+  Errors use `S3ServiceException` with the canonical `.name` and
+  `$metadata.httpStatusCode`, matching the `NoSuchKey` discrimination
+  pattern (`err.name === '…'` works cross-SDK-copy).
 - `NoSuchKey` is thrown using the SDK's own class for missing keys.
+- `VersionId` / object versioning is **not** modelled — the store is
+  last-write-wins per key.
 
 ## See also
 

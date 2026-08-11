@@ -81,9 +81,11 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     it('IsTruncated is true on non-final pages and carries NextContinuationToken', async () => {
         await seedKeys(5);
 
-        const page1 = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }),
-        )) as { Contents?: Array<{ Key: string }>; IsTruncated?: boolean; NextContinuationToken?: string };
+        const page1 = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }))) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+            NextContinuationToken?: string;
+        };
 
         expect(page1.IsTruncated).toBe(true);
         expect(page1.NextContinuationToken).toBeDefined();
@@ -134,6 +136,63 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
         expect(page1.KeyCount).toBe(1000);
     });
 
+    it('MaxKeys above 1000 is silently capped at 1000 (real S3 behaviour)', async () => {
+        await seedKeys(1500);
+
+        const page1 = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 5000 }))) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+            KeyCount?: number;
+            NextContinuationToken?: string;
+        };
+
+        // Must NOT return all 1500 in one page — that would hide a paging bug.
+        expect(page1.Contents).toHaveLength(1000);
+        expect(page1.KeyCount).toBe(1000);
+        expect(page1.IsTruncated).toBe(true);
+        expect(page1.NextContinuationToken).toBeDefined();
+
+        const page2 = (await s3.adapter.send(
+            new ListObjectsV2Command({
+                Bucket: BUCKET,
+                MaxKeys: 5000,
+                ContinuationToken: page1.NextContinuationToken,
+            }),
+        )) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+        };
+
+        expect(page2.Contents).toHaveLength(500);
+        expect(page2.IsTruncated).toBe(false);
+    });
+
+    it('paged walk with MaxKeys=5000 over 2500 keys yields every key exactly once', async () => {
+        await seedKeys(2500);
+
+        const { keys, pages } = await listAll(5000);
+
+        expect(pages).toBe(3); // capped at 1000 → 1000 + 1000 + 500
+        expect(keys).toHaveLength(2500);
+        expect(new Set(keys).size).toBe(2500);
+        const expected = Array.from({ length: 2500 }, (_, i) => `k/${String(i).padStart(6, '0')}`);
+        expect(keys).toEqual(expected);
+    });
+
+    it('non-finite MaxKeys (NaN) falls back to default 1000, not an empty/poisoned page', async () => {
+        await seedKeys(5);
+
+        const res = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: Number.NaN }))) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+            KeyCount?: number;
+        };
+
+        expect(res.IsTruncated).toBe(false);
+        expect(res.Contents).toHaveLength(5);
+        expect(res.KeyCount).toBe(5);
+    });
+
     it('prefix filtering is preserved across pages', async () => {
         // Two prefixes interleaved on disk; pagination must still return only
         // the matching prefix, in order, across the correct number of pages.
@@ -153,9 +212,10 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     it('continuation resumes after the exact key boundary (no overlap, no skip)', async () => {
         await seedKeys(4);
 
-        const page1 = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }),
-        )) as { Contents?: Array<{ Key: string }>; NextContinuationToken?: string };
+        const page1 = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }))) as {
+            Contents?: Array<{ Key: string }>;
+            NextContinuationToken?: string;
+        };
 
         const page2 = (await s3.adapter.send(
             new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2, ContinuationToken: page1.NextContinuationToken }),
@@ -168,9 +228,11 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     it('MaxKeys=0 returns an empty, non-truncated page with no token (M5)', async () => {
         await seedKeys(5);
 
-        const res = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 0 }),
-        )) as { Contents?: Array<{ Key: string }>; IsTruncated?: boolean; NextContinuationToken?: string };
+        const res = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 0 }))) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+            NextContinuationToken?: string;
+        };
 
         expect(res.Contents).toEqual([]);
         expect(res.IsTruncated).toBe(false);
@@ -183,9 +245,7 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
             await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: '' }));
         }
 
-        const res = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, Delimiter: '/' }),
-        )) as {
+        const res = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, Delimiter: '/' }))) as {
             Contents?: Array<{ Key: string }>;
             CommonPrefixes?: Array<{ Prefix: string }>;
             IsTruncated?: boolean;
@@ -222,7 +282,12 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
         expect(page1.NextContinuationToken).toBeDefined();
 
         const page2 = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, Delimiter: '/', MaxKeys: 1, ContinuationToken: page1.NextContinuationToken }),
+            new ListObjectsV2Command({
+                Bucket: BUCKET,
+                Delimiter: '/',
+                MaxKeys: 1,
+                ContinuationToken: page1.NextContinuationToken,
+            }),
         )) as {
             CommonPrefixes?: Array<{ Prefix: string }>;
             Contents?: Array<{ Key: string }>;
@@ -238,9 +303,10 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     it('StartAfter begins listing after the specified key (M7)', async () => {
         await seedKeys(5);
 
-        const res = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, StartAfter: 'k/000002' }),
-        )) as { Contents?: Array<{ Key: string }>; IsTruncated?: boolean };
+        const res = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, StartAfter: 'k/000002' }))) as {
+            Contents?: Array<{ Key: string }>;
+            IsTruncated?: boolean;
+        };
 
         // StartAfter 'k/000002' → keys strictly after k/000002.
         expect(res.Contents?.map((c) => c.Key)).toEqual(['k/000003', 'k/000004']);
@@ -251,9 +317,9 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
         await seedKeys(5);
 
         // First page to get a token.
-        const page1 = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }),
-        )) as { NextContinuationToken?: string };
+        const page1 = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 2 }))) as {
+            NextContinuationToken?: string;
+        };
 
         // Both StartAfter and ContinuationToken: token wins.
         // Token resumes after k/000001 (page1 ended there), NOT after k/000004.
@@ -280,9 +346,9 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
         await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: keyLow, Body: '' }));
         await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: keyHigh, Body: '' }));
 
-        const res = (await s3.adapter.send(
-            new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 1000 }),
-        )) as { Contents?: Array<{ Key: string }> };
+        const res = (await s3.adapter.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 1000 }))) as {
+            Contents?: Array<{ Key: string }>;
+        };
 
         expect(res.Contents!.map((c) => c.Key)).toEqual([keyLow, keyHigh]);
     });

@@ -16,12 +16,23 @@
  * Body content for GetObject is returned as a Node `Readable` stream
  * (the AWS SDK's wire shape) plus `transformToString`/`transformToByteArray`
  * helpers to mirror the SDK response shape.
+ *
+ * ETag is the MD5 of the stored body (quoted), matching real AWS semantics
+ * for non-multipart objects. Get/Head/Put honour IfMatch / IfNoneMatch
+ * preconditions (412 PreconditionFailed / 304 NotModified). List MaxKeys
+ * is silently capped at 1000.
  */
+import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { NoSuchKey } from '@aws-sdk/client-s3';
+import { NoSuchKey, S3ServiceException } from '@aws-sdk/client-s3';
 
 export interface S3StoredObject {
     readonly body: Buffer;
+    /**
+     * Cached MD5 ETag of `body` (quoted). Always set on objects written via
+     * Put/Copy; optional on the `put()` fixture helper (derived from body).
+     */
+    readonly etag?: string;
     readonly contentType?: string;
     readonly metadata?: Readonly<Record<string, string>>;
     readonly tagSet?: ReadonlyArray<{ Key: string; Value: string }>;
@@ -52,7 +63,12 @@ export class InMemoryS3Backing {
     /** Pre-seed an object directly (test fixture helper). */
     put(bucket: string, key: string, obj: S3StoredObject): void {
         const idx = this.ensureBucket(bucket);
-        idx.objects.set(key, obj);
+        idx.objects.set(key, { ...obj, etag: obj.etag ?? makeEtag(obj.body) });
+    }
+
+    /** Whether a bucket exists in the store (including empty ones). */
+    hasBucket(bucket: string): boolean {
+        return this.buckets.has(bucket);
     }
 
     has(bucket: string, key: string): boolean {
@@ -124,14 +140,37 @@ export class InMemoryS3Backing {
     private handlePut(input: Record<string, unknown>): Record<string, unknown> {
         const bucket = input.Bucket as string;
         const key = input.Key as string;
-        const idx = this.ensureBucket(bucket);
-        idx.objects.set(key, {
-            body: toBuffer(input.Body),
+        // Evaluate preconditions against the current store *before* mutating
+        // buckets — a failing IfMatch must not leave an empty BucketIndex behind.
+        const existing = this.buckets.get(bucket)?.objects.get(key);
+        const ifNoneMatch = input.IfNoneMatch as string | undefined;
+        const ifMatch = input.IfMatch as string | undefined;
+
+        // Create-only: IfNoneMatch: '*' rejects when the key already exists.
+        if (ifNoneMatch !== undefined && isStar(ifNoneMatch) && existing) {
+            throw makePreconditionFailed(
+                `At least one of the pre-conditions you specified did not hold (${bucket}/${key}).`,
+            );
+        }
+        // Compare-and-swap: IfMatch rejects when missing or ETag differs.
+        if (ifMatch !== undefined) {
+            if (!existing || !etagMatches(objectEtag(existing), ifMatch)) {
+                throw makePreconditionFailed(
+                    `At least one of the pre-conditions you specified did not hold (${bucket}/${key}).`,
+                );
+            }
+        }
+
+        const body = toBuffer(input.Body);
+        const etag = makeEtag(body);
+        this.ensureBucket(bucket).objects.set(key, {
+            body,
+            etag,
             contentType: input.ContentType as string | undefined,
             metadata: input.Metadata as Record<string, string> | undefined,
             lastModified: new Date(),
         });
-        return { ETag: makeEtag(key) };
+        return { ETag: etag };
     }
 
     private handleGet(input: Record<string, unknown>): Record<string, unknown> {
@@ -141,13 +180,14 @@ export class InMemoryS3Backing {
         if (!obj) {
             throw makeNoSuchKey(`${bucket}/${key}`);
         }
+        enforceReadPreconditions(objectEtag(obj), input, `${bucket}/${key}`);
         return {
             Body: makeBodyStream(obj.body),
             ContentType: obj.contentType,
             ContentLength: obj.body.byteLength,
             Metadata: obj.metadata,
             LastModified: obj.lastModified,
-            ETag: makeEtag(key),
+            ETag: objectEtag(obj),
         };
     }
 
@@ -158,12 +198,13 @@ export class InMemoryS3Backing {
         if (!obj) {
             throw makeNoSuchKey(`${bucket}/${key}`);
         }
+        enforceReadPreconditions(objectEtag(obj), input, `${bucket}/${key}`);
         return {
             ContentType: obj.contentType,
             ContentLength: obj.body.byteLength,
             Metadata: obj.metadata,
             LastModified: obj.lastModified,
-            ETag: makeEtag(key),
+            ETag: objectEtag(obj),
         };
     }
 
@@ -187,7 +228,10 @@ export class InMemoryS3Backing {
         return { Deleted: deleted };
     }
 
-    private handleList(commandName: 'ListObjectsCommand' | 'ListObjectsV2Command', input: Record<string, unknown>): Record<string, unknown> {
+    private handleList(
+        commandName: 'ListObjectsCommand' | 'ListObjectsV2Command',
+        input: Record<string, unknown>,
+    ): Record<string, unknown> {
         const bucket = input.Bucket as string;
         const prefix = (input.Prefix as string | undefined) ?? '';
         const delimiter = input.Delimiter as string | undefined;
@@ -205,14 +249,22 @@ export class InMemoryS3Backing {
 
         const isV2 = commandName === 'ListObjectsV2Command';
         const maxKeysRaw = input.MaxKeys as number | undefined;
-        const maxKeys = maxKeysRaw === undefined ? 1000 : Math.max(0, Math.floor(maxKeysRaw));
+        // Real S3 silently caps MaxKeys at 1000. Honouring larger values would
+        // let a paging bug (never following NextContinuationToken) pass in tests
+        // and drop objects past the first page in production. Non-finite values
+        // (NaN, Infinity) fall back to the default — Math.floor(NaN) would
+        // otherwise poison both the flat and delimiter branches differently.
+        const maxKeys =
+            maxKeysRaw === undefined || !Number.isFinite(maxKeysRaw)
+                ? 1000
+                : Math.min(1000, Math.max(0, Math.floor(maxKeysRaw)));
 
         // Decode the continuation cursor. v2 uses ContinuationToken (opaque,
         // base64-encoded); StartAfter is the fallback when no token is present
         // (token takes precedence per AWS spec). v1 uses Marker (literal key).
         const token = isV2 ? decodeCursor(input.ContinuationToken as string | undefined) : '';
         const startAfter = isV2
-            ? (token || ((input.StartAfter as string | undefined) ?? ''))
+            ? token || ((input.StartAfter as string | undefined) ?? '')
             : ((input.Marker as string | undefined) ?? '');
 
         // Find the index of the first key strictly greater than the cursor
@@ -293,7 +345,7 @@ export class InMemoryS3Backing {
             Key: key,
             Size: obj.body.byteLength,
             LastModified: obj.lastModified,
-            ETag: makeEtag(key),
+            ETag: objectEtag(obj),
         };
     }
 
@@ -344,7 +396,8 @@ export class InMemoryS3Backing {
         });
         return {
             CopyObjectResult: {
-                ETag: makeEtag(destKey),
+                // Plain copy: ETag of the body written (equals the source's).
+                ETag: objectEtag(srcObj),
                 LastModified: new Date(),
             },
         };
@@ -388,7 +441,8 @@ export class InMemoryS3Backing {
 
 function toBuffer(value: unknown): Buffer {
     if (value === undefined || value === null) return Buffer.alloc(0);
-    if (Buffer.isBuffer(value)) return value;
+    // Clone so later caller mutations cannot change stored bytes / ETag.
+    if (Buffer.isBuffer(value)) return Buffer.from(value);
     if (typeof value === 'string') return Buffer.from(value);
     if (value instanceof Uint8Array) return Buffer.from(value);
     if (typeof value === 'object' && 'pipe' in (value as object)) {
@@ -415,12 +469,18 @@ function makeBodyStream(buf: Buffer): Readable & {
     return stream;
 }
 
-function makeEtag(key: string): string {
-    // AWS-style ETag is the MD5 hash of the body in quotes. We use a stable
-    // string derived from the key so tests can assert on it without computing
-    // hashes. This deviates from real AWS behavior but matches tests that
-    // typically don't pin ETag values.
-    return `"${Buffer.from(key).toString('hex').slice(0, 32)}"`;
+/**
+ * AWS-style ETag for a non-multipart object: MD5 of the body, quoted.
+ * Identical bytes under different keys therefore share an ETag — that is
+ * correct AWS behaviour and what consumers must tolerate.
+ */
+function makeEtag(body: Buffer): string {
+    return `"${createHash('md5').update(body).digest('hex')}"`;
+}
+
+/** Prefer the cached etag; fall back to hashing for fixtures that omitted it. */
+function objectEtag(obj: S3StoredObject): string {
+    return obj.etag ?? makeEtag(obj.body);
 }
 
 function makeNoSuchKey(label: string): Error {
@@ -431,6 +491,61 @@ function makeNoSuchKey(label: string): Error {
         message: `The specified key does not exist (${label}).`,
         $metadata: { httpStatusCode: 404 },
     });
+}
+
+function makePreconditionFailed(message: string): Error {
+    // SDK does not export a dedicated PreconditionFailed class; use the base
+    // S3ServiceException with the canonical name + status so consumers can
+    // discriminate via `err.name === 'PreconditionFailed'` / httpStatusCode.
+    return new S3ServiceException({
+        name: 'PreconditionFailed',
+        $fault: 'client',
+        message,
+        $metadata: { httpStatusCode: 412 },
+    });
+}
+
+function makeNotModified(message: string): Error {
+    return new S3ServiceException({
+        name: 'NotModified',
+        $fault: 'client',
+        message,
+        $metadata: { httpStatusCode: 304 },
+    });
+}
+
+/** Strip surrounding quotes for comparison; AWS accepts both forms. */
+function normalizeEtag(etag: string): string {
+    const trimmed = etag.trim();
+    if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        return trimmed.slice(1, -1);
+    }
+    return trimmed;
+}
+
+function isStar(header: string): boolean {
+    return header.trim() === '*';
+}
+
+/**
+ * True when `header` is `*` or a comma-separated ETag list containing `current`.
+ */
+function etagMatches(current: string, header: string): boolean {
+    if (isStar(header)) return true;
+    const currentNorm = normalizeEtag(current);
+    return header.split(',').some((part) => normalizeEtag(part) === currentNorm);
+}
+
+function enforceReadPreconditions(etag: string, input: Record<string, unknown>, label: string): void {
+    const ifMatch = input.IfMatch as string | undefined;
+    const ifNoneMatch = input.IfNoneMatch as string | undefined;
+
+    if (ifMatch !== undefined && !etagMatches(etag, ifMatch)) {
+        throw makePreconditionFailed(`At least one of the pre-conditions you specified did not hold (${label}).`);
+    }
+    if (ifNoneMatch !== undefined && etagMatches(etag, ifNoneMatch)) {
+        throw makeNotModified(`Not Modified (${label})`);
+    }
 }
 
 /**
