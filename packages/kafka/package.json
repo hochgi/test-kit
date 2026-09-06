@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-kafka",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Probe-driven Kafka producer adapter with an in-memory topic log",
   "license": "UNLICENSED",
   "repository": {
