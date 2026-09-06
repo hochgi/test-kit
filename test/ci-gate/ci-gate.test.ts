@@ -32,6 +32,7 @@ const workspaceWideSamplePaths = [
     'docs/internal/spec/ci-gate.md',
     '.circleci/ci.yml',
     '.circleci/config.yml',
+    '.cursor/commands/spec-to-ship.md',
 ] as const;
 
 const publishedPackages = [
