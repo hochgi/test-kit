@@ -10,10 +10,11 @@
     "typecheck": "tsc --build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "npm run lint --workspaces --if-present",
-    "format": "prettier --write \"packages/**/*.ts\" \"examples/**/*.ts\"",
+    "lint": "eslint test vitest.workspace.ts --max-warnings 0 && npm run lint --workspaces --if-present",
+    "format": "prettier --write \"packages/**/*.ts\" \"examples/**/*.ts\" \"test/**/*.ts\" \"vitest.workspace.ts\"",
     "clean": "tsc --build --clean && rimraf packages/*/dist",
-    "format:check": "prettier --check \"packages/**/*.ts\" \"examples/**/*.ts\""
+    "format:check": "prettier --check \"packages/**/*.ts\" \"examples/**/*.ts\" \"test/**/*.ts\" \"vitest.workspace.ts\"",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
   },
   "engines": {
     "node": ">=20"

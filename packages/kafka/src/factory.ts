@@ -55,10 +55,10 @@ export function createProbedKafkaProducer(options: CreateProbedKafkaProducerOpti
 
     const probe = root.probe as unknown as KafkaProbe;
     (probe as { on: (method: KafkaMethod) => unknown }).on = (method: KafkaMethod) =>
-        root.probe.filter((call) => call.method === method, `method === '${method}'`) as unknown as ForwardableSelection<
-            KafkaCall,
-            KafkaPendingCall
-        >;
+        root.probe.filter(
+            (call) => call.method === method,
+            `method === '${method}'`,
+        ) as unknown as ForwardableSelection<KafkaCall, KafkaPendingCall>;
     (probe as { topic: (name: string) => unknown }).topic = (name: string) =>
         root.probe.filter(
             (call) => call.method === 'send' && call.topic === name,

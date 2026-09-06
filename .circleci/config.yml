@@ -26,6 +26,14 @@ workflows:
             packages/pg-kysely/.* build_pg_kysely true
             packages/pg-knex/.* build_pg_knex true
             packages/pg-sequelize/.* build_pg_sequelize true
+            package\.json build_workspace true
+            tsconfig\.json build_workspace true
+            tsconfig\.base\.json build_workspace true
+            \.eslintrc\.json build_workspace true
+            vitest\.workspace\.ts build_workspace true
+            docs/.* build_workspace true
+            \.circleci/.* build_workspace true
+            examples/grpc-client/.* build_grpc_client true
 
   backup:
     jobs:

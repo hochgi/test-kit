@@ -65,17 +65,12 @@ describe('createProbedKyselyAdapter — notifications', () => {
             received.push(payload);
         });
         try {
-            await db.adapter
-                .insertInto('notes')
-                .values({ body: 'hello' })
-                .execute();
+            await db.adapter.insertInto('notes').values({ body: 'hello' }).execute();
 
-            await db.adapter
-                .transaction()
-                .execute(async (trx) => {
-                    await trx.insertInto('notes').values({ body: 'inside-tx' }).execute();
-                    await sql`select pg_notify(${'work_ready'}, ${'commit-payload'})`.execute(trx);
-                });
+            await db.adapter.transaction().execute(async (trx) => {
+                await trx.insertInto('notes').values({ body: 'inside-tx' }).execute();
+                await sql`select pg_notify(${'work_ready'}, ${'commit-payload'})`.execute(trx);
+            });
 
             // PGlite delivers notifications asynchronously; give it a tick.
             await waitForDeliveries();
@@ -92,13 +87,11 @@ describe('createProbedKyselyAdapter — notifications', () => {
         });
         try {
             await expect(
-                db.adapter
-                    .transaction()
-                    .execute(async (trx) => {
-                        await trx.insertInto('notes').values({ body: 'will-rollback' }).execute();
-                        await sql`select pg_notify(${'work_ready'}, ${'rollback-payload'})`.execute(trx);
-                        throw new Error('force-rollback');
-                    }),
+                db.adapter.transaction().execute(async (trx) => {
+                    await trx.insertInto('notes').values({ body: 'will-rollback' }).execute();
+                    await sql`select pg_notify(${'work_ready'}, ${'rollback-payload'})`.execute(trx);
+                    throw new Error('force-rollback');
+                }),
             ).rejects.toThrow('force-rollback');
 
             await waitForDeliveries();

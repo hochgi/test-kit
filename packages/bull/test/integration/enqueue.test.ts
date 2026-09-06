@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHarness, milliseconds, seconds, viFakeClock, type Harness } from '@vnatures/test-kit';
-import {
-    createProbedBullQueue,
-    maxRetriesPerRequestError,
-    type ProbedBullQueue,
-} from '@vnatures/test-kit-bull';
+import { createProbedBullQueue, maxRetriesPerRequestError, type ProbedBullQueue } from '@vnatures/test-kit-bull';
 
 describe('createProbedBullQueue', () => {
     let harness: Harness;
@@ -72,9 +68,7 @@ describe('createProbedBullQueue', () => {
             vi.useFakeTimers();
             const clockHarness = createHarness({ clock: viFakeClock() });
             try {
-                const clockQueue = clockHarness.attach(
-                    createProbedBullQueue({ harness: clockHarness, name: 'timed' }),
-                );
+                const clockQueue = clockHarness.attach(createProbedBullQueue({ harness: clockHarness, name: 'timed' }));
 
                 const pendingPromise = clockQueue.probe.on('add').expect.intercept();
                 const addPromise = clockQueue.adapter.add({ siteId: 99 });
@@ -117,10 +111,10 @@ describe('createProbedBullQueue', () => {
             await vi.waitFor(() => expect(completed).toHaveBeenCalledTimes(1));
 
             expect(handler).toHaveBeenCalledWith(expect.objectContaining({ data: { siteId: 5 } }));
-            expect(completed).toHaveBeenCalledWith(
-                expect.objectContaining({ id: job.id, state: 'completed' }),
-                { ok: true, siteId: 5 },
-            );
+            expect(completed).toHaveBeenCalledWith(expect.objectContaining({ id: job.id, state: 'completed' }), {
+                ok: true,
+                siteId: 5,
+            });
         });
 
         it('emits failed when the processor throws', async () => {
@@ -154,8 +148,12 @@ describe('createProbedBullQueue', () => {
                 expect(exportHandler).toHaveBeenCalledTimes(1);
                 expect(reportHandler).toHaveBeenCalledTimes(1);
             });
-            expect(exportHandler).toHaveBeenCalledWith(expect.objectContaining({ name: 'export', data: { siteId: 1 } }));
-            expect(reportHandler).toHaveBeenCalledWith(expect.objectContaining({ name: 'report', data: { siteId: 2 } }));
+            expect(exportHandler).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'export', data: { siteId: 1 } }),
+            );
+            expect(reportHandler).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'report', data: { siteId: 2 } }),
+            );
         });
 
         it('leaves a named job waiting when no matching processor is registered', async () => {

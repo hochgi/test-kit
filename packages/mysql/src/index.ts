@@ -1,6 +1,4 @@
-export {
-    createProbedMysqlAdapter,
-} from './factory.js';
+export { createProbedMysqlAdapter } from './factory.js';
 export type {
     CreateProbedMysqlAdapterOptions,
     MysqlAdapter,

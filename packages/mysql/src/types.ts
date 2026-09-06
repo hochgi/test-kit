@@ -1,8 +1,4 @@
-import type {
-    Duration,
-    Harness,
-    ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+import type { Duration, Harness, ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
 import type { QueryProbe } from '@vnatures/test-kit-sql';
 
 /**

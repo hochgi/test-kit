@@ -161,16 +161,12 @@ function toBuffer(v: Buffer | string | null | undefined): Buffer | null {
 function toHeaderValue(v: HeaderValue): Buffer | Buffer[] {
     if (v === undefined) return Buffer.alloc(0);
     if (Array.isArray(v)) {
-        return v
-            .map((el) => toBuffer(el))
-            .filter((b): b is Buffer => b !== null);
+        return v.map((el) => toBuffer(el)).filter((b): b is Buffer => b !== null);
     }
     return toBuffer(v) ?? Buffer.alloc(0);
 }
 
-function normalizeHeaders(
-    headers: HeadersInput | undefined,
-): Readonly<Record<string, Buffer | Buffer[]>> {
+function normalizeHeaders(headers: HeadersInput | undefined): Readonly<Record<string, Buffer | Buffer[]>> {
     if (!headers) return {};
     const out: Record<string, Buffer | Buffer[]> = {};
     for (const [k, v] of Object.entries(headers)) {

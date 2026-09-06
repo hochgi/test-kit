@@ -45,14 +45,21 @@ describe('createProbedSqsAdapter', () => {
     });
 
     async function send(body: string): Promise<string> {
-        const res = (await sqs.adapter.send(
-            new SendMessageCommand({ QueueUrl: sqs.queueUrl, MessageBody: body }),
-        )) as { MessageId: string };
+        const res = (await sqs.adapter.send(new SendMessageCommand({ QueueUrl: sqs.queueUrl, MessageBody: body }))) as {
+            MessageId: string;
+        };
         return res.MessageId;
     }
 
     async function receive(opts?: { max?: number; wait?: number; visibilityTimeout?: number }): Promise<
-        | { Messages?: Array<{ MessageId: string; ReceiptHandle: string; Body: string; Attributes?: Record<string, string> }> }
+        | {
+              Messages?: Array<{
+                  MessageId: string;
+                  ReceiptHandle: string;
+                  Body: string;
+                  Attributes?: Record<string, string>;
+              }>;
+          }
         | undefined
     > {
         return sqs.adapter.send(
@@ -155,9 +162,7 @@ describe('createProbedSqsAdapter', () => {
             await receive({ max: 1 });
 
             // Deleting with the stale handle is a no-op: message still present.
-            await sqs.adapter.send(
-                new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: staleHandle }),
-            );
+            await sqs.adapter.send(new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: staleHandle }));
             await harness.clock.advance(seconds(31));
             const third = await receive({ max: 1 });
             expect(third?.Messages).toHaveLength(1);
@@ -165,9 +170,7 @@ describe('createProbedSqsAdapter', () => {
             // Deleting with the CURRENT handle (from the most recent receive)
             // removes it for good.
             const currentHandle = third!.Messages![0].ReceiptHandle;
-            await sqs.adapter.send(
-                new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: currentHandle }),
-            );
+            await sqs.adapter.send(new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: currentHandle }));
             await harness.clock.advance(seconds(31));
             const fourth = await receive({ max: 1 });
             expect(fourth?.Messages).toBeUndefined();

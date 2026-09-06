@@ -1,12 +1,7 @@
 import { createPool, type Pool as Mysql2Pool } from 'mysql2/promise';
 import { MySqlContainer } from '@testcontainers/mysql';
 import { type ProbeRoot } from '@vnatures/test-kit';
-import {
-    createProbedSqlAdapter,
-    type QueryCall,
-    type QueryPendingCall,
-    type SqlDriver,
-} from '@vnatures/test-kit-sql';
+import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type SqlDriver } from '@vnatures/test-kit-sql';
 import type {
     CreateProbedMysqlAdapterOptions,
     MaintenancePool,
@@ -20,9 +15,7 @@ interface MysqlQueryCall extends QueryCall {
     readonly protocol: 'execute' | 'query';
 }
 
-export async function createProbedMysqlAdapter(
-    options: CreateProbedMysqlAdapterOptions,
-): Promise<ProbedMysqlAdapter> {
+export async function createProbedMysqlAdapter(options: CreateProbedMysqlAdapterOptions): Promise<ProbedMysqlAdapter> {
     // ── Start the container ────────────────────────────────────────────
     const database = options.database ?? 'testdb';
     const username = options.username ?? 'testuser';
@@ -228,9 +221,7 @@ async function seedInto(
 
     const placeholders = columns.map(() => '?').join(', ');
     const columnList = columns.map((c) => `\`${c}\``).join(', ');
-    const valueGroups = rows
-        .map(() => `(${placeholders})`)
-        .join(', ');
+    const valueGroups = rows.map(() => `(${placeholders})`).join(', ');
 
     const params: unknown[] = [];
     for (const row of rows) {
@@ -240,10 +231,7 @@ async function seedInto(
     }
 
     // Table name is trusted (from test code), not user input.
-    await maintenance.query(
-        `INSERT INTO \`${table}\` (${columnList}) VALUES ${valueGroups}`,
-        params,
-    );
+    await maintenance.query(`INSERT INTO \`${table}\` (${columnList}) VALUES ${valueGroups}`, params);
 }
 
 function serializeValue(value: unknown): unknown {

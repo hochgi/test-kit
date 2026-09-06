@@ -1,8 +1,4 @@
-import type {
-    ForwardablePendingCall,
-    ForwardableProbe,
-    ForwardableSelection,
-} from '@vnatures/test-kit';
+import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
 import type { SQSClient } from '@aws-sdk/client-sqs';
 
 // ── SQS client probe ───────────────────────────────────────────────────────
@@ -19,8 +15,10 @@ export interface SqsCall<TCommand = unknown> {
     readonly input: unknown;
 }
 
-export interface SqsPendingCall<TCommand = unknown, TResult = unknown>
-    extends ForwardablePendingCall<SqsCall<TCommand>, TResult> {
+export interface SqsPendingCall<TCommand = unknown, TResult = unknown> extends ForwardablePendingCall<
+    SqsCall<TCommand>,
+    TResult
+> {
     readonly commandName: string;
     readonly command: TCommand;
     readonly input: unknown;

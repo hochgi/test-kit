@@ -5,4 +5,5 @@ node_modules
 
 # Keep v1 source backups outside of git
 .v1-backup/
-.claude/
+.claude/settings.local.json
+.claude/worktrees/

@@ -89,7 +89,8 @@ export class InMemorySqsBacking {
 
     constructor(clock: Clock, initialQueue?: { name: string; url: string; defaultVisibilityTimeoutSeconds?: number }) {
         this.clock = clock;
-        if (initialQueue) this.ensureQueue(initialQueue.url, initialQueue.name, initialQueue.defaultVisibilityTimeoutSeconds);
+        if (initialQueue)
+            this.ensureQueue(initialQueue.url, initialQueue.name, initialQueue.defaultVisibilityTimeoutSeconds);
     }
 
     /** Wipe every queue's messages and cancel pending timers. */
@@ -197,7 +198,9 @@ export class InMemorySqsBacking {
         return {
             MessageId: messageId,
             MD5OfMessageBody: md5ish(body),
-            ...(Object.keys(messageAttributes).length > 0 ? { MD5OfMessageAttributes: md5ish(JSON.stringify(messageAttributes)) } : {}),
+            ...(Object.keys(messageAttributes).length > 0
+                ? { MD5OfMessageAttributes: md5ish(JSON.stringify(messageAttributes)) }
+                : {}),
         };
     }
 
@@ -314,11 +317,7 @@ export class InMemorySqsBacking {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private ensureQueue(
-        url: string,
-        name?: string,
-        defaultVisibilityTimeoutSeconds?: number,
-    ): SqsQueue {
+    private ensureQueue(url: string, name?: string, defaultVisibilityTimeoutSeconds?: number): SqsQueue {
         let q = this.queues.get(url);
         if (!q) {
             q = {
@@ -384,7 +383,8 @@ export class InMemorySqsBacking {
         const allAttrs: Record<string, string> = {
             ApproximateReceiveCount: String(msg.receiveCount),
             SentTimestamp: String(Math.floor(msg.sentAt)),
-            ApproximateFirstReceiveTimestamp: msg.firstReceiveAt !== undefined ? String(Math.floor(msg.firstReceiveAt)) : '',
+            ApproximateFirstReceiveTimestamp:
+                msg.firstReceiveAt !== undefined ? String(Math.floor(msg.firstReceiveAt)) : '',
         };
         const attrs = filterAttributes(allAttrs, attributeNames);
 
@@ -447,9 +447,12 @@ export class InMemorySqsBacking {
             parked.settled = true;
             const picked = this.takeAvailable(q, parked.maxNumberOfMessages, parked.visibilityTimeoutSeconds);
             parked.resolve({
-                Messages: picked.length > 0
-                    ? picked.map((m) => this.shapeReceivedMessage(m, parked.attributeNames, parked.messageAttributeNames))
-                    : undefined,
+                Messages:
+                    picked.length > 0
+                        ? picked.map((m) =>
+                              this.shapeReceivedMessage(m, parked.attributeNames, parked.messageAttributeNames),
+                          )
+                        : undefined,
             });
         }
     }

@@ -72,10 +72,7 @@ export function createProbedBullQueue<TData = unknown>(
     const name = options.name ?? 'test-queue';
     const backing = options.backing ?? new InMemoryBullQueue<TData>(name);
 
-    const root: ProbeRoot<BullQueueCall, BullQueuePendingCall> = createProbeRoot<
-        BullQueueCall,
-        BullQueuePendingCall
-    >({
+    const root: ProbeRoot<BullQueueCall, BullQueuePendingCall> = createProbeRoot<BullQueueCall, BullQueuePendingCall>({
         harness: options.harness,
         defaultTimeout: options.defaultTimeout,
         forwardable: true,
@@ -105,16 +102,12 @@ export function createProbedBullQueue<TData = unknown>(
         // @nestjs/bull read it, so the drop-in adapter must expose it too.
         name,
 
-        add(
-            nameOrData: string | TData,
-            dataOrOpts?: TData | AddOptions,
-            maybeOpts?: AddOptions,
-        ): Promise<unknown> {
+        add(nameOrData: string | TData, dataOrOpts?: TData | AddOptions, maybeOpts?: AddOptions): Promise<unknown> {
             const args =
                 typeof nameOrData === 'string'
                     ? maybeOpts !== undefined
-                      ? [nameOrData, dataOrOpts, maybeOpts]
-                      : [nameOrData, dataOrOpts]
+                        ? [nameOrData, dataOrOpts, maybeOpts]
+                        : [nameOrData, dataOrOpts]
                     : dataOrOpts !== undefined
                       ? [nameOrData, dataOrOpts]
                       : [nameOrData];
@@ -198,10 +191,7 @@ export function createProbedBullQueue<TData = unknown>(
     };
 }
 
-function mergeJobOptions(
-    defaults: AddOptions | undefined,
-    overrides: AddOptions | undefined,
-): AddOptions | undefined {
+function mergeJobOptions(defaults: AddOptions | undefined, overrides: AddOptions | undefined): AddOptions | undefined {
     if (!defaults && !overrides) return undefined;
     return { ...defaults, ...overrides };
 }

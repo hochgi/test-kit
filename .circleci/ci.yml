@@ -40,9 +40,55 @@ parameters:
   build_mysql:
     type: boolean
     default: false
+  build_workspace:
+    type: boolean
+    default: false
+  build_grpc_client:
+    type: boolean
+    default: false
 
 orbs:
   vn-ci: versatile/vn-ci@1
+  node: circleci/node@7.2.1
+
+jobs:
+  workspace-check:
+    executor:
+      name: vn-ci/machine
+      docker_layer_caching: false
+    resource_class: large.gen2
+    steps:
+      - checkout
+      - node/install
+      - node/install-packages
+      - run:
+          name: Root check
+          command: npm run check
+
+  grpc-client-check:
+    executor:
+      name: vn-ci/machine
+      docker_layer_caching: false
+    resource_class: large.gen2
+    steps:
+      - checkout
+      - node/install
+      - node/install-packages
+      - run:
+          name: Build core (grpc-client has no pretest; tests import @vnatures/test-kit from dist)
+          command: npm run build --workspace=@vnatures/test-kit
+      - run:
+          name: Lint grpc-client
+          command: npm run lint
+          working_directory: examples/grpc-client
+      - run:
+          name: Typecheck grpc-client
+          command: npm run typecheck
+          working_directory: examples/grpc-client
+      - run:
+          name: Test grpc-client
+          command: npm run test
+          working_directory: examples/grpc-client
 
 workflows:
   core:
@@ -225,6 +271,16 @@ workflows:
           filters:
             branches:
               only: main
+  workspace:
+    when: <<pipeline.parameters.build_workspace>>
+    jobs:
+      - workspace-check:
+          context: base-context
+  grpc-client:
+    when: <<pipeline.parameters.build_grpc_client>>
+    jobs:
+      - grpc-client-check:
+          context: base-context
   mysql:
     when: <<pipeline.parameters.build_mysql>>
     jobs:
