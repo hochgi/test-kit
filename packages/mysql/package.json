@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-mysql",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Probe-driven MySQL adapter backed by a real MySQL 8 Testcontainer",
   "license": "UNLICENSED",
   "repository": {
