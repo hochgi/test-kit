@@ -31,9 +31,9 @@ You are **read-only**. You find and rank; the orchestrator fixes.
    read like the rest of the family, or like a new dialect?
 
 3. **Docs match code.** If a public surface moved, the package README and
-   `docs/api-surface.md` must move with it, in the same change. This repo has 41
-   known doc defects (RD-24142) precisely because that step gets skipped —
-   do not add the 42nd.
+   `docs/api-surface.md` must move with it, in the same change. RD-24142
+   reconciled published docs with `packages/*/src` because documenting APIs
+   that do not exist was the common failure mode — do not reintroduce it.
 
 4. **Blast radius.** A change in `packages/core` reaches all twelve dependants.
    A change to a shared seam (`packages/sql/src/driver.ts`) reaches the whole SQL

@@ -34,7 +34,7 @@ For organizational planning, suggested order:
 
 ### Mock package (probed interfaces)
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | `createProbePair<T>()` | `createProbedMock<T>({ methods: [...] })` |
 | `{ fake, probe }` | `{ adapter, probe }` |
@@ -54,7 +54,7 @@ For organizational planning, suggested order:
 
 ### DB package (probed Kysely / Knex / Sequelize)
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | `createProbedTestDb<DB>({ bootstrap })` | `createProbedKyselyAdapter<DB>({ bootstrap })` (and equivalents for knex/sequelize) |
 | `testDb.db` | `db.adapter` |
@@ -71,7 +71,7 @@ For organizational planning, suggested order:
 
 ### Cache package (probed Redis)
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | `createProbedCache(...)` | `createProbedCacheAdapter(...)` |
 | `cache.fake` | `cache.adapter` |
@@ -81,7 +81,7 @@ For organizational planning, suggested order:
 
 ### S3 package
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | `createProbedS3(...)` | `createProbedS3Adapter(...)` |
 | `s3.client` | `s3.adapter` |
@@ -93,14 +93,14 @@ For organizational planning, suggested order:
 
 ### Time
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | Raw `number` for timeouts (`timeoutMs`) | `Duration` via `seconds(...)` / `milliseconds(...)` |
 | `jest.advanceTimersByTime(ms)` | `await harness.clock.advance(ms(...))` (recommended; jest direct still works) |
 
 ### Lifecycle
 
-| v1 | v2 |
+| pre-OSS | v1.0.0 |
 | --- | --- |
 | Per-adapter `await testDb.close()` in `afterAll` | `await harness.close()` cascades to all attached adapters |
 | Per-adapter `await testDb.reset()` in `beforeEach` | `await harness.reset()` cascades; also clears probe rules + call history |

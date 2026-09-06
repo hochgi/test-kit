@@ -1,7 +1,7 @@
 /**
  * Type-level tests for CheckedMethods<T, M>.
  *
- * Per docs/v2-api-surface.md §"Mock Adapter API":
+ * Per docs/api-surface.md §"Mock Adapter API":
  *   The branded error type fires when M contains any sync method name from T,
  *   producing a TypeScript diagnostic that names the offending method and
  *   prescribes the fix (use the real implementation in tests).

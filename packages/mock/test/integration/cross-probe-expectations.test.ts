@@ -1,8 +1,8 @@
 /**
  * Phase 2 tests for harness.expect.sequence and harness.expect.allOf.
  *
- * Per docs/v2-concepts.md §"Cross-Probe Expectations" and
- * docs/v2-api-surface.md §"HarnessExpectations":
+ * Per docs/concepts.md §"Cross-Probe Expectations" and
+ * docs/api-surface.md §"HarnessExpectations":
  *   - sequence(steps, { within }) — strict order; fails on out-of-order
  *   - allOf(steps, { within })    — any order; fails on missing
  *   - observation(selection)      — wraps a step as observation-only

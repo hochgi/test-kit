@@ -83,9 +83,9 @@ Resolve behavioural questions with the ladder before considering a question:
 Record the rung each decision came from. **Never ask about mechanism** — naming,
 decomposition, file layout are yours.
 
-> **Docs are not yet trustworthy.** `docs/` carries 41 known defects until
-> RD-24142 lands. Where a doc and the code disagree, **the code wins** — and note
-> the discrepancy so it can be folded into that ticket.
+> **Docs follow the code.** RD-24142 reconciled published docs with
+> `packages/*/src`. Where a doc and the code disagree, **the code wins** — and
+> note the discrepancy.
 
 ## Phase 2 — Red (agent: `test-author`, skill: `write-failing-tests`)
 

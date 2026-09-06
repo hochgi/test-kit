@@ -29,7 +29,8 @@ what the spec delta says, and does it leave every other behaviour intact?*
    every test passes.
 3. **Docs match code.** If the change alters a public surface, the package README
    and `docs/api-surface.md` must move with it. Documenting an API that does not
-   exist is the single most common defect in this repo (41 of them, RD-24142).
+   exist is the single most common defect in this repo (RD-24142 reconciled
+   published docs with `packages/*/src`).
 4. **Regressions.** Enumerate behavioural deltas versus the base branch — "this
    used to do X, now it does Y" — without judging which is correct. Do not run
    tests or linters for this; do not flag pre-existing issues or suggest drive-by

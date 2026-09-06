@@ -1,7 +1,7 @@
 /**
  * Translated from v1 packages/s3/test/probed-s3-client.test.ts to v2 grammar.
  *
- * Exercises createProbedS3Adapter against mock-aws-s3-v3: round-trip put/get,
+ * Exercises createProbedS3Adapter against the in-memory backing: round-trip put/get,
  * call recording, default forward, command() typed sugar, once().answer for
  * stubbing one command, always().answerWith for dynamic permanent answers,
  * always().reject, expect.intercept with forward/reject/answer, unsupported-
@@ -55,7 +55,7 @@ describe('createProbedS3Adapter', () => {
     });
 
     describe('default forward rule', () => {
-        it('round-trips PutObject -> GetObject through mock-aws-s3-v3 disk', async () => {
+        it('round-trips PutObject -> GetObject through the in-memory backing', async () => {
             await s3.adapter.send(
                 new PutObjectCommand({
                     Bucket: BUCKET,
@@ -79,7 +79,7 @@ describe('createProbedS3Adapter', () => {
             expect(s3.probe.calls[1].commandName).toBe('GetObjectCommand');
         });
 
-        it('HeadObject against a missing key surfaces NoSuchKey from mock-aws-s3-v3', async () => {
+        it('HeadObject against a missing key surfaces NoSuchKey from the in-memory backing', async () => {
             await expect(s3.adapter.send(new HeadObjectCommand({ Bucket: BUCKET, Key: 'nope' }))).rejects.toMatchObject(
                 { name: 'NoSuchKey' },
             );

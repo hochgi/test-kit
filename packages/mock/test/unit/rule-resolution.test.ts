@@ -1,7 +1,7 @@
 /**
  * Phase 2 tests for the four-tier rule resolution model.
  *
- * Per docs/v2-concepts.md §"Rule Resolution":
+ * Per docs/concepts.md §"Rule Resolution":
  *   Tier 1a — observers (notify-only, FIFO)
  *   Tier 1b — capturing waiters (intercept, FIFO)
  *   Tier 2  — one-shot rules (single global FIFO queue)

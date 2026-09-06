@@ -86,7 +86,7 @@ The harness:
 
 - shares a single `defaultTimeout` and `Clock` across every attached probe;
 - closes attached `ProbedResource`s in LIFO order on `close()`;
-- exposes `harness.expect.sequence([...])` and `harness.expect.unordered([...])`
+- exposes `harness.expect.sequence([...])` and `harness.expect.allOf([...])`
   for asserting orderings across probes (see
   [`docs/api-surface.md`](../../docs/api-surface.md#harnessexpectations)).
 

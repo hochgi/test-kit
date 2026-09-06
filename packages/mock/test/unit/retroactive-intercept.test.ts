@@ -1,7 +1,7 @@
 /**
  * Phase 2 tests for the retroactive intercept eligibility table (G4).
  *
- * Per docs/v2-api-surface.md §"intercept" — Eligibility table:
+ * Per docs/api-surface.md §"intercept" — Eligibility table:
  *
  *   | Prior state of the matching call               | Retroactive? |
  *   | ----------------------------------------------- | ------------ |

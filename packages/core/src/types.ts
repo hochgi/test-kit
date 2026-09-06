@@ -1,7 +1,7 @@
 /**
  * Public + internal type surface for the v2 core engine.
  *
- * Exported types appear in the public API per docs/v2-api-surface.md.
+ * Exported types appear in the public API per docs/api-surface.md.
  * Internal types (FilterChain, ProbeState, CallRecord, RuleEntry, etc.)
  * are exported because domain packages need them to construct probes
  * via `createProbeRoot`. Users should not import these directly.

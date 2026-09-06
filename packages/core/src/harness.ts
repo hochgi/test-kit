@@ -2,7 +2,7 @@
  * Harness lifecycle owner: attach/reset/close + cross-probe expectations
  * (sequence, allOf, observation).
  *
- * Per docs/v2-tech-design.md §"Harness Implementation".
+ * Per docs/internal/tech-design.md §"Harness Implementation".
  */
 import type { Duration } from './duration.js';
 import { milliseconds, seconds } from './duration.js';

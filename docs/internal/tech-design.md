@@ -41,15 +41,13 @@ positions:
    Distribution."
 4. **Test runner for the kit's own tests** — Vitest. See "Testing
    Strategy."
-5. **`@vnatures/test-kit-pglite-driver` published vs. private** — private
-   (workspace-internal). Revisit only if a community ORM package
-   wants to reuse it.
+5. **`@vnatures/test-kit-pglite-driver` published vs. private** — published.
+   Community ORM packages can reuse `createPgliteHandle`. Direct
+   consumption is still uncommon; pg-* factories are the usual entry.
 6. **Error class hierarchy** — plain `Error` and `RangeError` only.
    No `TestKitError` base class. Diagnostic information comes from
    the message string, not the type. See "Error Handling."
-7. **Package naming** — deferred to release decision. The
-   implementation uses `@vnatures/test-kit-*` as a placeholder; renaming is a
-   global find-and-replace at release time, not a code change.
+7. **Package naming** — shipped as `@vnatures/test-kit-*` at 1.x.
 
 ## Internal Storage Model
 
@@ -1052,7 +1050,7 @@ export function createProbedCacheAdapter(
 
 ### `@vnatures/test-kit-s3`
 
-S3Client adapter wraps `mock-aws-s3`. The S3 client's `send(command)`
+S3Client adapter uses an in-memory backing. The S3 client's `send(command)`
 method is intercepted: each command's class name and input are
 captured into an `S3Call`, then routed through `root.recordCall`.
 
@@ -1060,8 +1058,7 @@ captured into an `S3Call`, then routed through `root.recordCall`.
 export function createProbedS3Adapter(
     options: CreateProbedS3AdapterOptions,
 ): ProbedS3Adapter {
-    const localDir = options.localDirectory ?? mkdtempSync('test-kit-s3-');
-    const backing = createMockS3Backing(localDir, options.bucket);
+    const backing = new InMemoryS3Backing([options.bucket]);
 
     const root = createProbeRoot<S3Call, S3PendingCall>({
         // ... similar to cache
@@ -1079,7 +1076,7 @@ export function createProbedS3Adapter(
                 command,
                 input: (command as any).input,
             };
-            return root.recordCall(call, () => backing.execute(command));
+            return root.recordCall(call, () => backing.dispatch(call.commandName, call.input));
         },
         // ... other S3Client methods that delegate to send
     } as unknown as S3Client;
@@ -1088,12 +1085,10 @@ export function createProbedS3Adapter(
         adapter: client,
         probe: enrichWithS3Sugar(root.probe),
         bucket: options.bucket,
-        localDirectory: localDir,
-        reset: () => backing.empty(),
+        localDirectory: '',
+        reset: () => backing.reset(),
         close: async () => {
-            if (!options.localDirectory) {
-                rmSync(localDir, { recursive: true, force: true });
-            }
+            backing.clear();
             root.dispose();
         },
     };
@@ -1518,12 +1513,12 @@ regressions. The test/types/ folder doesn't need a separate runner.
 Each package ships:
 
 - **`test/unit/`** — narrow unit tests on internal modules. Mostly
-  for `core` and `pglite-driver`; smaller packages get fewer.
+  for `core`; smaller packages get fewer.
 - **`test/integration/`** — end-to-end tests that exercise the
   package's public API against a realistic SUT. For domain packages,
   these double as worked examples in the docs.
 - **`test/types/`** — type-level tests using `expect-type` (chosen
-  over `tsd` because it integrates with Vitest natively). The TS POC
+  because it integrates with Vitest natively; `tsd` is not in the lockfile). The TS POC
   lives here for `core`.
 
 ### Cross-package integration tests
@@ -1575,7 +1570,7 @@ export default defineConfig({
     lib: {
       entry: fileURLToPath(new URL('src/index.ts', import.meta.url)),
       formats: ['es', 'cjs'],
-      fileName: (fmt) => `index.${fmt === 'es' ? 'mjs' : 'cjs'}`,
+      fileName: (fmt) => `index.${fmt === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
       // Mark workspace siblings, peer deps, and node built-ins as external.
@@ -1603,25 +1598,30 @@ export default defineConfig({
 ```json
 {
   "name": "@vnatures/test-kit",
-  "version": "2.0.0",
+  "version": "1.0.6",
   "type": "module",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": ["dist"],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
     "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "clean": "rimraf dist"
+    "lint": "eslint . --max-warnings 0"
   }
 }
 ```
@@ -1663,7 +1663,12 @@ Root `tsconfig.json`:
     { "path": "./packages/pg-knex" },
     { "path": "./packages/pg-sequelize" },
     { "path": "./packages/redis" },
-    { "path": "./packages/s3" }
+    { "path": "./packages/bull" },
+    { "path": "./packages/s3" },
+    { "path": "./packages/sqs" },
+    { "path": "./packages/kafka" },
+    { "path": "./packages/mysql" },
+    { "path": "./examples/grpc-client" }
   ]
 }
 ```
@@ -1681,37 +1686,39 @@ Root scripts:
   "private": true,
   "workspaces": ["packages/*", "examples/*"],
   "scripts": {
-    "build": "tsc --build && npm run build --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc --build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint packages",
-    "format": "prettier --write \"packages/**/*.ts\"",
+    "lint": "eslint test vitest.workspace.ts --max-warnings 0 && npm run lint --workspaces --if-present",
+    "format": "prettier --write \"packages/**/*.ts\" \"examples/**/*.ts\" \"test/**/*.ts\" \"vitest.workspace.ts\"",
+    "format:check": "prettier --check \"packages/**/*.ts\" \"examples/**/*.ts\" \"test/**/*.ts\" \"vitest.workspace.ts\"",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test",
     "clean": "tsc --build --clean && rimraf packages/*/dist"
   },
   "devDependencies": {
-    "vite": "^5.x",
-    "vite-plugin-dts": "^4.x",
-    "vitest": "^2.x",
-    "expect-type": "^1.x",
-    "@sinonjs/fake-timers": "^11.x",
-    "typescript": "^5.x",
-    "eslint": "^9.x",
-    "prettier": "^3.x",
-    "rimraf": "^5.x"
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^3.0.0",
+    "expect-type": "^1.1.0",
+    "@sinonjs/fake-timers": "^11.0.0",
+    "typescript": "^5.8.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.4.0",
+    "rimraf": "^5.0.0"
   }
 }
 ```
 
-`tsc --build` runs first to validate the TypeScript project graph
-(catches cross-package type errors fast, without bundling). Then each
+`typecheck` (`tsc --build`) validates the TypeScript project graph
+(catches cross-package type errors fast, without bundling). Each
 package's `vite build` produces the actual `dist/` output. The two
-passes are complementary: `tsc` for type-check, Vite for emit.
+passes are complementary: `tsc` for type-check, Vite for emit. Packages
+other than `pglite-driver` also declare `pretest` so a workspace
+`npm test` rebuilds `dist/` first.
 
-Hoisting Vite, Vitest, and the TS toolchain to the workspace root
-keeps each package's `package.json` small (just the package's
-production deps and peer deps). Per-package `package.json` lists no
-`devDependencies` for tooling that's already at the root.
+Packages declare their own `devDependencies` for vite, vitest, eslint,
+and typescript (the root also lists the toolchain for workspace-wide
+scripts).
 
 ## Implementation Order
 
@@ -1745,13 +1752,13 @@ built on top:
     Kysely pattern with ORM-specific driver implementations.
 12. **`examples/grpc-client/`**: worked extender example. Compiles
     and tests in CI as a smoke test for the extender contract.
-13. **Documentation polish**: ensure every `v2-*.md` example actually
-    compiles against the real implementation. Move any working
-    examples into `examples/` if not already there.
+13. **Documentation polish**: ensure every `concepts.md` /
+    `api-surface.md` / `architecture.md` / `internal/tech-design.md`
+    example actually compiles against the real implementation. Move any
+    working examples into `examples/` if not already there.
 
 Each step is independently testable. Steps 1-4 form the core engine
-and can ship as `@vnatures/test-kit` v2.0.0-alpha.1 to validate the API
-shape with internal users before the domain packages stabilize.
+and shipped as `@vnatures/test-kit` 1.x.
 
 ## Performance Considerations
 

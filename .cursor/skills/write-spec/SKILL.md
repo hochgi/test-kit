@@ -84,9 +84,9 @@ mechanically.
 - **This is a published library.** A requirement that changes a public surface is
   a semver event. Say so in the delta.
 
-> **The docs are not yet trustworthy.** 41 known defects until RD-24142 lands, 21
-> of them actively misleading — READMEs documenting APIs that do not exist. Where
-> a doc and the code disagree, **the code wins**, and you note the discrepancy.
+> **Docs follow the code.** RD-24142 reconciled published docs with
+> `packages/*/src`. Where a doc and the code still disagree, **the code wins**,
+> and you note the discrepancy.
 
 ## Handoff
 

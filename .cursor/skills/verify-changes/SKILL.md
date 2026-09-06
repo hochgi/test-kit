@@ -71,7 +71,8 @@ Surface the delta without judging which side is correct.
 ## 4. Confirm the docs moved with the code
 
 A changed public surface with an unchanged README or `docs/api-surface.md` is a
-defect, not a follow-up. This repo has 41 of them (RD-24142) from exactly this.
+defect, not a follow-up. RD-24142 reconciled published docs with
+`packages/*/src` after that exact failure mode.
 
 ## Kick-back map
 

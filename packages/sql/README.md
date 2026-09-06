@@ -15,13 +15,13 @@ package matching your database boundary:
 ## What lives here
 
 - `QueryCall`, `QueryPendingCall`, `QueryProbe` — the call shape and
-  probe API every SQL adapter exposes. `QueryCall` carries the parsed
-  SQL fragment, parameters, and raw statement.
-- `SqlDriver` — the seam each per-ORM package implements (one or two
-  hooks: `executeForward(query)` and an optional `formatBoundParameters`).
-- `createProbedSqlAdapter(driver, harness, options)` — the helper that
+  probe API every SQL adapter exposes. `QueryCall` is `{ sql, parameters }`
+  only. `QueryProbe` adds `sql(...)` sugar and inherits `calls`.
+- `SqlDriver` — the seam each per-ORM package implements:
+  `onApplicationQuery`, `reset`, and `close`.
+- `createProbedSqlAdapter({ harness, driver })` — the helper that
   constructs the probe, installs the default forward rule, and returns
-  the probed pair.
+  `{ probe, probeRoot }`.
 
 The package has zero dependencies on PGlite or any specific ORM. It is
 pure types and glue.
@@ -39,4 +39,3 @@ To add a new SQL ORM (e.g. Drizzle, TypeORM):
 See [`docs/architecture.md`](../../docs/architecture.md) and
 [`docs/internal/tech-design.md`](../../docs/internal/tech-design.md) for
 the full contributor walkthrough.
-

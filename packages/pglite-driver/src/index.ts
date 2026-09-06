@@ -1,9 +1,9 @@
 /**
  * Internal PGlite lifecycle helper shared across pg-* packages.
  *
- * Per docs/v2-architecture.md §"@test-kit/pglite-driver — shared PGlite
- * lifecycle helper". This package is `private: true` (workspace-internal);
- * pg-* packages depend on it directly.
+ * Per docs/architecture.md §"@vnatures/test-kit-pglite-driver — shared PGlite
+ * lifecycle helper". This package is published; pg-* packages depend on it
+ * directly.
  */
 import { PGlite, type PGliteOptions } from '@electric-sql/pglite';
 

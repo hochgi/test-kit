@@ -1,7 +1,7 @@
 /**
  * Phase 2 tests for expect.none semantics.
  *
- * Per docs/v2-concepts.md §"expect.none Does Not Advance Virtual Time":
+ * Per docs/concepts.md §"expect.none Does Not Advance Virtual Time":
  *   expect.none({ within }) waits real wall-clock time and does NOT
  *   advance virtual time as a side effect. An SUT-internal setTimeout
  *   scheduled with fake timers will NOT fire because of expect.none.

@@ -35,10 +35,9 @@ rung below has no answer:
 in, internal types are all yours to decide. Record the rung each decision came
 from, so a later packet can tell research from a guess.
 
-> **The docs currently lie.** `docs/` carries 41 known defects (21 actively
-> misleading) until RD-24142 lands: package READMEs document APIs that do not
-> exist and signatures that will not compile. Where a doc and the code disagree,
-> **the code wins**, and you note the discrepancy in your handoff.
+> **Docs follow the code.** RD-24142 reconciled published docs with
+> `packages/*/src`. Where a doc and the code still disagree, **the code wins**,
+> and you note the discrepancy in your handoff.
 
 ## Inputs
 

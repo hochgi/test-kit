@@ -2,7 +2,7 @@
  * Core probe engine: createProbeRoot factory + four-tier rule resolution +
  * Selection / Probe / RuleBuilder / Expectations factories on top.
  *
- * Per docs/v2-tech-design.md §"Internal Storage Model" and
+ * Per docs/internal/tech-design.md §"Internal Storage Model" and
  * §"recordCall flow", §"applyRule", §"Retroactive intercept".
  *
  * Tier 1a — observers (notify-only, FIFO).

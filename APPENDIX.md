@@ -12,7 +12,7 @@ This document captures the research and evaluation performed before building `@v
 
 | Library | PGlite adapter | Notes |
 | :--- | :--- | :--- |
-| **Kysely** | `kysely-pglite` (1st-party example) | Native dialect. Used by `test-kit-pg-kysely`. |
+| **Kysely** | `kysely-pglite-dialect` (1st-party example) | Native dialect. Used by `test-kit-pg-kysely`. |
 | **Knex** | `knex-pglite` (community) | Drop-in client. Used by `test-kit-pg-knex`. |
 | **Drizzle** | `drizzle-orm/pglite` (1st-party) | Native driver included in Drizzle core. |
 | **TypeORM** | `typeorm-pglite` (community) | Community adapter; wraps PGlite as a TypeORM driver. |

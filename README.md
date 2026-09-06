@@ -57,6 +57,7 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 | [`@vnatures/test-kit`](packages/core/README.md) | Core probe engine: `Harness`, `Clock`, `Selection`, `RuleBuilder`, `Expectations`, shared types. Domain packages are built on top of this. |
 | [`@vnatures/test-kit-mock`](packages/mock/README.md) | `createProbedMock<T>` for faking any TypeScript interface (REST clients, internal service interfaces, …). |
 | [`@vnatures/test-kit-sql`](packages/sql/README.md) | Shared `QueryProbe` surface and `SqlDriver` seam consumed by every `pg-*` adapter. |
+| [`@vnatures/test-kit-pglite-driver`](packages/pglite-driver/README.md) | Shared PGlite lifecycle helper (`createPgliteHandle`) used by the `pg-*` packages. Published. |
 | [`@vnatures/test-kit-pg-kysely`](packages/pg-kysely/README.md) | `createProbedKyselyAdapter` — Kysely-typed PGlite-backed adapter. |
 | [`@vnatures/test-kit-pg-knex`](packages/pg-knex/README.md) | `createProbedKnexAdapter` — Knex-typed PGlite-backed adapter. |
 | [`@vnatures/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | `createProbedSequelizeAdapter` — Sequelize v6 PGlite-backed adapter. |

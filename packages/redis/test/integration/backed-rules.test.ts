@@ -5,7 +5,7 @@
  *   - clearRules() preserves harness-installed defaults.
  *   - clearRules({ includeDefaults: true }) removes them too.
  *
- * Per docs/v2-concepts.md §"Default Rules" and §"Rule Resolution".
+ * Per docs/concepts.md §"Default Rules" and §"Rule Resolution".
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { milliseconds, createHarness, type Harness } from '@vnatures/test-kit';

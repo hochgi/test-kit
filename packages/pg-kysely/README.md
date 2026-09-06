@@ -86,7 +86,7 @@ const { adapter, probe, seed, reset, close } =
 ```
 
 - `adapter: Kysely<DB>` — inject this into production wiring.
-- `probe: QueryProbe` — `.queries`, `.on(...)`, `.expect.*`,
+- `probe: QueryProbe` — `.calls`, `.sql(...)`, `.expect.*`,
   `.drain()`. Default rule is `always().forward()` so bootstrap, seed,
   and reset run transparently.
 - `seed(table, rows)` — typed insert helper; objects/arrays are
@@ -125,9 +125,9 @@ expect(next.sql).toContain("SELECT");
 next.forward();
 ```
 
-`db.probe.queries` is a read-only array of every recorded
+`db.probe.calls` is a read-only array of every recorded
 `{ sql, parameters }` (consumed or not), useful for SQL-shape
-assertions.
+assertions. Use `db.probe.sql(...)` to filter by statement text.
 
 ## LISTEN / NOTIFY on the same instance
 

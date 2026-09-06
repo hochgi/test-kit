@@ -21,20 +21,25 @@ contracts (function signatures, file layouts, etc.) are described in
        ├── @vnatures/test-kit-sql                 ← shared QueryProbe + SqlDriver seam
        │      ▲
        │      │
-       │      ├── @vnatures/test-kit-pglite-driver  (internal helper, shared by pg-*)
+       │      ├── @vnatures/test-kit-pglite-driver  (published helper, shared by pg-*)
        │      │       ▲
        │      │       │
        │      │       ├── @vnatures/test-kit-pg-kysely     ← KyselySqlDriver + Kysely typing
        │      │       ├── @vnatures/test-kit-pg-knex       ← KnexSqlDriver + Knex typing
        │      │       └── @vnatures/test-kit-pg-sequelize  ← SequelizeSqlDriver + Sequelize typing
        │      │
+       │      ├── @vnatures/test-kit-mysql         ← real MySQL 8 via Testcontainers
        │      └── (future SQL ORMs slot in here, e.g. drizzle, typeorm)
        │
        ├── @vnatures/test-kit-redis               ← createProbedCacheAdapter
        │
        ├── @vnatures/test-kit-bull                ← createProbedBullQueue
        │
-       └── @vnatures/test-kit-s3                  ← createProbedS3Adapter + createProbedPresignerAdapter
+       ├── @vnatures/test-kit-s3                  ← createProbedS3Adapter + createProbedPresignerAdapter
+       │
+       ├── @vnatures/test-kit-sqs                 ← createProbedSqsAdapter
+       │
+       └── @vnatures/test-kit-kafka               ← createProbedKafkaProducer
 ```
 
 Two horizontal layers:
@@ -42,7 +47,11 @@ Two horizontal layers:
 - **Core layer** (`@vnatures/test-kit`): generic probe engine, lifecycle,
   time abstraction, shared types. No domain knowledge.
 - **Domain layer** (`@vnatures/test-kit-mock`, `@vnatures/test-kit-sql`,
-  `@vnatures/test-kit-redis`, `@vnatures/test-kit-bull`, `@vnatures/test-kit-s3`): per-boundary
+  `@vnatures/test-kit-pglite-driver`, `@vnatures/test-kit-pg-kysely`,
+  `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`,
+  `@vnatures/test-kit-mysql`, `@vnatures/test-kit-redis`,
+  `@vnatures/test-kit-bull`, `@vnatures/test-kit-s3`,
+  `@vnatures/test-kit-sqs`, `@vnatures/test-kit-kafka`): per-boundary
   packages that wrap the core engine with domain-specific call shapes,
   filter sugars, and adapter factories.
 
@@ -94,7 +103,7 @@ adapters.
 
 - No knowledge of any specific boundary (no SQL, no S3, no HTTP).
 - No proxy implementation (that lives in `@vnatures/test-kit-mock`).
-- No backing implementations (PGlite, ioredis-mock, mock-aws-s3 live
+- No backing implementations (PGlite, ioredis-mock, in-memory S3 live
   in their respective domain packages).
 - No framework integration (Jest matchers, Vitest matchers — these are
   optional add-on packages that may ship later).
@@ -109,10 +118,10 @@ internal-facing API to construct the underlying probe.
 - `types.ts`: `MethodCall`, `MethodPendingCall`, `MethodProbe`,
   `MethodSelection`, `MethodName`, `AsyncMethodName`, `SyncMethodName`,
   `CheckedMethods`, `MethodArgs`, `MethodResolvedReturn`, `IsAsync`.
-- `proxy.ts`: the `Proxy`-based adapter implementation. The handler's
-  `get` trap returns intercepting functions only for keys in `methods`;
-  every other access returns `undefined`.
 - `factory.ts`: `createProbedMock<T, M>` and `CreateProbedMockOptions<T, M>`.
+  The `Proxy`-based adapter lives here: the handler's `get` trap returns
+  intercepting functions only for keys in `methods`; every other access
+  returns `undefined`.
 - `stream-types.ts` / `stream-factory.ts`: `createProbedStreamMock<T, M>` —
   the sibling factory for methods returning `AsyncIterable<...>` (e.g. an
   `async *stream()` method). Built on core's `createStreamProbeRoot`
@@ -137,13 +146,11 @@ ORM-specific code or any PGlite startup logic.
 
 **Module layout:**
 
-- `types.ts`: `QueryCall`, `QueryPendingCall`, `QueryProbe`.
-- `driver.ts`: the `SqlDriver` interface (see "The SqlDriver Seam"
-  below).
-- `factory.ts`: a `createProbedSqlAdapter(driver, harness, options)`
+- `types.ts`: `QueryCall`, `QueryPendingCall`, `QueryProbe`, `SqlDriver`
+  (see "The SqlDriver Seam" below).
+- `factory.ts`: a `createProbedSqlAdapter({ harness, driver })`
   helper that the pg-* packages call to wire the driver into a probe,
-  install the default forward rule, and return the resulting adapter +
-  probe pair.
+  install the default forward rule, and return `{ probe, probeRoot }`.
 - `index.ts`: re-exports.
 
 `@vnatures/test-kit-sql` has no PGlite or ORM dependencies. It's pure types and
@@ -165,8 +172,9 @@ It does NOT know anything about Kysely/Knex/Sequelize. Each pg-* package
 plugs its ORM into the PGlite-backed connection and translates the ORM's
 query stream into `QueryCall` shapes for the probe.
 
-This package may end up being internal-only (no public API exports);
-that's fine. It exists for code reuse, not for direct consumption.
+This package is published (`@vnatures/test-kit-pglite-driver`) so
+community ORM packages can reuse the same PGlite lifecycle. Direct
+consumption is still uncommon; pg-* factories are the usual entry.
 
 ### `@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`
 
@@ -182,13 +190,12 @@ Each package's public API is small: one factory function plus the
 package-specific types. The shared probe behavior comes for free from
 `@vnatures/test-kit-sql`.
 
-**Module layout (per pg-* package; structure is identical):**
+**Module layout (per pg-* package):**
 
-- `driver.ts`: implements `SqlDriver` for this ORM.
-- `factory.ts`: `createProbed{Kysely,Knex,Sequelize}Adapter(...)`.
-- `seed.ts`: typed seed helper (per-ORM idiom).
-- `reset.ts`: per-ORM reset implementation (or shared via maintenance
-  connection if generic enough).
+- `factory.ts`: `createProbed{Kysely,Knex,Sequelize}Adapter(...)`,
+  including typed `seed` / `reset` helpers.
+- Kysely and Knex: `driver.ts` implements `SqlDriver` for that ORM.
+  Sequelize: `dialect.ts` implements the probed `pg`-compatible dialect.
 - `index.ts`: re-exports.
 
 The total per-package code should be under 500 lines including types.
@@ -204,9 +211,9 @@ Owns the cache boundary and the in-memory Redis-compatible backing
 
 - `types.ts`: `CacheCall`, `CachePendingCall`, `CacheProbe`,
   `CacheAdapter`, `CacheKeyInput`, `CacheMethod`.
-- `adapter.ts`: implementation of `CacheAdapter` over the
-  ioredis-mock backing.
-- `factory.ts`: `createProbedCacheAdapter(...)`.
+- `key.ts`: cache-key formatting for `CacheKeyInput`.
+- `factory.ts`: `createProbedCacheAdapter(...)` and the
+  `CacheAdapter` implementation over the ioredis-mock backing.
 - `index.ts`: re-exports.
 
 Single-package, single-backing. No abstraction layer like
@@ -217,35 +224,25 @@ to do it now).
 
 ### `@vnatures/test-kit-s3` — S3 client and presigner adapters
 
-Owns both the S3Client adapter (with mock-aws-s3 backing) and the
+Owns both the S3Client adapter (in-memory backing) and the
 presigner adapter (no backing).
 
 **Module layout:**
 
 - `types.ts`: `S3Call`, `S3PendingCall`, `S3Probe`, `PresignCall`,
   `PresignPendingCall`, `PresignerProbe`, command-related types.
-- `s3-client/`: subfolder with the S3Client adapter implementation,
-  command extraction logic, mock-aws-s3 wiring.
-- `presigner/`: subfolder with the presigner adapter implementation
+- `s3-client/factory.ts`: `createProbedS3Adapter(...)`.
+- `s3-client/in-memory-backing.ts`: dispatcher keyed on
+  `command.constructor.name`.
+- `presigner/factory.ts`: `createProbedPresignerAdapter(...)`
   (no backing).
-- `factory.ts`: `createProbedS3Adapter(...)` and
-  `createProbedPresignerAdapter(...)`.
 - `index.ts`: re-exports.
 
 Two factories live in one package because they share the `S3Call`
 shape, command type machinery, and AWS SDK type imports. Splitting into
 two packages would duplicate the AWS SDK dep with no real boundary.
 
-### `@vnatures/test-kit-http` — typed HTTP-client adapter (planned, post-v1)
-
-Owns the HTTP-client adapter for SUTs that depend on a typed
-`HttpClient` interface (generated OpenAPI clients, hand-written API
-clients, etc.). Out of scope for v1 of the OSS release; reserved API
-space documented in `v2-api-surface.md`.
-
-When implemented, it follows the single-package pattern of
-`@vnatures/test-kit-redis` (one backing — likely none; HTTP boundaries are
-typically pure stubs/probes — and one factory).
+`@vnatures/test-kit-http` is not shipped.
 
 ## The SqlDriver Seam
 
@@ -270,13 +267,6 @@ export interface SqlDriver {
      * the query's return value.
      */
     onApplicationQuery(call: QueryCall): Promise<unknown>;
-
-    /**
-     * Fired when @vnatures/test-kit-sql wants to forward a query to the real
-     * backing. The driver invokes the real backing (PGlite via the
-     * shared driver helper) and returns the Promise.
-     */
-    forward(call: QueryCall): Promise<unknown>;
 
     /**
      * Fired by harness.reset() (with default options). The driver
@@ -316,16 +306,14 @@ has to:
   capture), it lives in `@vnatures/test-kit-sql` and benefits all ORMs at
   once.
 
-**Why not a similar abstraction for cache, S3, HTTP:**
+**Why not a similar abstraction for cache, S3:**
 
 - Cache: one backing (ioredis-mock). One ORM-equivalent. No siblings to
   share with. Adding a `CacheDriver` abstraction now would be premature.
-- S3: one backing (mock-aws-s3). Same.
-- HTTP: even when implemented, likely one shape (typed HttpClient
-  interface). No driver needed.
+- S3: one backing (in-memory dispatcher). Same.
 
-If a second cache variant or HTTP variant ever materializes, introduce
-the abstraction at that point. BSSN.
+If a second cache variant ever materializes, introduce the abstraction
+at that point. BSSN.
 
 ## Cross-Cutting Concerns
 
@@ -340,7 +328,7 @@ selections, etc. To keep this manageable:
   packages import them; they do not redefine.
 - **Per-domain type narrowing lives in the domain package.** E.g.,
   `MethodSelection<T, K>` lives in `@vnatures/test-kit-mock`, not in core.
-- **Type-level tests** (using `tsd` or `expect-type`) live in each
+- **Type-level tests** (using `expect-type`) live in each
   package's `test/types/` folder. These test that the type machinery
   produces the expected diagnostics for both correct and incorrect
   inputs. Critical for `CheckedMethods<T, M>` — the branded error
@@ -352,7 +340,7 @@ selections, etc. To keep this manageable:
 
 ### Error messages
 
-Error message formats are specified in `v2-api-surface.md`. They are
+Error message formats are specified in `api-surface.md`. They are
 constructed in `@vnatures/test-kit` from templates parameterized by domain-
 specific labels:
 
@@ -390,20 +378,22 @@ call).
 
 ## Repository Layout
 
-The monorepo structure (already in place from v1) is:
+The monorepo structure:
 
 ```
 test-kit/
 ├── package.json                 (workspace root)
 ├── tsconfig.base.json
 ├── README.md                    (OSS-facing intro)
+├── APPENDIX.md
 ├── docs/
 │   ├── README.md                (docs index)
-│   ├── v2-concepts.md           (mental model)
-│   ├── v2-api-surface.md        (API specification)
-│   ├── v2-architecture.md       (THIS document)
+│   ├── concepts.md              (mental model)
+│   ├── api-surface.md           (API specification)
+│   ├── architecture.md          (THIS document)
 │   └── internal/
 │       ├── README.md
+│       ├── tech-design.md
 │       └── migration-from-v1.md
 ├── packages/
 │   ├── core/
@@ -415,26 +405,24 @@ test-kit/
 │   │   │   ├── duration.ts
 │   │   │   ├── clock.ts
 │   │   │   ├── harness.ts
-│   │   │   ├── selection.ts
-│   │   │   ├── rule-builder.ts
-│   │   │   ├── expectations.ts
-│   │   │   ├── pending-call.ts
 │   │   │   ├── probe-engine.ts             (rule resolution, waiter mgmt)
-│   │   │   ├── probe-root.ts               (createProbeRoot for domain pkgs)
-│   │   │   ├── errors.ts                   (error message templates)
-│   │   │   └── internal/
-│   │   │       └── ...                      (not exported from index)
+│   │   │   ├── expectation-engine.ts
+│   │   │   ├── stream-probe-engine.ts
+│   │   │   ├── stream-types.ts
+│   │   │   ├── types.ts
+│   │   │   └── errors.ts                   (error message templates)
 │   │   └── test/
 │   │       ├── unit/
-│   │       └── types/                       (tsd / expect-type)
+│   │       └── types/                       (expect-type)
 │   │
 │   ├── mock/
 │   │   ├── package.json
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── types.ts
-│   │   │   ├── proxy.ts
-│   │   │   └── factory.ts
+│   │   │   ├── factory.ts
+│   │   │   ├── stream-factory.ts
+│   │   │   └── stream-types.ts
 │   │   └── test/
 │   │
 │   ├── sql/
@@ -442,37 +430,49 @@ test-kit/
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── types.ts
-│   │   │   ├── driver.ts                   (SqlDriver interface)
 │   │   │   └── factory.ts                  (createProbedSqlAdapter)
-│   │   └── test/
-│   │
-│   ├── pglite-driver/
-│   │   ├── package.json                    (private: true)
-│   │   ├── src/
-│   │   │   ├── index.ts
-│   │   │   ├── lifecycle.ts                (start, reset, close PGlite)
-│   │   │   └── maintenance-connection.ts
 │   │   └── test/
 │   │
 │   ├── pg-kysely/
 │   │   ├── package.json
 │   │   ├── src/
 │   │   │   ├── index.ts
-│   │   │   ├── driver.ts                   (KyselySqlDriver impl)
-│   │   │   ├── factory.ts
-│   │   │   └── seed.ts
+│   │   │   ├── driver.ts                   (Kysely SqlDriver impl)
+│   │   │   └── factory.ts
 │   │   └── test/
 │   │
-│   ├── pg-knex/                            (same shape as pg-kysely)
-│   ├── pg-sequelize/                       (same shape)
+│   ├── pg-knex/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── driver.ts
+│   │   │   └── factory.ts
+│   │   └── test/
+│   │
+│   ├── pg-sequelize/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── dialect.ts
+│   │   │   └── factory.ts
+│   │   └── test/
 │   │
 │   ├── redis/
 │   │   ├── package.json
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── types.ts
-│   │   │   ├── adapter.ts
+│   │   │   ├── key.ts
 │   │   │   └── factory.ts
+│   │   └── test/
+│   │
+│   ├── bull/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   ├── factory.ts
+│   │   │   └── backing.ts
 │   │   └── test/
 │   │
 │   ├── s3/
@@ -481,15 +481,42 @@ test-kit/
 │   │   │   ├── index.ts
 │   │   │   ├── types.ts
 │   │   │   ├── s3-client/
-│   │   │   │   ├── adapter.ts
-│   │   │   │   └── factory.ts
-│   │   │   ├── presigner/
-│   │   │   │   ├── adapter.ts
-│   │   │   │   └── factory.ts
-│   │   │   └── command-extraction.ts
+│   │   │   │   ├── factory.ts
+│   │   │   │   └── in-memory-backing.ts
+│   │   │   └── presigner/
+│   │   │       └── factory.ts
 │   │   └── test/
 │   │
-│   └── http/                                (planned; structure TBD)
+│   ├── sqs/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   ├── factory.ts
+│   │   │   └── in-memory-backing.ts
+│   │   └── test/
+│   │
+│   ├── kafka/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   ├── factory.ts
+│   │   │   └── in-memory-backing.ts
+│   │   └── test/
+│   │
+│   ├── mysql/
+│       ├── package.json
+│       ├── src/
+│       │   ├── index.ts
+│       │   ├── types.ts
+│       │   └── factory.ts
+│       └── test/
+│
+│   └── pglite-driver/
+│       ├── package.json
+│       └── src/
+│           └── index.ts
 │
 └── examples/                                 (extender's-guide worked example)
     └── grpc-client/                         (sample @vnatures/test-kit-grpc-client impl)
@@ -511,9 +538,14 @@ ESM-first with CommonJS dual export via package `exports` field:
 {
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+  "import": {
+    "types": "./dist/index.d.ts",
+    "default": "./dist/index.js"
+  },
+  "require": {
+    "types": "./dist/index.d.cts",
+    "default": "./dist/index.cjs"
+  }
     }
   }
 }
@@ -545,7 +577,7 @@ for user adopters.
 ### Type-level tests
 
 Each package with non-trivial generic types ships a `test/types/`
-folder using `tsd` or `expect-type`. Critical cases to cover:
+folder using `expect-type`. Critical cases to cover:
 
 - `createProbedMock<T>` rejects sync methods with the branded error.
 - Filter chain narrowing produces correct pending types.
@@ -559,47 +591,25 @@ Existing v1 setup (eslint + prettier) carried over.
 
 ## Decisions Still Open (for Implementation Phase)
 
-These are intentionally not decided in this document. They will be
-resolved during implementation and codified in a follow-up tech design.
+Shipped 1.x already resolved the implementation-phase questions recorded
+in [`internal/tech-design.md`](internal/tech-design.md): the probe-root
+factory, storage model, published PGlite helper, plain `Error` /
+`RangeError`, and `@vnatures/test-kit-*` package names at 1.x.
 
-1. **Exact shape of `core.createProbeRoot`.** The signature, what
-   options it takes, what it returns, and how it threads the harness
-   reference through. Sketched as needed by domain packages but not
-   yet finalized.
+Items that were decided in this document and remain true:
 
-2. **Internal storage representation.** Whether the rule queue uses
-   arrays, linked lists, or something else. Whether call history uses
-   a single array per probe or per-selection caching. These are
-   performance/code-clarity tradeoffs that are best made with code in
-   front of you.
-
-3. **Bundling tool.** Decided: Vite library mode + `vite-plugin-dts`.
+1. **Bundling tool.** Decided: Vite library mode + `vite-plugin-dts`.
    Matches the team's existing toolchain on application/SUT projects;
    shares the installation with Vitest for tests.
 
-4. **Test runner for the kit's own tests.** Decided: Vitest. Built on
+2. **Test runner for the kit's own tests.** Decided: Vitest. Built on
    Vite, shares config and installation with the build.
 
-5. **Whether `@vnatures/test-kit-pglite-driver` is published or kept private.**
-   If published, it has a stable API for community pg-* package
-   authors. If private, it can iterate freely. Lean toward private
-   for v1; revisit if a community ORM package wants to plug in.
-
-6. **Error class hierarchy.** Whether all errors are plain `Error` /
-   `RangeError`, or whether test-kit ships its own
-   `TestKitError` / `TimeoutError` / `SettlementError` for type-based
-   matching. The API spec currently says plain Error subclasses;
-   revisit if the implementation wants finer-grained type
-   discrimination.
-
-7. **Package naming.** `@vnatures/test-kit-*` is a placeholder. The OSS release
-   may use a different name (`boundary-probe`, `test-probe`, others).
-   This affects every `package.json` `name` field but no internal code.
-   Decide before the v2 cut.
+No further open decisions block adding a domain package.
 
 ## Adding a New Domain Package: Walkthrough
 
-For the extender's guide (mandated by `v2-api-surface.md`), the
+For the extender's guide (mandated by `api-surface.md`), the
 walkthrough for adding a hypothetical `@vnatures/test-kit-grpc-client` package
 looks like:
 

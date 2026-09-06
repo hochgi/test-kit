@@ -60,10 +60,9 @@ const get = await s3.adapter.send(
 );
 expect(await get.Body!.transformToString()).toBe("hello");
 
-// Default rule for presigner is reject (NotImplementedError) — programming
-// an answer is mandatory.
+// Calls park with no default rule — programming an answer is mandatory.
 presigner.probe.always().answerWith((call) => {
-    const { commandInput, options } = call.input;
+    const { commandInput, options } = call;
     const { Bucket, Key } = commandInput as { Bucket: string; Key: string };
     return `https://fake/${Bucket}/${Key}?expires=${options?.expiresIn ?? 0}`;
 });
@@ -92,7 +91,7 @@ const { adapter, probe, close } =
   probe routes through.
 - `presigner.adapter: { signUrl }` — drop-in replacement for
   `getSignedUrl`.
-- `probe` — `.calls`, `.command(CommandClass)`, `.commandsOf(name)`,
+- `probe` — `.calls`, `.command(CommandClass)`, `.command(name)`,
   `.expect.*`, `.drain()`, `.drainAndReject(error)`.
 - `reset()` (S3 only) — clears the in-memory store; useful between
   tests.
@@ -107,9 +106,9 @@ Every intercepted call can be settled three ways:
     `HeadObject`, `DeleteObject`, `DeleteObjects`, `ListObjects`,
     `ListObjectsV2`, `CopyObject`, `GetObjectTagging`,
     `PutObjectTagging`, `CreateBucket`, `DeleteBucket`. Any other
-    command throws `NotImplementedError`; tests must program an
-    explicit `answer` or `reject`. This is by design — no silent
-    partial fakes.
+    command throws a plain `Error` from `errors.unsupportedForward`;
+    tests must program an explicit `answer` or `reject`. This is by
+    design — no silent partial fakes.
   - `ListObjects`/`ListObjectsV2` honor real pagination: `MaxKeys`
     (default **and hard cap** 1000 — values above 1000 are silently
     clamped, matching real S3), `ContinuationToken` /
@@ -118,9 +117,9 @@ Every intercepted call can be settled three ways:
     `IsTruncated`, prefix filtering, `Delimiter` / `CommonPrefixes`
     rollup, and stable UTF-8 byte lexicographic key order across pages
     (matching S3's sort, not JavaScript's UTF-16).
-  - `createProbedPresignerAdapter` always rejects on `forward` —
-    generating a real signed URL needs real credentials. Tests must
-    program an `answer`.
+  - `createProbedPresignerAdapter` has no default rule — calls park
+    until the test answers or rejects them. Generating a real signed
+    URL needs real credentials, so `forward` has no backing.
 - **`answerWith((call) => out)`** / **`answer(out)`** — resolve with a
   caller-provided value.
 - **`reject(error)`** — fail the call.
@@ -146,22 +145,26 @@ await promise;
 
 ## Recorded shape
 
-Each call is recorded as `{ commandName, command, input, options }`:
+S3 client calls are recorded as `{ commandName, command, input }`:
 
 - `commandName: string` — `command.constructor.name` (e.g.
-  `"PutObjectCommand"`). Used by `command(...)` and `commandsOf(...)`.
+  `"PutObjectCommand"`). Used by `command(...)`.
 - `command` — the original command instance.
-- `input` — the command's `input` property (for S3) or the original
-  call's command-input (for the presigner).
-- `options` — only present on presigner calls; carries `expiresIn`,
-  etc.
+- `input` — the command's `input` property.
+
+Presigner calls are recorded as `{ commandName, commandInput, options }`
+at the top level (no nested `input` field):
+
+- `commandName: string` — the command constructor name.
+- `commandInput` — the command's input.
+- `options` — presign options (`expiresIn`, etc.).
 
 Querying:
 
 ```typescript
 s3.probe.calls;                                  // ReadonlyArray
-s3.probe.command(GetObjectCommand);              // filtered selection
-s3.probe.commandsOf("GetObjectCommand");         // string filter (minified bundles)
+s3.probe.command(GetObjectCommand);              // constructor filter
+s3.probe.command("GetObjectCommand");            // string filter (minified bundles)
 ```
 
 ## In-memory backing

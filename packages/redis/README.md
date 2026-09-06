@@ -1,7 +1,7 @@
 # @vnatures/test-kit-redis
 
 In-memory cache adapter for component tests, backed by `ioredis-mock`
-behind a focused `InMemoryCache` interface.
+behind a focused `CacheAdapter` interface.
 
 ## Why a focused cache interface?
 
@@ -12,7 +12,7 @@ application logic to a specific driver). The just-right seam is a
 domain-agnostic interface — `get` / `set` / `del` / `setnx` / `getSet`
 — that production wires into either Redis or anything else.
 
-This package provides that interface (`InMemoryCache`) and a
+This package provides that interface (`CacheAdapter`) and a
 probe-driven adapter for it.
 
 ## Install
@@ -44,29 +44,26 @@ await harness.close();
 const { adapter, probe, close } = createProbedCacheAdapter({ harness });
 ```
 
-- `adapter: InMemoryCache` — inject this into production wiring. Default
+- `adapter: CacheAdapter` — inject this into production wiring. Default
   rule forwards to the in-memory store, so production code "just works"
   without any test programming.
-- `probe: MethodProbe<InMemoryCache>` — `.on(method)`, `.calls`,
+- `probe: CacheProbe` — `.on(method)`, `.calls`,
   `.expect.*`, `.drain()`, `.drainAndReject(error)`.
 - `close()` — disposes the underlying store. Handled automatically by
   `harness.close()` if attached.
 
-## The `InMemoryCache` interface
+## The `CacheAdapter` interface
 
 ```typescript
-interface InMemoryCache {
+interface CacheAdapter {
     get<T>(key: CacheKeyInput): Promise<T | null>;
-    set<T>(input: { key: CacheKeyInput; val: T }, ttlMs?: number): Promise<boolean>;
+    set<T>(input: { key: CacheKeyInput; val: T }, ttl?: Duration): Promise<boolean>;
     del(key: CacheKeyInput): Promise<void>;
-    setnx<T>(
-        input: { key: CacheKeyInput; val: T },
-        options?: { mode?: "PX" | "EX"; ttl: number },
-    ): Promise<T>;
+    setnx<T>(input: { key: CacheKeyInput; val: T }, options: { readonly ttl: Duration }): Promise<T>;
     getSet<T>(
-        cacheKey: CacheKeyInput,
-        apiFunc: () => Promise<T>,
-        options?: { ttl?: number | ((result: T) => number) },
+        key: CacheKeyInput,
+        load: () => Promise<T>,
+        options?: { readonly ttl?: Duration | ((result: T) => Duration) },
     ): Promise<T>;
 }
 ```
@@ -97,4 +94,3 @@ useful for shape assertions.
   boundaries.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
   reference.
-

@@ -152,7 +152,7 @@ Examples:
 
 - PGlite behind a Kysely adapter,
 - `ioredis-mock` behind a cache adapter,
-- disk-backed `mock-aws-s3-v3` behind an S3 adapter.
+- an in-memory store behind an S3 adapter.
 
 If an adapter has a backing, a pending call can usually be forwarded to it.
 If an adapter has no backing, a pending call cannot forward and must be
@@ -201,7 +201,8 @@ only the verbs for "what happens to a matched call" differ.
 
 ## Test Adapter Categories
 
-The umbrella term in general testing literature is "test double." v2 uses
+The umbrella term in general testing literature is "test double." This
+library uses
 "adapter" in product vocabulary because it describes how the object is used
 in a hexagonal/component testing setup.
 
@@ -274,7 +275,7 @@ does not support.
 ### Function Boundary Adapter
 
 Some production dependencies are standalone functions rather than objects.
-A v2 adapter can still expose an object shape if that is the cleanest
+An adapter can still expose an object shape if that is the cleanest
 application boundary.
 
 ```typescript
@@ -1369,7 +1370,7 @@ The v1 implementation maintained a hand-curated list of properties to
 return `undefined` for (`then`, `nodeType`, `onModuleInit`,
 `asymmetricMatch`, `$$typeof`, etc.) precisely because v1's proxy
 intercepted *every* property access. Each new framework that probed
-unexpected keys required an addition to the list. v2 inverts the model:
+unexpected keys required an addition to the list. The shipped API inverts the model:
 intercept only what's declared, pass through everything else.
 
 ## Pending Calls
@@ -1479,14 +1480,6 @@ s3Probe.command(GetObjectCommand);
 // ≡ s3Probe.filter((call) => call.command instanceof GetObjectCommand, 'command is GetObjectCommand')
 s3Probe.command('GetObjectCommand');
 // matches by command name (string)
-```
-
-### HTTP probes (`@vnatures/test-kit-http`)
-
-```typescript
-httpProbe.on('GET');
-httpProbe.url(/\/users\/\d+/);
-httpProbe.url('https://api.example.com/users/1');
 ```
 
 Domain packages **must** also re-export the underlying `filter` so users

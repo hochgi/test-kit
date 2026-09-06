@@ -10,7 +10,10 @@ Test-kit ships as a small family of packages:
 
 - `@vnatures/test-kit`: generic probe engine, `Selection` / `RuleBuilder` /
   `Expectations`, `Clock`, `Harness`, shared types.
+- `@vnatures/test-kit-pglite-driver`: shared PGlite lifecycle helper
+  (`createPgliteHandle`). Published; used by the `pg-*` packages.
 - `@vnatures/test-kit-mock`: Proxy-based programmable mock adapters.
+- `@vnatures/test-kit-sql`: shared `QueryProbe` surface and `SqlDriver` seam.
 - `@vnatures/test-kit-pg-kysely`: Kysely + PGlite backed adapter.
 - `@vnatures/test-kit-pg-knex`: Knex + PGlite backed adapter.
 - `@vnatures/test-kit-pg-sequelize`: Sequelize v6 + PGlite backed adapter.
@@ -20,6 +23,8 @@ Test-kit ships as a small family of packages:
 - `@vnatures/test-kit-sqs`: SQS adapter with a functional in-memory backing.
 - `@vnatures/test-kit-kafka`: Kafka producer adapter with an in-memory topic log.
 - `@vnatures/test-kit-mysql`: real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam.
+
+`@vnatures/test-kit-http` is not shipped.
 
 ## Design Overview
 
@@ -104,7 +109,11 @@ export function realClock(): Clock;
 export function jestFakeClock(): Clock;
 export function viFakeClock(): Clock;
 export function sinonFakeClock(timers: SinonFakeTimers): Clock;
-export function manualClock(): Clock & { tickAll(): Promise<void> };
+export interface ManualClock extends Clock {
+    tickAll(): Promise<void>;
+}
+export function manualClock(): ManualClock;
+export function autoDetectClock(): Clock;
 ```
 
 The Clock interface is intentionally minimal. It does **not** expose
@@ -1050,8 +1059,8 @@ for await (const chunk of model.adapter.stream('hi')) {
 
 Packages: `@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`.
 
-All three packages share the same probe surface, defined in `@vnatures/test-kit`
-(or a sibling `@vnatures/test-kit-sql` package). What differs across them is the
+All three packages share the same probe surface, defined in
+`@vnatures/test-kit-sql`. What differs across them is the
 `adapter` type (Kysely, Knex, Sequelize instance) and the construction
 mechanics (which underlying driver wraps PGlite, how schema bootstrap is
 expressed). The probe API is identical.
@@ -1059,10 +1068,10 @@ expressed). The probe API is identical.
 ### Shared probe types
 
 ```typescript
-export type QueryCall = {
+export interface QueryCall {
     readonly sql: string;
     readonly parameters: ReadonlyArray<unknown>;
-};
+}
 
 export interface QueryPendingCall<TResult = unknown>
     extends ForwardablePendingCall<QueryCall, TResult> {
@@ -1070,7 +1079,7 @@ export interface QueryPendingCall<TResult = unknown>
     readonly parameters: ReadonlyArray<unknown>;
 }
 
-export interface QueryProbe extends Probe<QueryCall, QueryPendingCall> {
+export interface QueryProbe extends ForwardableProbe<QueryCall, QueryPendingCall> {
     /**
      * Typed sugar over filter for SQL matching. Strings match by exact
      * equality; RegExps by .test(); functions by predicate.
@@ -1083,11 +1092,10 @@ export interface QueryProbe extends Probe<QueryCall, QueryPendingCall> {
 
 ```typescript
 // @vnatures/test-kit-pg-kysely
-export type ProbedKyselyAdapter<DB> = ProbedAdapter<Kysely<DB>, QueryProbe> & ProbedResource & {
-    seed<Table extends keyof DB & string>(
-        table: Table,
-        rows: ReadonlyArray<Insertable<DB[Table]>>,
-    ): Promise<void>;
+export type ProbedKyselyAdapter<DB> = ProbedAdapterWithLifecycle<Kysely<DB>, QueryProbe> & {
+    seed<Table extends keyof DB & string>(table: Table, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
+    readonly pglite: PgliteHandle;
+    readonly notifications: PgliteNotifications;
 };
 
 export type CreateProbedKyselyAdapterOptions<DB> = {
@@ -1102,13 +1110,15 @@ export function createProbedKyselyAdapter<DB>(
 ): Promise<ProbedKyselyAdapter<DB>>;
 
 // @vnatures/test-kit-pg-knex
-export type ProbedKnexAdapter = ProbedAdapter<Knex, QueryProbe> & ProbedResource & {
+export type ProbedKnexAdapter = ProbedAdapterWithLifecycle<Knex, QueryProbe> & {
     seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 };
 
 export type CreateProbedKnexAdapterOptions = {
     readonly harness: Harness;
     readonly bootstrap: (knex: Knex) => Promise<void>;
+    readonly extensions?: Record<string, unknown>;
+    readonly knexConfig?: Partial<Knex.Config>;
     readonly defaultTimeout?: Duration;
 };
 
@@ -1117,16 +1127,18 @@ export function createProbedKnexAdapter(
 ): Promise<ProbedKnexAdapter>;
 
 // @vnatures/test-kit-pg-sequelize
-export type ProbedSequelizeAdapter = ProbedAdapter<Sequelize, QueryProbe> & ProbedResource & {
-    seed<M extends Model>(
-        modelClass: ModelStatic<M>,
-        rows: ReadonlyArray<Partial<M['_attributes']>>,
-    ): Promise<void>;
+export type ProbedSequelizeAdapter = ProbedAdapterWithLifecycle<Sequelize, QueryProbe> & {
+    seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 };
 
 export type CreateProbedSequelizeAdapterOptions = {
     readonly harness: Harness;
-    readonly bootstrap: (sequelize: Sequelize) => Promise<void>;
+    readonly bootstrap?: (sequelize: Sequelize) => Promise<void>;
+    readonly preBootstrap?: (sequelize: Sequelize) => Promise<void>;
+    readonly models?: ReadonlyArray<ModelCtor>;
+    readonly SequelizeClass?: SequelizeCtor;
+    readonly extensions?: Record<string, unknown>;
+    readonly sequelizeOptions?: Partial<SequelizeOptions>;
     readonly defaultTimeout?: Duration;
 };
 
@@ -1135,15 +1147,19 @@ export function createProbedSequelizeAdapter(
 ): Promise<ProbedSequelizeAdapter>;
 ```
 
-The differences across factories are confined to:
+The shared surface is `harness`, `defaultTimeout`, the returned `probe`,
+and the `reset`/`close` lifecycle. What differs:
 
 1. The `adapter` type (typed instance of the ORM).
-2. The `bootstrap` callback's signature (typed for the ORM).
+2. The `bootstrap` callback's signature (typed for the ORM). Sequelize's
+   `bootstrap` is optional when a non-empty `models` list and
+   `SequelizeClass` from `sequelize-typescript` (it must implement
+   `addModels`) supply schema instead. An empty `models` array does not
+   count; vanilla `sequelize`'s constructor is not sufficient.
 3. The `seed` helper's input shape (typed for the ORM's idiom).
-
-Everything else — `harness`, `defaultTimeout`, the returned `probe`, the
-`reset`/`close` lifecycle — is identical. This consistency means that a
-test author who knows one of the three knows the others.
+4. Adapter-specific construction options: Kysely and Knex `extensions`;
+   Knex `knexConfig`; Sequelize `preBootstrap`, `models`,
+   `SequelizeClass`, `extensions`, and `sequelizeOptions`.
 
 ### Behavior (shared)
 
@@ -1212,10 +1228,10 @@ export interface CacheAdapter {
 
 export type CacheMethod = 'get' | 'set' | 'del' | 'setnx' | 'getSet';
 
-export type CacheCall = {
+export interface CacheCall {
     readonly method: CacheMethod;
     readonly args: ReadonlyArray<unknown>;
-};
+}
 
 export interface CachePendingCall<TResult = unknown>
     extends ForwardablePendingCall<CacheCall, TResult> {
@@ -1223,7 +1239,7 @@ export interface CachePendingCall<TResult = unknown>
     readonly args: ReadonlyArray<unknown>;
 }
 
-export interface CacheProbe extends Probe<CacheCall, CachePendingCall> {
+export interface CacheProbe extends ForwardableProbe<CacheCall, CachePendingCall> {
     on(method: CacheMethod): ForwardableSelection<CacheCall, CachePendingCall>;
 }
 
@@ -1260,10 +1276,10 @@ Package: `@vnatures/test-kit-bull`.
 ```typescript
 export type BullQueueMethod = 'add' | 'process';
 
-export type BullQueueCall = {
+export interface BullQueueCall {
     readonly method: BullQueueMethod;
     readonly args: ReadonlyArray<unknown>;
-};
+}
 
 export interface BullQueuePendingCall<TResult = unknown>
     extends ForwardablePendingCall<BullQueueCall, TResult> {
@@ -1330,11 +1346,11 @@ queue.probe.on('add').once().reject(maxRetriesPerRequestError());
 Package: `@vnatures/test-kit-s3`.
 
 ```typescript
-export type S3Call<TCommand = unknown> = {
+export interface S3Call<TCommand = unknown> {
     readonly commandName: string;
     readonly command: TCommand;
     readonly input: unknown;
-};
+}
 
 export interface S3PendingCall<TCommand = unknown, TResult = unknown>
     extends ForwardablePendingCall<S3Call<TCommand>, TResult> {
@@ -1347,7 +1363,7 @@ export type S3CommandConstructor = new (...args: any[]) => {
     readonly input: unknown;
 };
 
-export interface S3Probe extends Probe<S3Call, S3PendingCall> {
+export interface S3Probe extends ForwardableProbe<S3Call, S3PendingCall> {
     /**
      * Typed sugar. When given a constructor, returns a selection narrowed
      * to that command's instance type. When given a string, matches by
@@ -1367,6 +1383,10 @@ export type ProbedS3Adapter = ProbedAdapter<S3Client, S3Probe> & ProbedResource 
 export type CreateProbedS3AdapterOptions = {
     readonly harness: Harness;
     readonly bucket: string;
+    /**
+     * Deprecated. Ignored by the in-memory backing. Always the empty string
+     * (`''`) on the returned handle.
+     */
     readonly localDirectory?: string;
     readonly defaultTimeout?: Duration;
 };
@@ -1382,9 +1402,9 @@ Behavior:
   implementation supports it. Use .answer(...) or .reject(...)."`
 - Tests can answer unsupported commands explicitly (no fallback to the real
   AWS SDK).
-- `reset()` empties the local directory's content for the configured
-  bucket.
-- `close()` removes the temporary local directory if the factory created it.
+- `reset()` clears the in-memory object store.
+- `close()` disposes the in-memory store. `localDirectory` is deprecated,
+  ignored by the in-memory backing, and always `''` on the returned handle.
 
 ## Presigner Adapter API
 
@@ -1398,11 +1418,11 @@ export interface PresignerAdapter {
     signUrl: typeof getSignedUrl;
 }
 
-export type PresignCall = {
+export interface PresignCall {
     readonly commandName: string;
     readonly commandInput: unknown;
     readonly options: RequestPresigningArguments | undefined;
-};
+}
 
 export interface PresignPendingCall<TResult = string>
     extends PendingCallBase<PresignCall, TResult> {
@@ -1442,11 +1462,11 @@ Behavior:
 Package: `@vnatures/test-kit-sqs`.
 
 ```typescript
-export type SqsCall<TCommand = unknown> = {
+export interface SqsCall<TCommand = unknown> {
     readonly commandName: string;
     readonly command: TCommand;
     readonly input: unknown;
-};
+}
 
 export interface SqsPendingCall<TCommand = unknown, TResult = unknown>
     extends ForwardablePendingCall<SqsCall<TCommand>, TResult> {
@@ -1645,39 +1665,6 @@ Behavior:
 - `close()` closes both pools and stops the container.
 - `seed(table, rows)` batch-inserts via the maintenance pool.
 
-## HTTP Client Adapter API (planned)
-
-Package: `@vnatures/test-kit-http`. Reserved API space.
-
-```typescript
-export interface HttpClient {
-    request<T>(opts: HttpRequest): Promise<HttpResponse<T>>;
-}
-
-export type HttpCall = {
-    readonly method: string;
-    readonly url: string;
-    readonly headers: Record<string, string>;
-    readonly body: unknown;
-};
-
-export interface HttpPendingCall<T = unknown> extends PendingCallBase<HttpCall, HttpResponse<T>> {
-    readonly method: string;
-    readonly url: string;
-    readonly headers: Record<string, string>;
-    readonly body: unknown;
-}
-
-export interface HttpProbe extends Probe<HttpCall, HttpPendingCall> {
-    on(method: string): Selection<HttpCall, HttpPendingCall>;
-    url(match: string | RegExp | ((url: string) => boolean)): Selection<HttpCall, HttpPendingCall>;
-}
-```
-
-The HTTP adapter intentionally does **not** intercept `fetch` or
-`http.request` globally. It is a typed `HttpClient` interface meant to be
-injected. See "Boundaries In And Out Of Scope" in the concepts document.
-
 ## Rule Matching Semantics
 
 When a call arrives, the engine resolves it through ordered tiers. The
@@ -1797,8 +1784,12 @@ Required formats:
 - Double settlement:
   `"Pending call '{label}' is already settled."`
 - Unsupported forward:
-  `"Cannot forward {domain} call '{name}': no local backing
+  `"Cannot forward {domain} command '{name}': no local backing
   implementation supports it. Use .answer(...) or .reject(...)."`
+- `atLeast` timeout:
+  `"Timed out after ${ms}ms waiting for atLeast(${n}) calls matching ${label}. Got ${actual}."`
+- Forward with no backing:
+  `"Cannot forward: this probe has no backing."`
 - Sync methods on a probed mock are rejected at compile time, not at
   runtime; there is no runtime error message for them. See
   `CheckedMethods<T, M>` in the Mock Adapter API section.
@@ -1879,9 +1870,9 @@ end-to-end (e.g., `@vnatures/test-kit-grpc-client`). The guide must demonstrate:
 
 The guide's worked example must compile and pass tests in CI.
 
-## Finalized v2 API Decisions
+## API Decisions
 
-These decisions are part of the v2 target unless explicitly revisited:
+These decisions are part of the shipped 1.x API unless explicitly revisited:
 
 1. `once()` and `always()` are methods, not properties. Use
    `selection.once().answer(value)`.
@@ -1990,3 +1981,20 @@ These decisions are part of the v2 target unless explicitly revisited:
     way to "park everything" on a backed adapter is to register an
     explicit `always().park()` rule, which sits on top of the tier-3
     stack and shadows the default forward.
+
+## Also exported
+
+Consumer-facing names that appear on package `index` barrels in addition
+to the sketches above:
+
+- Core clock: `autoDetectClock`, `ManualClock`
+- Stream engine: `StreamChunkOf`, `StreamExpectations`, `StreamPendingCallBase`,
+  `createChannel`, `makeStreamPendingBase`
+- SQL: `CreateProbedSqlAdapterOptions`
+- PGlite: `pgliteTypes`, `PgliteNotifications`, `CreatePgliteHandleOptions`
+- Kafka: `InMemoryKafkaBacking`
+- SQS: `InMemorySqsBacking`, `SUPPORTED_SQS_COMMANDS`,
+  `DEFAULT_VISIBILITY_TIMEOUT_SECONDS`
+- Bull: `BullProcessor`, `BullJobType`, `BullQueueType`, `InMemoryJob`,
+  `JobCounts`
+- Sequelize: `ModelCtor`, `SequelizeCtor`
