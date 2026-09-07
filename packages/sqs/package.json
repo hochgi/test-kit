@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-sqs",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Probe-driven SQS adapter with a functional in-memory backing",
   "license": "UNLICENSED",
   "repository": {
