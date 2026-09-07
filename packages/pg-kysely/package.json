@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-pg-kysely",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Probe-driven Kysely adapter backed by PGlite",
   "license": "UNLICENSED",
   "repository": {
