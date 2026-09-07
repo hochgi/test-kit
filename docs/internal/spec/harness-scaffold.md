@@ -135,6 +135,7 @@ third copy.
 - **THEN** `skills.paths` is exactly `["./.cursor/skills"]`
 
 ### Requirement: Agents and commands generate from Claude when canonical files exist
+
 `.claude/agents` is canonical for agents. `.claude/commands` is canonical for
 commands. When those directories contain `*.md` files, `sync-agent-skills`
 SHALL write `.cursor/agents` and `.opencode/agents` from the agents, and
@@ -147,6 +148,10 @@ and exit non-zero on drift against those four mirrors.
 A canonical `.claude/agents/<name>.md` `model:` frontmatter value SHALL equal
 `agents[name].claude` in the manifest, or `check-agent-skills` SHALL fail.
 
+A generated mirror that no longer matches regeneration SHALL fail the
+check. Without that, `check-agent-skills` can exit 0 on a tree whose mirrors
+are stale.
+
 #### Scenario: populated claude agents produce matching cursor and opencode mirrors
 - **WHEN** `.claude/agents` contains at least one `*.md` and `sync-agent-skills`
   then `check-agent-skills` are run
@@ -157,12 +162,26 @@ A canonical `.claude/agents/<name>.md` `model:` frontmatter value SHALL equal
   `agents[name].claude` in `.harness/models.json`
 - **THEN** `check-agent-skills` exits non-zero
 
+#### Scenario: perturbed Cursor agent mirror fails the check
+- **WHEN** a tree has populated canonical Claude agents, a consistent
+  sync has been run, then one generated `.cursor/agents/*.md` file is
+  edited so its bytes differ, and `check-agent-skills` is run
+- **THEN** the process exits non-zero
+
 ### Requirement: Empty Claude canonical dirs do not destroy Cursor bootstrap
-Until P06 writes canonical Claude agent and command files, `.claude/agents`
-and `.claude/commands` MAY contain no `*.md`. In that case `sync-agent-skills`
-SHALL NOT delete or replace existing `*.md` under `.cursor/agents` or
-`.cursor/commands`, and `check-agent-skills` SHALL NOT fail solely because
-those Cursor trees contain files the empty Claude trees would not generate.
+
+`.claude/agents` and `.claude/commands` MAY contain no `*.md` in a fixture
+or a partial clone. In that case `sync-agent-skills` SHALL NOT delete or
+replace existing `*.md` under `.cursor/agents` or `.cursor/commands`, and
+`check-agent-skills` SHALL NOT fail solely because those Cursor trees
+contain files the empty Claude trees would not generate.
+
+The live repository is no longer in that state. Canonical Claude agent and
+command trees SHALL contain the files required by harness-prose, so on the
+live tree `check-agent-skills` SHALL compare generated agent and command
+mirrors rather than skip that comparison.
+
+The empty-dir scenarios below hold only for fixtures and partial clones.
 
 #### Scenario: empty claude agents leave cursor agents in place
 - **WHEN** `.claude/agents` has no `*.md` and `.cursor/agents` already has
@@ -171,15 +190,22 @@ those Cursor trees contain files the empty Claude trees would not generate.
   present with the same bytes
 
 #### Scenario: empty claude commands leave cursor commands in place
-- **WHEN** `.claude/commands` has no `*.md` and `.cursor/commands` already has
-  `*.md` and `sync-agent-skills` is run
+- **WHEN** `.claude/commands` has no `*.md` and `.cursor/commands` already
+  has `*.md` and `sync-agent-skills` is run
 - **THEN** every `*.md` that was in `.cursor/commands` beforehand is still
   present with the same bytes
 
 #### Scenario: check passes with empty claude agents and commands
-- **WHEN** `.claude/agents` and `.claude/commands` have no `*.md`, skills are
-  in sync, the manifest is valid, and `opencode.json` agrees with the manifest
+- **WHEN** `.claude/agents` and `.claude/commands` have no `*.md`, skills
+  are in sync, the manifest is valid, and `opencode.json` agrees with the
+  manifest
 - **THEN** `npm run check-agent-skills` exits 0
+
+#### Scenario: live canonical Claude trees are populated
+- **WHEN** the repository's `.claude/agents` and `.claude/commands` are
+  listed
+- **THEN** `.claude/agents` contains at least one `*.md` and
+  `.claude/commands` contains at least one `*.md`
 
 ### Requirement: OpenCode config tracks the manifest
 `.opencode/opencode.json` SHALL exist. Its `model` and `agent.build.model`
@@ -275,7 +301,7 @@ sequenceDiagram
 | LiteLLM aliases stay `litellm/vn-*` | `vn-spec`, `vn-test`, `vn-coding`, `vn-review`, `vn-verify` | Ticket |
 | `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree | Ticket + donor precedent |
 | `.github/skills` and `.agents/skills` are not created | Ticket called them droppable | Ticket |
-| No new agent/skill/command bodies | P06. Existing RD-24147 Cursor bootstrap files stay | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`) |
+| No new agent/skill/command bodies | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`) |
 | Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Skip generation and skip that drift comparison while canonical `*.md` count is zero | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) |
 | Skills *are* mirrored Cursor → Claude even though P06 still owns skill *prose* | `.cursor/skills` is already canonical and populated; rsync is machinery, not new content | Source + ticket canonical direction |
 | `check-agent-skills` is an npm script; not added to the five-step `npm run check` chain | P00 pinned that chain. Harness-scaffold tests invoke the script during `npm test` | Source (`docs/internal/spec/ci-gate.md`) + ticket (script, not a hook) |
@@ -287,7 +313,7 @@ sequenceDiagram
 
 | Item | Consequence of deferring |
 | --- | --- |
-| P06 agent, skill, command, and `.cursor/rules` prose (RD-24147) | Canonical `.claude/agents` and `.claude/commands` stay empty of `*.md`; Cursor bootstrap remains hand-written until P06 writes Claude canonical files and re-syncs |
+| ~~P06 agent, skill, command, and `.cursor/rules` prose (RD-24147)~~ — no longer deferred | Delivered by P06. The canonical trees are populated and the mirror comparison is live; see `harness-prose.md` |
 | Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via this packet's tests inside `npm test`; a test skip would hide drift |
 | husky / lefthook / `prepare` / `core.hooksPath` | Drift is a script the agent runs (and CI runs via tests), not a pre-push hook |
 | `.github/skills`, `.agents/skills` | Those tools are not in the three-surface set |

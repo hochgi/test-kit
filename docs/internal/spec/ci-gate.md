@@ -135,22 +135,24 @@ registry and SHALL NOT push a version-bump commit for it.
   for `examples/grpc-client`, and does not invoke `vn-ci/build-publish`
 
 ### Requirement: Gate-describing harness prose names the real gates
+
 Any tracked markdown file under `.cursor/agents/`, `.cursor/skills/`,
-`.cursor/commands/`, `.claude/agents/`, `.claude/skills/`, or `.claude/commands/`
-that tells an agent how to run the repository-wide quality gate SHALL instruct
-`npm run check` and SHALL state that the repository has no git hooks (no husky,
-no lefthook). It SHALL NOT claim that there is no `check` script.
+`.cursor/commands/`, `.cursor/rules/`, `.claude/agents/`,
+`.claude/skills/`, or `.claude/commands/` that tells an agent how to run
+the repository-wide quality gate SHALL instruct `npm run check` and SHALL
+state that the repository has no git hooks (no husky, no lefthook). It
+SHALL NOT claim that there is no `check` script.
 
 #### Scenario: existing gate prose uses check and names the missing hooks
 - **WHEN** those directories are scanned for markdown that mentions running
-  `format:check` together with `lint`, `typecheck`, `build`, and `test`, or that
-  mentions there being no `check` script
-- **THEN** every such file contains `npm run check` and states that there are no
-  git hooks, and none of them claim the `check` script is absent
+  `format:check` together with `lint`, `typecheck`, `build`, and `test`, or
+  that mentions there being no `check` script
+- **THEN** every such file contains `npm run check` and states that there
+  are no git hooks, and none of them claim the `check` script is absent
 
 #### Scenario: files that do not describe the repo gate are out of this requirement
-- **WHEN** a tracked markdown file in those directories does not describe the
-  repository-wide quality gate
+- **WHEN** a tracked markdown file in those directories does not describe
+  the repository-wide quality gate
 - **THEN** this requirement does not constrain it
 
 ### Requirement: New TypeScript for this capability is on the root test and format paths

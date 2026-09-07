@@ -164,10 +164,11 @@ SHALL NOT be renamed. It is confined to:
 
 ```
 .harness/
-test/ci-gate/, test/docs-truth/, test/harness-scaffold/
+test/ci-gate/, test/docs-truth/, test/harness-scaffold/, test/harness-prose/
 scripts/*agent-skills*
 .claude/, .cursor/, .opencode/
-docs/internal/spec/harness-scaffold.md, docs/internal/archive/**
+docs/internal/spec/harness-scaffold.md, docs/internal/spec/harness-prose.md
+docs/internal/archive/**
 ```
 
 Renaming any of those breaks `check-agent-skills` and destroys the distinction.
@@ -177,6 +178,12 @@ sense lives everywhere else.
 #### Scenario: the agent-sense zone is untouched by library renames
 - **WHEN** a change renames library vocabulary
 - **THEN** no file under the paths above is modified
+
+#### Scenario: component-testing createHarness gap is closed
+- **WHEN** the Known gaps table in `docs/internal/spec/core-public-api.md`
+  is read
+- **THEN** it does not mention `component-testing` together with
+  `createHarness`
 
 ## Known gaps
 
