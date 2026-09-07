@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHarness, milliseconds, seconds, viFakeClock, type Harness } from '@vnatures/test-kit';
+import { createRig, milliseconds, seconds, viFakeClock, type Rig } from '@vnatures/test-kit';
 import { createProbedBullQueue, maxRetriesPerRequestError, type ProbedBullQueue } from '@vnatures/test-kit-bull';
 
 describe('createProbedBullQueue', () => {
-    let harness: Harness;
+    let rig: Rig;
     let queue: ProbedBullQueue<{ siteId: number }>;
 
     beforeEach(() => {
-        harness = createHarness();
-        queue = harness.attach(createProbedBullQueue({ harness, name: 'exports' }));
+        rig = createRig();
+        queue = rig.attach(createProbedBullQueue({ harness: rig, name: 'exports' }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('default forward rule (in-memory backing)', () => {
@@ -66,9 +66,9 @@ describe('createProbedBullQueue', () => {
     describe('hang via park + clock', () => {
         it('leaves add pending when intercept is not settled', async () => {
             vi.useFakeTimers();
-            const clockHarness = createHarness({ clock: viFakeClock() });
+            const clockRig = createRig({ clock: viFakeClock() });
             try {
-                const clockQueue = clockHarness.attach(createProbedBullQueue({ harness: clockHarness, name: 'timed' }));
+                const clockQueue = clockRig.attach(createProbedBullQueue({ harness: clockRig, name: 'timed' }));
 
                 const pendingPromise = clockQueue.probe.on('add').expect.intercept();
                 const addPromise = clockQueue.adapter.add({ siteId: 99 });
@@ -86,14 +86,14 @@ describe('createProbedBullQueue', () => {
                     },
                 );
 
-                await clockHarness.clock.advance(seconds(5));
+                await clockRig.clock.advance(seconds(5));
                 expect(settled).toBe(false);
 
                 pending.forward();
                 const job = await addPromise;
                 expect(job.id).toBeDefined();
             } finally {
-                await clockHarness.close();
+                await clockRig.close();
                 vi.useRealTimers();
             }
         });
@@ -199,14 +199,12 @@ describe('createProbedBullQueue', () => {
         });
     });
 
-    describe('delayed jobs via harness.clock', () => {
+    describe('delayed jobs via rig.clock', () => {
         it('honors add delay before processing', async () => {
             vi.useFakeTimers();
-            const clockHarness = createHarness({ clock: viFakeClock() });
+            const clockRig = createRig({ clock: viFakeClock() });
             try {
-                const clockQueue = clockHarness.attach(
-                    createProbedBullQueue({ harness: clockHarness, name: 'delayed' }),
-                );
+                const clockQueue = clockRig.attach(createProbedBullQueue({ harness: clockRig, name: 'delayed' }));
 
                 const handler = vi.fn(async () => 'done');
                 await clockQueue.adapter.process(handler);
@@ -214,10 +212,10 @@ describe('createProbedBullQueue', () => {
 
                 expect(handler).not.toHaveBeenCalled();
 
-                await clockHarness.clock.advance(milliseconds(5000));
+                await clockRig.clock.advance(milliseconds(5000));
                 await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
             } finally {
-                await clockHarness.close();
+                await clockRig.close();
                 vi.useRealTimers();
             }
         });
@@ -257,9 +255,9 @@ describe('createProbedBullQueue', () => {
             expect(counts.waiting + counts.active + counts.completed + counts.failed + counts.delayed).toBe(0);
         });
 
-        it('harness.close() disposes without open handles', async () => {
+        it('rig.close() disposes without open handles', async () => {
             await queue.adapter.add({ siteId: 1 });
-            await harness.close();
+            await rig.close();
             expect(() => {
                 void queue.adapter.isReady();
             }).toThrow(/closed/i);

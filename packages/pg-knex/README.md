@@ -14,7 +14,7 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-pg-knex knex
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedKnexAdapter } from "@vnatures/test-kit-pg-knex";
 import knexStringcase from "knex-stringcase";
 import type { Knex } from "knex";
@@ -26,10 +26,10 @@ async function bootstrap(db: Knex) {
     });
 }
 
-const harness = createHarness();
-const db = await harness.attach(
+const rig = createRig();
+const db = await rig.attach(
     createProbedKnexAdapter({
-        harness,
+        harness: rig,
         // Same camelCase ↔ snake_case behavior as production `Knex(knexStringcase({...}))`
         knexConfig: knexStringcase({}),
         bootstrap,
@@ -40,7 +40,7 @@ await db.seed("users", [{ name: "Alice" }]);
 const rows = await db.adapter("users").select("*");
 expect(rows).toEqual([{ id: 1, name: "Alice" }]);
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
@@ -48,7 +48,7 @@ await harness.close();
 ```typescript
 const { adapter, probe, seed, reset, close } =
     await createProbedKnexAdapter({
-        harness,
+        harness: rig,
         bootstrap,
         knexConfig,  // optional; merged into the internal config (client/connection/pool ignored)
         extensions,  // optional PGlite extensions
@@ -69,9 +69,9 @@ const { adapter, probe, seed, reset, close } =
 ```typescript
 import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
 
-const db = await harness.attach(
+const db = await rig.attach(
     createProbedKnexAdapter({
-        harness,
+        harness: rig,
         extensions: { uuid_ossp },
         bootstrap: async (k) => {
             await k.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');

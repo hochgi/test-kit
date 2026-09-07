@@ -47,7 +47,7 @@ the boundary, it might be:
 - an `S3Client`,
 - a thin wrapper around an SDK function.
 
-Tests normally do not interact with the adapter directly after harness setup.
+Tests normally do not interact with the adapter directly after rig setup.
 The adapter is for application code.
 
 ### Probe
@@ -233,9 +233,9 @@ clients, internal service interfaces, etc.).
 A backed adapter has a local implementation and can forward calls.
 
 ```typescript
-const harness = createHarness();
-const db = await harness.attach(createProbedKyselyAdapter<Database>({
-    harness,
+const rig = createRig();
+const db = await rig.attach(createProbedKyselyAdapter<Database>({
+    harness: rig,
     bootstrap,
 }));
 
@@ -259,8 +259,8 @@ forward through a local backend, while unsupported operations should fail
 loudly unless the test explicitly answers them.
 
 ```typescript
-const s3 = harness.attach(createProbedS3Adapter({
-    harness,
+const s3 = rig.attach(createProbedS3Adapter({
+    harness: rig,
     bucket: 'test-bucket',
 }));
 
@@ -279,7 +279,7 @@ An adapter can still expose an object shape if that is the cleanest
 application boundary.
 
 ```typescript
-const presigner = harness.attach(createProbedPresignerAdapter({ harness }));
+const presigner = rig.attach(createProbedPresignerAdapter({ harness: rig }));
 
 presigner.probe.command(GetObjectCommand).always().answerWith((call) => {
     const input = call.commandInput as { Bucket: string; Key: string };
@@ -410,7 +410,7 @@ db.always().reject(new Error('db down'));
 // registered after the default's permanent rule.
 ```
 
-The user-installed `reject` is more recent than the harness-installed
+The user-installed `reject` is more recent than the rig-installed
 `forward`, so it wins. To restore the default, either remove the
 user's rule explicitly via `clearRules()`, or register an even more
 specific override.
@@ -422,8 +422,8 @@ or tier 3):
 
 - Programmable mock adapters **park** the call (the returned promise
   stays pending until the test settles it via `expect.intercept`, or
-  until the harness safety timeout fires).
-- Backed adapters do nothing extra at this point — their harness-
+  until the rig safety timeout fires).
+- Backed adapters do nothing extra at this point — their rig-
   installed `always().forward()` default sits in tier 3 and handles
   the call there.
 
@@ -452,7 +452,7 @@ The tiered model preserves every relevant intuition:
   (FIFO at tier 2). This matches "I'm scripting a sequence of
   expected calls."
 - **Defaults can be overridden by later permanents** (LIFO at tier 3).
-  This matches "the harness installed a default; my test overrides it
+  This matches "the rig installed a default; my test overrides it
   with a more specific behavior."
 - **One-shots beat permanents** unconditionally. This matches "for
   this one specific call, do something different than the default."
@@ -473,17 +473,17 @@ Backed adapter factories install a default rule at construction time:
 These defaults sit at the bottom of the tier-3 LIFO stack. User-
 installed permanent rules override them naturally; user-installed
 one-shots beat them via tier-2 priority. `clearRules()` (without
-options) clears user-installed rules only and **preserves harness-
+options) clears user-installed rules only and **preserves rig-
 installed defaults**. This is the right call for almost every test
-isolation scenario: `beforeEach(() => harness.reset())` removes only
+isolation scenario: `beforeEach(() => rig.reset())` removes only
 what the test added, leaving the backed adapter usable as it was at
 construction.
 
-`clearRules({ includeDefaults: true })` removes the harness-installed
+`clearRules({ includeDefaults: true })` removes the rig-installed
 default rule too. After this call, a backed adapter behaves like a
 programmable mock: incoming calls park (no rule, no default; tier 3
 is empty). The application's awaiting promise hangs until the test
-either intercepts the call or the harness safety timeout fires.
+either intercepts the call or the rig safety timeout fires.
 
 If the test wants this exact "all calls park" behavior on a backed
 adapter without removing the default rule, the cleaner pattern is to
@@ -582,7 +582,7 @@ The distinction between live and synchronous expectations is firm:
 
 `within` is required on all negative live expectations and on `exactly`
 (both express assertions whose meaning depends on a time window). `within`
-is optional on positive live expectations; the harness's default expectation
+is optional on positive live expectations; the rig's default expectation
 timeout applies when omitted.
 
 ## Time API
@@ -608,9 +608,9 @@ implementation. **The Clock is for the test author's use; it does not
 drive any of test-kit's internal timing.**
 
 ```typescript
-import { createHarness, jestFakeClock } from '@vnatures/test-kit';
+import { createRig, jestFakeClock } from '@vnatures/test-kit';
 
-const harness = createHarness({ clock: jestFakeClock() });
+const rig = createRig({ clock: jestFakeClock() });
 ```
 
 Built-in clock implementations:
@@ -622,29 +622,29 @@ Built-in clock implementations:
   user already owns.
 - `manualClock()`: pure in-memory clock for non-Jest/Vitest contexts.
 
-When no `clock` option is provided, `createHarness` auto-detects the test
+When no `clock` option is provided, `createRig` auto-detects the test
 runner's fake-timer system and falls back to `realClock()` if none is active.
 
-The harness exposes the active clock so tests can advance time consistently:
+The rig exposes the active clock so tests can advance time consistently:
 
 ```typescript
-await harness.clock.advance(seconds(5));
+await rig.clock.advance(seconds(5));
 ```
 
-Tests should prefer `harness.clock.advance(...)` over calling
-`jest.advanceTimersByTime(...)` directly. The harness's call delegates to
-the underlying fake-timer system; using the harness gives a uniform
+Tests should prefer `rig.clock.advance(...)` over calling
+`jest.advanceTimersByTime(...)` directly. The rig's call delegates to
+the underlying fake-timer system; using the rig gives a uniform
 test-author experience across timer systems.
 
 ### The Clock Does Not Drive Test-Kit's Internal Timing
 
 This is a deliberate boundary. **Test-kit's internal timers — waiter
 deadlines for `expect.intercept`/`expect.observe`/`expect.none`/etc.,
-the harness safety timeout, and any internal scheduling — always use
+the rig safety timeout, and any internal scheduling — always use
 real wall-clock time, never the active Clock.**
 
 Why: if waiter deadlines used virtual time, then a test that forgets
-to call `harness.clock.advance(...)` would hang indefinitely waiting
+to call `rig.clock.advance(...)` would hang indefinitely waiting
 for a virtual-time deadline that never arrives. The user would see
 the test exceed the safety timeout (30s real wall-clock), not a clean
 5s "Timed out waiting for next call" failure. v1's behavior was
@@ -658,8 +658,8 @@ The split:
   timeout failure with a useful message.
 - **SUT-internal timers**: governed by whatever timer system is
   active (Jest fake, Vitest fake, real). The user controls these via
-  `harness.clock.advance(...)` (or directly via `jest.advanceTimersByTime`,
-  though the harness call is preferred).
+  `rig.clock.advance(...)` (or directly via `jest.advanceTimersByTime`,
+  though the rig call is preferred).
 
 The Clock interface exists purely for the user's time-travel needs.
 The probe engine's correctness does not depend on it.
@@ -681,7 +681,7 @@ real 100ms. For tests that need fast negative checks under fake
 timers, advance the clock explicitly first and then assert silence:
 
 ```typescript
-await harness.clock.advance(seconds(5));
+await rig.clock.advance(seconds(5));
 await users.on('getUser').expect.none({ within: ms(0) });
 // ms(0) means "after a microtask flush": no real wait, just verify
 // that no matching call has been recorded right now.
@@ -727,12 +727,12 @@ expect(charge.args[1]).toEqual(expectedTotal);
 // no need to settle: the rule (e.g. always().answer(...)) already did.
 ```
 
-## Harness Pattern
+## Rig Pattern
 
-The harness is the lifecycle owner of probes and adapters. It is provided
+The rig is the lifecycle owner of probes and adapters. It is provided
 by `@vnatures/test-kit`.
 
-**When the harness is required:**
+**When the rig is required:**
 
 - Any test using a backed adapter (Kysely, Knex, Sequelize, Redis, S3,
   presigner) — these own external resources (in-memory database
@@ -742,37 +742,37 @@ by `@vnatures/test-kit`.
   reverse registration order and to share clock and safety-timeout
   configuration.
 
-**When the harness is optional:**
+**When the rig is optional:**
 
 - A test that uses a single `createProbedMock` and nothing else can
-  skip the harness. The probed mock has no external resources to
+  skip the rig. The probed mock has no external resources to
   release, and the probe's safety timeout falls back to a sensible
   default (5s positive expectations, 30s real-wall-clock safety).
   Calling `createProbedMock(...)` directly is supported and idiomatic
   for trivial tests.
 
-**When in doubt, use the harness.** It costs one line of construction
+**When in doubt, use the rig.** It costs one line of construction
 and one line of teardown, and it gives consistent behavior across
 test files.
 
 ```typescript
-import { createHarness } from '@vnatures/test-kit';
+import { createRig } from '@vnatures/test-kit';
 import { createProbedMock } from '@vnatures/test-kit-mock';
 import { createProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
 
 function createTestHarness() {
-    const harness = createHarness();
+    const rig = createRig();
 
-    const users = harness.attach(createProbedMock<UserService>({
+    const users = rig.attach(createProbedMock<UserService>({
         methods: ['getUser', 'updateUser'],
     }));
-    const products = harness.attach(createProbedMock<ProductService>({
+    const products = rig.attach(createProbedMock<ProductService>({
         methods: ['getProduct', 'reserveStock', 'releaseStock'],
     }));
-    const payments = harness.attach(createProbedMock<PaymentGateway>({
+    const payments = rig.attach(createProbedMock<PaymentGateway>({
         methods: ['charge', 'refund'],
     }));
-    const events = harness.attach(createProbedMock<EventBus>({
+    const events = rig.attach(createProbedMock<EventBus>({
         methods: ['publish'],
     }));
 
@@ -784,7 +784,7 @@ function createTestHarness() {
     });
 
     return {
-        harness,
+        rig,
         service,
         users: users.probe,
         products: products.probe,
@@ -794,16 +794,16 @@ function createTestHarness() {
 }
 
 afterEach(async () => {
-    await harness.close();
+    await rig.close();
 });
 ```
 
-`harness.attach(probedAdapter)` registers an adapter for lifecycle
-management. The harness:
+`rig.attach(probedAdapter)` registers an adapter for lifecycle
+management. The rig:
 
-- closes attached adapters in reverse-registration order on `harness.close()`,
+- closes attached adapters in reverse-registration order on `rig.close()`,
 - resets attached adapters AND clears probe state (rules + call history)
-  on `harness.reset()` (see "Reset Semantics" below),
+  on `rig.reset()` (see "Reset Semantics" below),
 - cancels any in-flight waiters when closing, with a clear error
   (`"Harness closed with N unsettled waiters"`),
 - enforces the safety-timeout deadline on every live expectation registered
@@ -821,54 +821,55 @@ value, returning a Promise that resolves to the registered adapter.
 The standard usage pattern makes registration explicit in the await:
 
 ```typescript
-const db = await harness.attach(createProbedKyselyAdapter<Database>({
-    harness,
+const db = await rig.attach(createProbedKyselyAdapter<Database>({
+    harness: rig,
     bootstrap,
 }));
 ```
 
-Calling `harness.close()` before an in-flight async attach resolves
+Calling `rig.close()` before an in-flight async attach resolves
 will cause the late registration to fail with `"Harness is closed."`.
 
 Tests should normally interact with probes only.
 
-### Harness Injection Into Backed Adapters
+### Rig Injection Into Backed Adapters
 
 Backed-adapter factories (`createProbedKyselyAdapter`,
 `createProbedKnexAdapter`, `createProbedSequelizeAdapter`,
 `createProbedCacheAdapter`, `createProbedS3Adapter`,
 `createProbedPresignerAdapter`) take an explicit `harness` parameter
-in their options:
+in their options, whose value is a `Rig`:
 
 ```typescript
-const harness = createHarness();
-const db = await harness.attach(createProbedKyselyAdapter<Database>({
-    harness,
+const rig = createRig();
+const db = await rig.attach(createProbedKyselyAdapter<Database>({
+    harness: rig,
     bootstrap,
 }));
 ```
 
-The harness reference is used by the factory to wire the harness's
+The rig reference is used by the factory to wire the rig's
 clock, `defaultTimeout`, and safety-timeout configuration into the
-probe. The factory does **not** call `harness.attach` itself —
+probe. The factory does **not** call `rig.attach` itself —
 registration is the caller's responsibility (the standard
-`await harness.attach(...)` pattern). This keeps lifecycle ownership
+`await rig.attach(...)` pattern). This keeps lifecycle ownership
 explicit at the call site.
 
-`createProbedMock` does **not** take a harness parameter, because it
-has no external resources and falls back to sensible defaults if no
-harness is in scope. Tests that want consistent behavior can still
-attach a probed mock to a harness for unified `reset`/`close` lifecycle.
+`createProbedMock` does **not** require a rig — its `harness` option
+is optional, because it has no external resources and falls back to
+sensible defaults if no rig is in scope. Passing `{ harness: rig }`
+makes the mock inherit the rig's clock and timeouts, and attaching it
+to a rig gives unified `reset`/`close` lifecycle.
 
 ### Cross-Probe Expectations
 
 For tests that need to assert orderings across multiple boundaries
 (common in saga-style components: "first the SUT calls `payments.charge`,
-then it calls `events.publish`"), the harness exposes
-`harness.expect.sequence(...)` and `harness.expect.allOf(...)`.
+then it calls `events.publish`"), the rig exposes
+`rig.expect.sequence(...)` and `rig.expect.allOf(...)`.
 
 ```typescript
-const [charge, publish] = await harness.expect.sequence(
+const [charge, publish] = await rig.expect.sequence(
     [
         payments.on('charge'),     // step 0: capturing intercept
         events.on('publish'),      // step 1: capturing intercept
@@ -901,7 +902,7 @@ selection with `observation(...)`:
 ```typescript
 import { observation } from '@vnatures/test-kit';
 
-const [chargeCall, _publishCall] = await harness.expect.sequence(
+const [chargeCall, _publishCall] = await rig.expect.sequence(
     [
         payments.on('charge'),                  // capture
         observation(events.on('publish')),      // observe (rule still fires)
@@ -919,18 +920,18 @@ return type is correctly inferred per step.
 
 ### Reset Semantics
 
-`harness.reset()` produces test isolation by default:
+`rig.reset()` produces test isolation by default:
 
 - For each attached adapter that implements `reset()` (backed adapters):
   call `adapter.reset()` to wipe data state (truncate tables, flush
   cache, empty bucket directory, etc.).
 - For each attached probe: call `probe.resetProbe()` to clear
-  user-installed rules and call history. Harness-installed defaults
+  user-installed rules and call history. Rig-installed defaults
   (the `always().forward()` rules installed by backed adapter
   factories) are preserved.
 
-This matches the `beforeEach(() => harness.reset())` expectation: the
-test starts from a clean slate. Defaults that the harness installed
+This matches the `beforeEach(() => rig.reset())` expectation: the
+test starts from a clean slate. Defaults that the rig installed
 at construction stay in place.
 
 For tests that need to keep rules across resets (e.g., when running
@@ -938,11 +939,11 @@ multiple steps within a single test that share programmed rules but
 need a clean data slate between steps), pass `{ keepRules: true }`:
 
 ```typescript
-await harness.reset({ keepRules: true });
+await rig.reset({ keepRules: true });
 // adapter data is wiped; probe rules and call history are preserved.
 ```
 
-`harness.close()` is unaffected by this option — close always
+`rig.close()` is unaffected by this option — close always
 disposes everything.
 
 ## Examples
@@ -1023,7 +1024,7 @@ it('issues exactly one charge with the computed total', async () => {
 
 ```typescript
 it('times out when payment never responds', async () => {
-    const { harness, service, users, products, payments } = createTestHarness();
+    const { rig, service, users, products, payments } = createTestHarness();
 
     users.on('getUser').always().answer(testUser);
     products.on('getProduct').always().answer(testProduct);
@@ -1035,7 +1036,7 @@ it('times out when payment never responds', async () => {
 
     await payments.on('charge').expect.observe();
 
-    await harness.clock.advance(seconds(5));
+    await rig.clock.advance(seconds(5));
 
     await expect(orderPromise).rejects.toThrow('timed out');
 });
@@ -1045,7 +1046,7 @@ it('times out when payment never responds', async () => {
 
 ```typescript
 it('lets the SUT retry when the cache is silent', async () => {
-    const { harness, service, cache } = createTestHarness();
+    const { rig, service, cache } = createTestHarness();
 
     // Default rule on the cache is forward (installed by adapter factory).
     // We want this one specific lookup to be silent so the SUT's fallback
@@ -1064,7 +1065,7 @@ it('lets the SUT retry when the cache is silent', async () => {
 
 ```typescript
 it('persists the order', async () => {
-    const { harness, service, db } = createTestHarness();
+    const { rig, service, db } = createTestHarness();
     // db has a default forward rule installed at construction.
 
     const insertPromise = db.probe
@@ -1135,7 +1136,7 @@ Key building blocks:
 
 If the SUT exposes its retry policy via a configurable backoff
 function, inject the real backoff with shortened durations for tests.
-If it uses real time-based delays, drive `harness.clock.advance(...)`
+If it uses real time-based delays, drive `rig.clock.advance(...)`
 between intercepts to step through the backoff window deterministically.
 
 ### Silence Assertion
@@ -1539,7 +1540,7 @@ architectural choice with consequences for which packages are in scope.
 8. Default behavior on a backed adapter is itself a rule installed at
    construction time, not a separate concept.
 9. Use the `Clock` abstraction. Never call `jest.advanceTimersByTime`
-   directly from tests; call `harness.clock.advance` instead.
+   directly from tests; call `rig.clock.advance` instead.
 10. Make explicit `methods` lists mandatory for `createProbedMock`,
     constrained at the type level to async-returning methods only. No
     open-ended Proxy passthrough lists. No runtime sync/async detection.

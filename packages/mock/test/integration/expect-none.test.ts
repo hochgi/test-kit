@@ -7,7 +7,7 @@
  *   scheduled with fake timers will NOT fire because of expect.none.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHarness, milliseconds, type Harness } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
 import { createProbedMock } from '@vnatures/test-kit-mock';
 
 interface Service {
@@ -15,20 +15,20 @@ interface Service {
 }
 
 describe('expect.none does not advance virtual time', () => {
-    let harness: Harness;
+    let rig: Rig;
 
     beforeEach(() => {
         vi.useFakeTimers();
-        harness = createHarness();
+        rig = createRig();
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
         vi.useRealTimers();
     });
 
     it('an SUT-internal setTimeout scheduled with fake timers does NOT fire as a side effect', async () => {
-        const { adapter, probe } = harness.attach(createProbedMock<Service>({ methods: ['doThing'] }));
+        const { adapter, probe } = rig.attach(createProbedMock<Service>({ methods: ['doThing'] }));
 
         let sideEffectFired = false;
         setTimeout(() => {
@@ -43,15 +43,15 @@ describe('expect.none does not advance virtual time', () => {
         expect(sideEffectFired).toBe(false);
     });
 
-    it('after harness.clock.advance, expect.none({ within: ms(0) }) sees the side effect', async () => {
-        const { adapter, probe } = harness.attach(createProbedMock<Service>({ methods: ['doThing'] }));
+    it('after rig.clock.advance, expect.none({ within: ms(0) }) sees the side effect', async () => {
+        const { adapter, probe } = rig.attach(createProbedMock<Service>({ methods: ['doThing'] }));
 
         setTimeout(() => {
             void adapter.doThing(7);
         }, 50);
 
         // Now we explicitly advance virtual time. The setTimeout fires.
-        await harness.clock.advance(milliseconds(100));
+        await rig.clock.advance(milliseconds(100));
 
         // expect.none({ within: ms(0) }) should now FAIL because the call arrived.
         await expect(probe.expect.none({ within: milliseconds(0) })).rejects.toThrow(/Expected no calls/);

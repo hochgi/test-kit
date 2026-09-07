@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-sql",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Probe-driven component testing — shared SQL probe surface",
   "license": "UNLICENSED",
   "repository": {
@@ -41,8 +41,8 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {
-    "@vnatures/test-kit": "^1.0.0"
+  "peerDependencies": {
+    "@vnatures/test-kit": "^2.0.0"
   },
   "main": "./dist/index.cjs",
   "devDependencies": {

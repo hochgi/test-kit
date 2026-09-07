@@ -8,7 +8,7 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
 } from '@vnatures/test-kit';
@@ -16,7 +16,7 @@ import type { SqsCall, SqsCommandConstructor, SqsPendingCall, SqsProbe } from '.
 import { InMemorySqsBacking, SUPPORTED_SQS_COMMANDS } from './in-memory-backing.js';
 
 export interface CreateProbedSqsAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     /** Queue name; default `test-queue`. */
     readonly queueName?: string;
     /**

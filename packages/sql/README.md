@@ -19,7 +19,7 @@ package matching your database boundary:
   only. `QueryProbe` adds `sql(...)` sugar and inherits `calls`.
 - `SqlDriver` — the seam each per-ORM package implements:
   `onApplicationQuery`, `reset`, and `close`.
-- `createProbedSqlAdapter({ harness, driver })` — the helper that
+- `createProbedSqlAdapter({ harness: rig, driver })` — the helper that
   constructs the probe, installs the default forward rule, and returns
   `{ probe, probeRoot }`.
 

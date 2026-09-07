@@ -9,7 +9,7 @@ mental model and vocabulary, start with [`concepts.md`](concepts.md).
 Test-kit ships as a small family of packages:
 
 - `@vnatures/test-kit`: generic probe engine, `Selection` / `RuleBuilder` /
-  `Expectations`, `Clock`, `Harness`, shared types.
+  `Expectations`, `Clock`, `Rig`, shared types.
 - `@vnatures/test-kit-pglite-driver`: shared PGlite lifecycle helper
   (`createPgliteHandle`). Published; used by the `pg-*` packages.
 - `@vnatures/test-kit-mock`: Proxy-based programmable mock adapters.
@@ -86,7 +86,7 @@ Rules:
 The `Clock` is a user-facing abstraction for driving virtual time
 forward in a way that is uniform across timer systems. **It does not
 drive any of test-kit's internal timing.** All test-kit waiter
-deadlines and the harness safety timeout use real wall-clock,
+deadlines and the rig safety timeout use real wall-clock,
 unconditionally.
 
 ```typescript
@@ -138,7 +138,7 @@ Behavior:
   integration. `tickAll()` runs every scheduled callback whose deadline
   has passed. Useful for non-Jest/Vitest contexts.
 
-`createHarness` auto-detects the active fake-timer system in this order:
+`createRig` auto-detects the active fake-timer system in this order:
 
 1. `vi.isFakeTimers()` returns true → `viFakeClock()`.
 2. `jest.isMockFunction(setTimeout)` or `jest.getTimerCount` is callable →
@@ -158,25 +158,25 @@ be relied upon.
 - **The `none` assertion's wait** is a real wall-clock wait, not a
   virtual-time advance. See "expect.none" in the Expectations section
   for details.
-- **The harness safety timeout** is a real wall-clock timer that
+- **The rig safety timeout** is a real wall-clock timer that
   catches genuinely hung tests as a last-resort failsafe.
 
 The Clock exists to give the user a uniform API to drive SUT-internal
 timers (the SUT's `setTimeout`s, scheduled tasks, retry loops). It
 does not exist to control test-kit's own scheduling.
 
-## Harness
+## Rig
 
 ```typescript
-export interface Harness {
+export interface Rig {
     readonly clock: Clock;
     readonly defaultTimeout: Duration;
 
     /**
      * Cross-probe expectations for asserting orderings across multiple
-     * boundaries. See `HarnessExpectations` below.
+     * boundaries. See `RigExpectations` below.
      */
-    readonly expect: HarnessExpectations;
+    readonly expect: RigExpectations;
 
     /**
      * Register an adapter for lifecycle management.
@@ -184,7 +184,7 @@ export interface Harness {
      * Two overloads, single implementation: when given a Promise, the
      * implementation recurses on the resolved value, returning a
      * Promise that resolves to the registered adapter. The standard
-     * usage pattern (`const db = await harness.attach(createProbedKyselyAdapter(...))`)
+     * usage pattern (`const db = await rig.attach(createProbedKyselyAdapter(...))`)
      * makes registration explicit in the await.
      *
      * Implementation sketch:
@@ -216,10 +216,10 @@ export interface Harness {
  * Each step's pending result has the same shape as if the user had
  * called `selection.expect.intercept` (for capturing steps) or
  * `selection.expect.observe` (for observation steps) on that
- * selection directly. The harness coordinator simply orchestrates
+ * selection directly. The rig coordinator simply orchestrates
  * the ordering.
  */
-export interface HarnessExpectations {
+export interface RigExpectations {
     /**
      * Wait for matching calls across selections in **strict order**.
      * Resolves with an array of pending captures / observations in the
@@ -243,7 +243,7 @@ export interface HarnessExpectations {
      * Resolves with an array of pending captures / observations in the
      * same order as the input.
      *
-     * Same step shape as `sequence`. The harness considers the
+     * Same step shape as `sequence`. The rig considers the
      * expectation satisfied when each input step has matched at least
      * one call, regardless of arrival order across steps.
      */
@@ -273,13 +273,13 @@ export type SequenceResult<S extends ReadonlyArray<Selection<any, any> | Observa
         never;
 };
 
-export type CreateHarnessOptions = {
+export type CreateRigOptions = {
     readonly clock?: Clock;
     readonly defaultTimeout?: Duration;        // default seconds(5)
     readonly safetyTimeout?: Duration | null;  // default seconds(30); null disables
 };
 
-export function createHarness(options?: CreateHarnessOptions): Harness;
+export function createRig(options?: CreateRigOptions): Rig;
 ```
 
 Behavior:
@@ -289,26 +289,28 @@ Behavior:
   adapter unchanged. The Promise path recurses on the resolved value
   (`adapter.then((a) => this.attach(a))`), returning a Promise that
   resolves to the registered adapter. Standard usage is
-  `const db = await harness.attach(createProbedKyselyAdapter(...))`,
+  `const db = await rig.attach(createProbedKyselyAdapter(...))`,
   which makes registration explicit in the await.
-- If `attach` is called after `close()`, it throws `Error("Harness is
-  closed.")` synchronously (sync path) or rejects (Promise path).
+- If `attach` is called after `close()`, it throws
+  `Error("Harness is closed.")` synchronously (sync path) or rejects
+  (Promise path).
 - `reset(options?)`:
   - Calls `reset()` on every attached adapter (in registration order)
     that implements it. Adapters without `reset()` are skipped.
   - Calls `resetProbe()` on every attached probe by default, clearing
-    user-installed rules and call history. Harness-installed default
+    user-installed rules and call history. Rig-installed default
     rules (e.g., backed-adapter `always().forward()`) are preserved.
   - With `{ keepRules: true }`, skips the `resetProbe()` step. Adapter
     `reset()` calls still run. Use this when a multi-step test wants
     a clean data slate but to keep its programmed rules.
 - `close()` calls `close()` on every attached adapter in **reverse**
-  registration order. After `close`, the harness:
+  registration order. After `close`, the rig:
   - cancels every in-flight live expectation registered through any
     attached probe with the error
     `"Harness closed with N unsettled waiter(s)."`,
-  - rejects subsequent calls to `attach`/`reset`/`close` with the error
-    `"Harness is closed."`.
+  - rejects subsequent calls to `attach`/`reset` with the error
+    `"Harness is closed."`. `close()` itself is idempotent: calling it
+    again returns without error.
 - The `safetyTimeout` is a real-wall-clock failsafe, separate from
   per-expectation `within` deadlines. Every live expectation is raced
   against `globalThis.setTimeout(fail, safetyTimeout.milliseconds)`.
@@ -318,7 +320,7 @@ Behavior:
   or unmet expectations."`. Set `safetyTimeout: null` to disable
   (not recommended).
 - Per-expectation deadlines (`within`) also use real wall-clock,
-  unconditionally. A forgotten `harness.clock.advance(...)` produces a
+  unconditionally. A forgotten `rig.clock.advance(...)` produces a
   fast `Timed out after Nms waiting for ...` failure rather than
   hanging until the safety timeout.
 
@@ -337,7 +339,7 @@ export type RequiredWithinOptions = {
 };
 ```
 
-Positive expectations may omit `within` and use the harness `defaultTimeout`.
+Positive expectations may omit `within` and use the rig `defaultTimeout`.
 Negative expectations and `exactly` must require `within`.
 
 ## Selection
@@ -386,7 +388,7 @@ export interface Selection<TCall, TPending extends PendingCallBase<TCall>> {
      * array reflecting the updated history.
      *
      * The history is unbounded by design. Tests are expected to be short-
-     * lived and to construct a fresh harness per test (or per `it` block);
+     * lived and to construct a fresh rig per test (or per `it` block);
      * call accumulation across many tests is not a concern. If a single
      * test generates a very large number of calls and history size matters,
      * call `clearCalls()` periodically.
@@ -432,7 +434,7 @@ export interface ProbeAdmin {
     /**
      * Clear user-installed rules. Does not clear call history.
      *
-     * `includeDefaults: true` also clears harness-installed default rules
+     * `includeDefaults: true` also clears rig-installed default rules
      * (e.g., the implicit forward rule on backed adapters). Default false.
      */
     clearRules(options?: { includeDefaults?: boolean }): void;
@@ -483,7 +485,7 @@ export interface RuleBuilder<TCall, TPending extends PendingCallBase<TCall>> {
      *   promise rejects with the same reason.
      * - `fn` returns a Promise that hangs forever → the application's
      *   promise also hangs. This is treated as a user error: the test
-     *   author wrote a non-resolving rule. The harness safety timeout
+     *   author wrote a non-resolving rule. The rig safety timeout
      *   eventually fires and fails the test with the standard hung-
      *   test message; the `answerWith` failure is not specially
      *   diagnosed.
@@ -537,9 +539,9 @@ below):
   matching `once()` rule fires and is removed. One-shots beat all
   permanents.
 - **Tier 3 — permanent rules (LIFO stack)**: newest matching `always()`
-  rule fires. Harness-installed defaults sit at the bottom.
+  rule fires. Rig-installed defaults sit at the bottom.
 - **Default**: no match in any tier → call parks. Tests can settle it
-  retroactively via `expect.intercept`, or the harness safety timeout
+  retroactively via `expect.intercept`, or the rig safety timeout
   fires.
 
 Filter chains attached to selections are conjunctive: a call must
@@ -591,7 +593,7 @@ export interface Expectations<TCall, TPending extends PendingCallBase<TCall>> {
      * call is no longer eligible — the test must use the pre-register
      * pattern instead.
      *
-     * Uses the harness `defaultTimeout` when `within` is omitted.
+     * Uses the rig `defaultTimeout` when `within` is omitted.
      */
     intercept(options?: ExpectOptions): Promise<TPending>;
 
@@ -600,7 +602,7 @@ export interface Expectations<TCall, TPending extends PendingCallBase<TCall>> {
      * rule still fires; the returned object is a read-only view of the
      * call shape (the same `TCall` shape as `selection.calls[i]`).
      *
-     * Uses the harness `defaultTimeout` when `within` is omitted.
+     * Uses the rig `defaultTimeout` when `within` is omitted.
      */
     observe(options?: ExpectOptions): Promise<TCall>;
 
@@ -615,7 +617,7 @@ export interface Expectations<TCall, TPending extends PendingCallBase<TCall>> {
      * For fast negative checks under fake timers, advance the clock
      * explicitly first and then assert silence with `within: ms(0)`:
      *
-     *     await harness.clock.advance(seconds(5));
+     *     await rig.clock.advance(seconds(5));
      *     await probe.expect.none({ within: ms(0) });
      *
      * `within: ms(0)` means "after a microtask flush": no real wait,
@@ -815,7 +817,7 @@ export type CreateProbedMockOptions<T extends object, M extends readonly string[
     readonly methods: CheckedMethods<T, M>;
 
     /**
-     * Override the harness's defaultTimeout for expectations on this probe.
+     * Override the rig's defaultTimeout for expectations on this probe.
      */
     readonly defaultTimeout?: Duration;
 };
@@ -848,7 +850,7 @@ Behavior:
   concepts document for the consequences.
 - Calls to listed methods always return a `Promise`. Without a matching
   rule, the call parks (the returned promise stays pending until the
-  test settles it via `expect.intercept` or until the harness safety
+  test settles it via `expect.intercept` or until the rig safety
   timeout fires).
 - `reset()` is implemented as `clearCalls()` on the probe.
   `close()` is implemented as `clearRules({ includeDefaults: true })` +
@@ -1003,8 +1005,8 @@ export type ProbedStreamMock<T extends object> = ProbedAdapter<T, StreamMethodPr
 export type CreateProbedStreamMockOptions<T extends object, M extends readonly string[]> = {
     readonly methods: CheckedStreamMethods<T, M>;
     readonly defaultTimeout?: Duration;
-    /** Optional harness reference; inherits defaultTimeout / safetyTimeout / clock when provided. */
-    readonly harness?: HarnessRef;
+    /** Optional rig reference; inherits defaultTimeout / safetyTimeout / clock when provided. */
+    readonly harness?: RigRef;
 };
 
 export function createProbedStreamMock<
@@ -1026,7 +1028,7 @@ Behavior:
   completing — this is how "yields N chunks then fails" is expressed.
   `.reject(error)` fails before any chunk is pushed. `.park()` never closes
   (the consumer's `next()` hangs; pair with `expect.intercept` timeouts or
-  `harness.clock`).
+  `rig.clock`).
 - The pending call from `expect.intercept()` exposes `push`/`end`/`error`
   instead of `answer`/`reject`, so a test can interactively drive the
   consumer's iteration one chunk at a time. `settled` flips to `true` only
@@ -1099,7 +1101,7 @@ export type ProbedKyselyAdapter<DB> = ProbedAdapterWithLifecycle<Kysely<DB>, Que
 };
 
 export type CreateProbedKyselyAdapterOptions<DB> = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap: (db: Kysely<DB>) => Promise<void>;
     readonly extensions?: Record<string, unknown>;
     readonly defaultTimeout?: Duration;
@@ -1115,7 +1117,7 @@ export type ProbedKnexAdapter = ProbedAdapterWithLifecycle<Knex, QueryProbe> & {
 };
 
 export type CreateProbedKnexAdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap: (knex: Knex) => Promise<void>;
     readonly extensions?: Record<string, unknown>;
     readonly knexConfig?: Partial<Knex.Config>;
@@ -1132,7 +1134,7 @@ export type ProbedSequelizeAdapter = ProbedAdapterWithLifecycle<Sequelize, Query
 };
 
 export type CreateProbedSequelizeAdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap?: (sequelize: Sequelize) => Promise<void>;
     readonly preBootstrap?: (sequelize: Sequelize) => Promise<void>;
     readonly models?: ReadonlyArray<ModelCtor>;
@@ -1147,7 +1149,7 @@ export function createProbedSequelizeAdapter(
 ): Promise<ProbedSequelizeAdapter>;
 ```
 
-The shared surface is `harness`, `defaultTimeout`, the returned `probe`,
+The shared surface is `rig`, `defaultTimeout`, the returned `probe`,
 and the `reset`/`close` lifecycle. What differs:
 
 1. The `adapter` type (typed instance of the ORM).
@@ -1177,18 +1179,18 @@ and the `reset`/`close` lifecycle. What differs:
   recorded in call history and are **not** subject to user rules).
 - Application queries through `adapter` are recorded by the probe and
   subject to rule resolution.
-- The factory accepts a `harness` parameter and wires the harness's
+- The factory accepts a `harness` parameter (a `Rig`) and wires the rig's
   clock, `defaultTimeout`, and safety-timeout configuration into the
-  probe. The factory does NOT call `harness.attach` itself; callers do
-  `await harness.attach(createProbedKyselyAdapter({ harness, ... }))`
+  probe. The factory does NOT call `rig.attach` itself; callers do
+  `await rig.attach(createProbedKyselyAdapter({ harness: rig, ... }))`
   to register the result for lifecycle.
 
 ### Usage
 
 ```typescript
-const harness = createHarness();
-const db = await harness.attach(createProbedKyselyAdapter<Database>({
-    harness,
+const rig = createRig();
+const db = await rig.attach(createProbedKyselyAdapter<Database>({
+    harness: rig,
     bootstrap,
 }));
 
@@ -1204,7 +1206,7 @@ pending.forward();
 
 await resultPromise;
 
-afterAll(() => harness.close());
+afterAll(() => rig.close());
 ```
 
 ## Cache Adapter API
@@ -1246,7 +1248,7 @@ export interface CacheProbe extends ForwardableProbe<CacheCall, CachePendingCall
 export type ProbedCacheAdapter = ProbedAdapter<CacheAdapter, CacheProbe> & ProbedResource;
 
 export type CreateProbedCacheAdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
 };
 
@@ -1264,7 +1266,7 @@ Behavior:
 Usage:
 
 ```typescript
-const cache = harness.attach(createProbedCacheAdapter({ harness }));
+const cache = rig.attach(createProbedCacheAdapter({ harness: rig }));
 
 cache.probe.on('get').once().reject(new Error('redis down'));
 ```
@@ -1304,7 +1306,7 @@ export type AddOptions = {
 };
 
 export type CreateProbedBullQueueOptions<TData = unknown> = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly name?: string;
     readonly defaultJobOptions?: AddOptions;
     readonly defaultTimeout?: Duration;
@@ -1336,7 +1338,7 @@ Behavior:
 Usage:
 
 ```typescript
-const queue = harness.attach(createProbedBullQueue({ harness, name: 'exports' }));
+const queue = rig.attach(createProbedBullQueue({ harness: rig, name: 'exports' }));
 
 queue.probe.on('add').once().reject(maxRetriesPerRequestError());
 ```
@@ -1381,7 +1383,7 @@ export type ProbedS3Adapter = ProbedAdapter<S3Client, S3Probe> & ProbedResource 
 };
 
 export type CreateProbedS3AdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bucket: string;
     /**
      * Deprecated. Ignored by the in-memory backing. Always the empty string
@@ -1441,7 +1443,7 @@ export interface PresignerProbe extends Probe<PresignCall, PresignPendingCall> {
 export type ProbedPresignerAdapter = ProbedAdapter<PresignerAdapter, PresignerProbe> & ProbedResource;
 
 export type CreateProbedPresignerAdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
 };
 
@@ -1492,7 +1494,7 @@ export type ProbedSqsAdapter = ProbedAdapterWithLifecycle<SQSClient, SqsProbe> &
 };
 
 export type CreateProbedSqsAdapterOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly queueName?: string;            // default "test-queue"
     readonly queueUrl?: string;             // default derived from queueName
     readonly defaultVisibilityTimeoutSeconds?: number; // default 30
@@ -1518,8 +1520,8 @@ Behavior:
   immediately visible), and `DelaySeconds` on send. FIFO is not
   implemented.
 - Timing is fake-timer friendly: scheduling uses the ambient `setTimeout`
-  and deadlines use `harness.clock.now()`. Drive expiry with
-  `harness.clock.advance(...)` under fake timers.
+  and deadlines use `rig.clock.now()`. Drive expiry with
+  `rig.clock.advance(...)` under fake timers.
 - `reset()` empties every queue and cancels pending timers.
 - `close()` disposes the backing.
 
@@ -1573,7 +1575,7 @@ export type ProbedKafkaProducer = ProbedAdapterWithLifecycle<KafkaProducer, Kafk
 };
 
 export type CreateProbedKafkaProducerOptions = {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly partitionsPerTopic?: number;  // default 4
     readonly defaultTimeout?: Duration;
 };
@@ -1637,7 +1639,7 @@ export type ProbedMysqlAdapter = ProbedAdapterWithLifecycle<MysqlAdapter, QueryP
 };
 
 export interface CreateProbedMysqlAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap: (maintenance: MaintenancePool) => Promise<void>;
     readonly image?: string;     // default "mysql:8.0"
     readonly database?: string;  // default "testdb"
@@ -1706,7 +1708,7 @@ after observers fire.
    not match a particular call simply remains in the queue, available
    for a future matching call.
 
-   One-shots take priority over all permanent rules. Even a harness-
+   One-shots take priority over all permanent rules. Even a rig-
    installed permanent forward at tier 3 is bypassed for any call that
    matches a queued one-shot at tier 2.
 
@@ -1718,7 +1720,7 @@ after observers fire.
    rules are not removed after execution.
 
    LIFO ordering at this tier means user-installed permanents
-   naturally override harness-installed defaults (because user rules
+   naturally override rig-installed defaults (because user rules
    are registered after the factory installs defaults).
 
 ### Default behavior (no waiter, no rule)
@@ -1727,9 +1729,9 @@ after observers fire.
    tier 3:
    - The call **parks** (the returned promise stays pending until
      either the test settles it via a retroactive `expect.intercept`,
-     or the harness safety timeout fires).
+     or the rig safety timeout fires).
    - This applies to both programmable mock adapters and backed
-     adapters whose harness-installed default rule has been removed
+     adapters whose rig-installed default rule has been removed
      via `clearRules({ includeDefaults: true })`. Backed adapters
      with their default intact never reach this step — the
      `always().forward()` rule at the bottom of the tier-3 stack
@@ -1805,19 +1807,19 @@ Required formats:
 - Fake clock not active:
   `"jestFakeClock requires jest.useFakeTimers() to be active before
   clock.advance() is called."`
-- Harness safety timeout:
+- Rig safety timeout:
   `"Test exceeded the harness safety timeout (30000ms wall-clock).
   This usually means the test is hung; check for missing settlements
   or unmet expectations."`
-- Harness closed:
+- Rig closed:
   `"Harness is closed."`
-- Harness close with unsettled waiters:
+- Rig close with unsettled waiters:
   `"Harness closed with {n} unsettled waiter(s)."`
-- `harness.expect.sequence` order violation:
+- `rig.expect.sequence` order violation:
   `"Sequence expectation failed: step {i} ({label}) matched before step {j} ({label}) was satisfied."`
-- `harness.expect.sequence` timeout:
+- `rig.expect.sequence` timeout:
   `"Sequence expectation timed out after {within}ms. Steps satisfied: {i}/{n}. First unsatisfied step: {label}."`
-- `harness.expect.allOf` timeout:
+- `rig.expect.allOf` timeout:
   `"allOf expectation timed out after {within}ms. {satisfied}/{n} steps satisfied. Unsatisfied: [{labels}]."`
 
 All errors are plain `Error` subclasses (or `RangeError` for invalid
@@ -1838,7 +1840,7 @@ Domain packages must **not** reimplement:
 - drain behavior,
 - double-settlement checks,
 - filter chain evaluation,
-- harness lifecycle integration.
+- rig lifecycle integration.
 
 ### Domain packages (thin wrappers)
 
@@ -1911,24 +1913,24 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
 12. The probe is a selection. There is no `any()` accessor.
 13. `filter(predicate, label?)` is the universal narrowing primitive.
     Domain probes provide typed sugars that compose to `filter`.
-14. The harness is the recommended lifecycle owner for tests with backed
+14. The rig is the recommended lifecycle owner for tests with backed
     adapters or multiple probes. Tests with a single mock and no backed
-    adapter may use `createProbedMock` directly without a harness.
+    adapter may use `createProbedMock` directly without a rig.
 15. The Clock is a user-facing abstraction for driving SUT-internal
     virtual time. It does **not** drive any of test-kit's internal
     timing. All test-kit waiter deadlines and the safety timeout are
     real wall-clock, unconditionally.
 16. `expect.none({ within })` waits real wall-clock for the duration
-    and does not advance virtual time. Use `harness.clock.advance(...)`
+    and does not advance virtual time. Use `rig.clock.advance(...)`
     explicitly when virtual-time advancement is wanted, then assert
     silence with `expect.none({ within: ms(0) })`.
-17. The harness installs a wall-clock safety timeout (default 30s) as
+17. The rig installs a wall-clock safety timeout (default 30s) as
     a last-resort failsafe for hung tests.
 18. `expect.observe` returns a `TCall` shape (read-only). `expect.intercept`
     returns a `TPending` (settlable). The distinction is intentional.
-19. `harness.reset()` produces test isolation by default: it calls
+19. `rig.reset()` produces test isolation by default: it calls
     `adapter.reset()` on every backed adapter AND clears user-installed
-    rules and call history on every probe. Harness-installed defaults
+    rules and call history on every probe. Rig-installed defaults
     are preserved. `{ keepRules: true }` opts out of probe state
     clearing.
 20. `attach` is a single implementation with two type signatures (sync
@@ -1936,10 +1938,11 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
     resolved value, returning a Promise that resolves to the
     registered adapter.
 21. Backed-adapter factories take an explicit `harness` parameter in
-    their options. They do not call `harness.attach` themselves;
-    callers wrap the factory call in `await harness.attach(...)`.
-    `createProbedMock` does not take a harness parameter (no external
-    resources; falls back to sensible defaults).
+    their options, whose value is a `Rig`. They do not call
+    `rig.attach` themselves; callers wrap the factory call in
+    `await rig.attach(...)`. `createProbedMock` does not *require*
+    one — its `harness` option is optional (no external resources;
+    falls back to sensible defaults).
 22. There is no `pendingCount()` method on selections. The "calls
     available for `expect.intercept` to capture" metric is derivable
     from `selection.calls` and is rarely needed in practice.
@@ -1947,7 +1950,7 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
     access. Mutating the returned array does not affect probe state.
     Re-reading after new calls arrive returns a new array.
 24. Call history is unbounded by design. Tests are short-lived and
-    construct fresh harnesses per test; accumulation across many tests
+    construct fresh rigs per test; accumulation across many tests
     is not a concern. There is no auto-truncation, no max-history
     option, no LRU eviction.
 25. `expect.intercept` is retroactively eligible only for calls that
@@ -1962,8 +1965,8 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
     `adapter` type, the `bootstrap` callback signature, and the
     `seed` helper's input shape. Tests written against one ORM port
     to another with minimal change to non-ORM-specific code.
-27. `harness.expect.sequence(steps, { within })` and
-    `harness.expect.allOf(steps, { within })` provide cross-probe
+27. `rig.expect.sequence(steps, { within })` and
+    `rig.expect.allOf(steps, { within })` provide cross-probe
     ordering assertions. Steps default to capturing intercepts;
     `observation(selection)` marks a step as observation-only. Both
     helpers fail fast on order violations or timeouts with diagnostics
@@ -1975,7 +1978,7 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
 29. One-shot rules (tier 2) live in a single global FIFO queue
     regardless of which selection registered them. There is no
     per-selection or per-matcher queue.
-30. `clearRules()` (without options) preserves harness-installed
+30. `clearRules()` (without options) preserves rig-installed
     defaults. `clearRules({ includeDefaults: true })` removes them too,
     leaving the adapter to park all subsequent calls. The preferred
     way to "park everything" on a backed adapter is to register an

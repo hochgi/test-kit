@@ -2,11 +2,11 @@
  * Translated from v1 packages/core/test/app-demo.test.ts to v2 grammar.
  *
  * Realistic component test: an OrderService with multiple injected boundaries.
- * Demonstrates the v2 harness pattern (createHarness + harness.attach), the
+ * Demonstrates the v2 rig pattern (createRig + rig.attach), the
  * once/always rule grammar, and live intercept-based plumbing assertions.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, milliseconds, type Harness } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
 import { createProbedMock } from '@vnatures/test-kit-mock';
 
 // ── Domain types ────────────────────────────────────────────────────────────
@@ -101,15 +101,15 @@ const testItems: OrderItem[] = [
     { productId: 102, qty: 5 },
 ];
 
-function createTestHarness(harness: Harness) {
-    const users = harness.attach(createProbedMock<UserService>({ methods: ['getUser'] }));
-    const products = harness.attach(
+function createTestHarness(rig: Rig) {
+    const users = rig.attach(createProbedMock<UserService>({ methods: ['getUser'] }));
+    const products = rig.attach(
         createProbedMock<ProductService>({
             methods: ['getProduct', 'reserveStock', 'releaseStock'],
         }),
     );
-    const payments = harness.attach(createProbedMock<PaymentGateway>({ methods: ['charge'] }));
-    const events = harness.attach(createProbedMock<EventBus>({ methods: ['publish'] }));
+    const payments = rig.attach(createProbedMock<PaymentGateway>({ methods: ['charge'] }));
+    const events = rig.attach(createProbedMock<EventBus>({ methods: ['publish'] }));
 
     const service = new OrderService(users.adapter, products.adapter, payments.adapter, events.adapter);
 
@@ -123,16 +123,16 @@ function createTestHarness(harness: Harness) {
 }
 
 describe('OrderService — pre-programmed style (rules)', () => {
-    let harness: Harness;
+    let rig: Rig;
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('creates an order when every dep is pre-programmed via one-shots', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         users.on('getUser').once().answer(testUser);
         products.on('getProduct').once().answer(testProducts[0]);
@@ -150,7 +150,7 @@ describe('OrderService — pre-programmed style (rules)', () => {
     });
 
     it('uses always() for boring deps and focuses on payment behavior', async () => {
-        const { service, users, products, payments } = createTestHarness(harness);
+        const { service, users, products, payments } = createTestHarness(rig);
 
         users.on('getUser').always().answer(testUser);
         products.on('getProduct').always().answer(testProducts[0]);
@@ -166,16 +166,16 @@ describe('OrderService — pre-programmed style (rules)', () => {
 });
 
 describe('OrderService — plumbing style (intercept each call)', () => {
-    let harness: Harness;
+    let rig: Rig;
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('verifies the exact sequence of dependency calls', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         const orderPromise = service.createOrder(1, [{ productId: 101, qty: 2 }]);
 
@@ -210,7 +210,7 @@ describe('OrderService — plumbing style (intercept each call)', () => {
     });
 
     it('answers concurrent product lookups out of order', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         const orderPromise = service.createOrder(1, testItems);
 
@@ -240,16 +240,16 @@ describe('OrderService — plumbing style (intercept each call)', () => {
 });
 
 describe('OrderService — payment failure rolls back stock', () => {
-    let harness: Harness;
+    let rig: Rig;
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('releases stock for all items when payment fails and does not publish event', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         const orderPromise = service.createOrder(1, testItems).catch((e: unknown) => e);
 
@@ -282,16 +282,16 @@ describe('OrderService — payment failure rolls back stock', () => {
 });
 
 describe('OrderService — event bus assertions', () => {
-    let harness: Harness;
+    let rig: Rig;
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('publishes OrderCreated event with correct payload', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         users.on('getUser').always().answer(testUser);
         products.on('getProduct').always().answer(testProducts[0]);
@@ -312,7 +312,7 @@ describe('OrderService — event bus assertions', () => {
     });
 
     it('does not publish event when payment fails', async () => {
-        const { service, users, products, payments, events } = createTestHarness(harness);
+        const { service, users, products, payments, events } = createTestHarness(rig);
 
         users.on('getUser').always().answer(testUser);
         products.on('getProduct').always().answer(testProducts[0]);

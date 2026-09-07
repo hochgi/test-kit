@@ -8,7 +8,7 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
 } from '@vnatures/test-kit';
@@ -16,7 +16,7 @@ import { formatKey, fromStored, toStored } from './key.js';
 import type { CacheAdapter, CacheCall, CacheKeyInput, CacheMethod, CachePendingCall, CacheProbe } from './types.js';
 
 export interface CreateProbedCacheAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
 }
 

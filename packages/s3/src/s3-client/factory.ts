@@ -8,7 +8,7 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
 } from '@vnatures/test-kit';
@@ -40,7 +40,7 @@ const SUPPORTED_COMMANDS: ReadonlySet<string> = new Set([
 ]);
 
 export interface CreateProbedS3AdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bucket: string;
     /**
      * Deprecated. Retained for source-compat with v1; ignored by the

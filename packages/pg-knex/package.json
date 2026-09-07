@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-pg-knex",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Probe-driven Knex adapter backed by PGlite",
   "license": "UNLICENSED",
   "repository": {
@@ -43,12 +43,12 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.2",
-    "@vnatures/test-kit": "^1.0.0",
-    "@vnatures/test-kit-pglite-driver": "^1.0.0",
-    "@vnatures/test-kit-sql": "^1.0.0",
+    "@vnatures/test-kit-pglite-driver": "^2.0.0",
+    "@vnatures/test-kit-sql": "^2.0.0",
     "knex-pglite": "^0.13.0"
   },
   "peerDependencies": {
+    "@vnatures/test-kit": "^2.0.0",
     "knex": ">=3.0.0"
   },
   "devDependencies": {

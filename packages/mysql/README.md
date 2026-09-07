@@ -34,13 +34,13 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-mysql
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMysqlAdapter } from "@vnatures/test-kit-mysql";
 
-const harness = createHarness();
-const mysql = await harness.attach(
+const rig = createRig();
+const mysql = await rig.attach(
     createProbedMysqlAdapter({
-        harness,
+        harness: rig,
         async bootstrap(db) {
             await db.execute(
                 `CREATE TABLE IF NOT EXISTS users (
@@ -64,7 +64,7 @@ const [rows] = await mysql.adapter.query<
 >("SELECT id, name, email FROM users ORDER BY id");
 expect(rows[0].name).toBe("Alice");
 
-await harness.close(); // stops the container
+await rig.close(); // stops the container
 ```
 
 ## What the adapter returns
@@ -78,7 +78,7 @@ const {
     reset,
     close,
 } = await createProbedMysqlAdapter({
-    harness,
+    harness: rig,
     bootstrap,
     image,       // default "mysql:8.0"
     database,    // default "testdb"
@@ -103,9 +103,9 @@ const {
 - `seed(table, rows)` — batch-insert rows via the maintenance pool,
   bypassing the probe.
 - `reset()` — truncates all user tables (with `FOREIGN_KEY_CHECKS = 0`)
-  and re-runs `bootstrap`. `harness.reset()` runs it automatically.
+  and re-runs `bootstrap`. `rig.reset()` runs it automatically.
 - `close()` — closes both pools and stops the container.
-  `harness.close()` runs it automatically.
+  `rig.close()` runs it automatically.
 
 ## Three verbs: `forward` / `answer` / `reject`
 
@@ -131,27 +131,27 @@ pending.forward();
 ## Test structure: one container, many tests
 
 Starting a container is slow (~10s). Start **one** container in
-`beforeAll` and clean up between tests with `harness.reset()` (which
+`beforeAll` and clean up between tests with `rig.reset()` (which
 truncates tables + re-runs bootstrap + clears probe state):
 
 ```typescript
 describe.skipIf(!hasDocker)("my MySQL tests", () => {
-    let harness: Harness;
+    let rig: Rig;
     let mysql: ProbedMysqlAdapter;
 
     beforeAll(async () => {
-        harness = createHarness();
-        mysql = await harness.attach(
-            createProbedMysqlAdapter({ harness, bootstrap: async (db) => { /* ... */ } }),
+        rig = createRig();
+        mysql = await rig.attach(
+            createProbedMysqlAdapter({ harness: rig, bootstrap: async (db) => { /* ... */ } }),
         );
     });
 
     afterEach(async () => {
-        await harness.reset(); // truncate + re-bootstrap + clear probe
+        await rig.reset(); // truncate + re-bootstrap + clear probe
     });
 
     afterAll(async () => {
-        await harness.close(); // stop container
+        await rig.close(); // stop container
     });
 });
 ```

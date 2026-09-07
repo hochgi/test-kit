@@ -4,7 +4,7 @@ import {
     makePendingBase,
     type CallRecord,
     type Duration,
-    type HarnessRef,
+    type RigRef,
     type PendingCallBase,
     type ProbeRoot,
     type Selection,
@@ -27,7 +27,7 @@ export interface CreateProbedMockOptions<T extends object, M extends ReadonlyArr
      * harness's defaultTimeout / safetyTimeout / clock instead of using the
      * stand-alone fallback. Safe to omit for trivial single-mock tests.
      */
-    readonly harness?: HarnessRef;
+    readonly harness?: RigRef;
 }
 
 /**

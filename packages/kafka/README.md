@@ -30,11 +30,11 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-kafka
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedKafkaProducer } from "@vnatures/test-kit-kafka";
 
-const harness = createHarness();
-const kafka = harness.attach(createProbedKafkaProducer({ harness }));
+const rig = createRig();
+const kafka = rig.attach(createProbedKafkaProducer({ harness: rig }));
 
 // Default rule forwards to the in-memory topic log.
 await kafka.adapter.send({
@@ -49,14 +49,14 @@ const log = kafka.topicLog("orders");
 expect(log).toHaveLength(2);
 expect(log[0].value!.toString()).toBe("o1");
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
 
 ```typescript
 const { adapter, probe, topicLog, reset, close } = createProbedKafkaProducer({
-    harness,
+    harness: rig,
     partitionsPerTopic, // default 4
     defaultTimeout,
 });
@@ -71,9 +71,9 @@ const { adapter, probe, topicLog, reset, close } = createProbedKafkaProducer({
 - `topicLog(topic)` — read back the in-memory log for assertions. Entries
   are returned in global append (send) order, each tagged with
   `partition` and per-partition `offset`.
-- `reset()` — empties every topic log; `harness.reset()` runs it
+- `reset()` — empties every topic log; `rig.reset()` runs it
   automatically.
-- `close()` — disposes the backing; `harness.close()` runs it
+- `close()` — disposes the backing; `rig.close()` runs it
   automatically.
 
 ## Three verbs: `forward` / `answer` / `reject`
@@ -114,7 +114,7 @@ pending.forward();
   assert exact bytes regardless of whether the producer sent strings or
   buffers. Multi-value headers (kafkajs `IHeaders` arrays) are preserved
   as `Buffer[]`.
-- **Clock-aware timestamps.** When `harness.clock` is threaded into the
+- **Clock-aware timestamps.** When `rig.clock` is threaded into the
   backing (the factory does this automatically), default message
   timestamps use `clock.now()` instead of wall-clock `Date.now()`, so
   they're deterministic under fake timers and manual clocks.

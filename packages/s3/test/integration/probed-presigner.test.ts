@@ -5,7 +5,7 @@
  * rejected explicitly. Default forward fails loudly.
  *
  * v1 mapping:
- *   createProbedPresigner()           → harness.attach(createProbedPresignerAdapter({ harness }))
+ *   createProbedPresigner()           → rig.attach(createProbedPresignerAdapter({ harness: rig }))
  *   probed.presigner                  → presigner.adapter
  *   probed.probe                      → presigner.probe
  *   probe.alwaysAnswer(fn)            → probe.always().answerWith(fn)
@@ -18,22 +18,22 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedPresignerAdapter, type ProbedPresignerAdapter } from '@vnatures/test-kit-s3';
 
 const dummyClient = new S3Client({ region: 'us-east-1' });
 
 describe('createProbedPresignerAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let presigner: ProbedPresignerAdapter;
 
     beforeEach(() => {
-        harness = createHarness();
-        presigner = harness.attach(createProbedPresignerAdapter({ harness }));
+        rig = createRig();
+        presigner = rig.attach(createProbedPresignerAdapter({ harness: rig }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('default behavior — no backing, calls park', () => {

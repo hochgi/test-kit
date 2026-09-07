@@ -1,8 +1,8 @@
 /**
- * Harness lifecycle owner: attach/reset/close + cross-probe expectations
+ * Rig lifecycle owner: attach/reset/close + cross-probe expectations
  * (sequence, allOf, observation).
  *
- * Per docs/internal/tech-design.md §"Harness Implementation".
+ * Per docs/internal/tech-design.md §"Rig Implementation".
  */
 import type { Duration } from './duration.js';
 import { milliseconds, seconds } from './duration.js';
@@ -35,7 +35,7 @@ export type SequenceResult<S extends ReadonlyArray<SequenceStep>> = {
     [K in keyof S]: S[K] extends Selection<infer _T, infer P> ? P : S[K] extends Observation<infer T> ? T : never;
 };
 
-export interface HarnessExpectations {
+export interface RigExpectations {
     sequence<S extends ReadonlyArray<SequenceStep>>(
         steps: S,
         options: { readonly within: Duration },
@@ -46,19 +46,19 @@ export interface HarnessExpectations {
     ): Promise<SequenceResult<S>>;
 }
 
-// ── Harness ────────────────────────────────────────────────────────────────
+// ── Rig ────────────────────────────────────────────────────────────────────
 
-export interface CreateHarnessOptions {
+export interface CreateRigOptions {
     readonly clock?: Clock;
     readonly defaultTimeout?: Duration;
     readonly safetyTimeout?: Duration | null;
 }
 
-export interface Harness {
+export interface Rig {
     readonly clock: Clock;
     readonly defaultTimeout: Duration;
     readonly safetyTimeout: Duration | null;
-    readonly expect: HarnessExpectations;
+    readonly expect: RigExpectations;
     attach<T extends ProbedAdapter<unknown, unknown>>(adapter: T): T;
     attach<T extends ProbedAdapter<unknown, unknown>>(adapter: Promise<T>): Promise<T>;
     reset(options?: { keepRules?: boolean }): Promise<void>;
@@ -87,7 +87,7 @@ function isObservationStep(step: SequenceStep): step is Observation<unknown> {
     return typeof step === 'object' && step !== null && (step as Observation<unknown>).kind === 'observe';
 }
 
-export function createHarness(options?: CreateHarnessOptions): Harness {
+export function createRig(options?: CreateRigOptions): Rig {
     const clock = options?.clock ?? autoDetectClock();
     const defaultTimeout = options?.defaultTimeout ?? seconds(5);
     const safetyTimeout = options?.safetyTimeout === undefined ? seconds(30) : options.safetyTimeout;
@@ -95,7 +95,7 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
     const adapters: AttachedAdapter[] = [];
     let closed = false;
 
-    const expectImpl: HarnessExpectations = {
+    const expectImpl: RigExpectations = {
         async sequence<S extends ReadonlyArray<SequenceStep>>(
             steps: S,
             opts: { readonly within: Duration },
@@ -160,7 +160,7 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
         },
     };
 
-    const harness: Harness = {
+    const rig: Rig = {
         get clock() {
             return clock;
         },
@@ -179,11 +179,11 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
                 throw errors.harnessClosed();
             }
             if (isPromiseLike(adapter)) {
-                return adapter.then((a) => harness.attach(a));
+                return adapter.then((a) => rig.attach(a));
             }
             adapters.push(adapter as unknown as AttachedAdapter);
             return adapter;
-        }) as Harness['attach'],
+        }) as Rig['attach'],
 
         async reset(options?: { keepRules?: boolean }) {
             if (closed) throw errors.harnessClosed();
@@ -225,7 +225,7 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
         },
     };
 
-    return harness;
+    return rig;
 }
 
 function stepLabel(step: SequenceStep): string {

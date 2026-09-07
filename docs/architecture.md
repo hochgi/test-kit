@@ -13,7 +13,7 @@ contracts (function signatures, file layouts, etc.) are described in
 ## Package Graph
 
 ```
-@vnatures/test-kit                   ← probe engine, Clock, Harness, shared types
+@vnatures/test-kit                   ← probe engine, Clock, Rig, shared types
        ▲
        │
        ├── @vnatures/test-kit-mock                ← createProbedMock + MethodProbe
@@ -66,7 +66,7 @@ just types.
 
 This package is the single source of truth for everything that is not
 domain-specific. It exports both the public API surface (Probe,
-Selection, RuleBuilder, Expectations, Clock, Harness, Duration) and an
+Selection, RuleBuilder, Expectations, Clock, Rig, Duration) and an
 internal-facing API that domain packages consume to build their own
 adapters.
 
@@ -75,7 +75,7 @@ adapters.
 - `Duration`, `milliseconds`, `seconds`, `minutes`
 - `Clock`, `realClock`, `jestFakeClock`, `viFakeClock`,
   `sinonFakeClock`, `manualClock`
-- `Harness`, `createHarness`, `HarnessExpectations`, `observation`
+- `Rig`, `createRig`, `RigExpectations`, `observation`
 - `Selection`, `ForwardableSelection`, `Probe`, `ProbeAdmin`
 - `RuleBuilder`, `ForwardableRuleBuilder`
 - `Expectations`
@@ -88,7 +88,7 @@ adapters.
 
 - A factory function — provisional name `createProbeRoot<TCall, TPending>(...)`
   — that domain packages call to construct their probe. This factory
-  takes the harness reference, the default-rule-installer, and any
+  takes the rig reference, the default-rule-installer, and any
   domain-specific configuration, and returns a fully-wired Probe with
   the four-tier rule resolution engine, waiter management, call
   history, settlement tracking, etc.
@@ -148,7 +148,7 @@ ORM-specific code or any PGlite startup logic.
 
 - `types.ts`: `QueryCall`, `QueryPendingCall`, `QueryProbe`, `SqlDriver`
   (see "The SqlDriver Seam" below).
-- `factory.ts`: a `createProbedSqlAdapter({ harness, driver })`
+- `factory.ts`: a `createProbedSqlAdapter({ harness: rig, driver })`
   helper that the pg-* packages call to wire the driver into a probe,
   install the default forward rule, and return `{ probe, probeRoot }`.
 - `index.ts`: re-exports.
@@ -269,14 +269,14 @@ export interface SqlDriver {
     onApplicationQuery(call: QueryCall): Promise<unknown>;
 
     /**
-     * Fired by harness.reset() (with default options). The driver
+     * Fired by rig.reset() (with default options). The driver
      * truncates all user tables on the maintenance connection,
      * bypassing the probe.
      */
     reset(): Promise<void>;
 
     /**
-     * Fired by harness.close(). The driver disposes the ORM
+     * Fired by rig.close(). The driver disposes the ORM
      * connection pool and the underlying PGlite instance.
      */
     close(): Promise<void>;
@@ -354,13 +354,13 @@ their own. This guarantees consistent error wording across boundaries.
 
 ### Lifecycle integration
 
-The `Harness` lifecycle (`attach`/`reset`/`close`) is implemented in
+The `Rig` lifecycle (`attach`/`reset`/`close`) is implemented in
 core. Domain packages plug in via the `ProbedResource` interface
-(`reset()` and `close()` methods on the returned adapter). The harness
+(`reset()` and `close()` methods on the returned adapter). The rig
 calls these methods at the appropriate times.
 
-`harness.reset()` clears probe state on every attached probe (rules +
-call history, preserving harness-installed defaults) AND calls
+`rig.reset()` clears probe state on every attached probe (rules +
+call history, preserving rig-installed defaults) AND calls
 `adapter.reset()` on every backed adapter. The order is: probe state
 first, then adapter state. This ensures a test that has registered
 rules expecting fresh data won't see those rules apply to in-flight
@@ -372,7 +372,7 @@ the probe anyway, so this is belt-and-suspenders).
 The Clock is in `@vnatures/test-kit` and is purely user-facing. Probe
 internal timers (waiter deadlines, safety timeout) use `globalThis.setTimeout`
 directly. Domain packages do not need to touch the Clock; they just
-respect the harness-supplied configuration (e.g., the `defaultTimeout`
+respect the rig-supplied configuration (e.g., the `defaultTimeout`
 on factory options is passed through to the underlying `core.createProbeRoot`
 call).
 
@@ -404,7 +404,7 @@ test-kit/
 │   │   │   ├── index.ts                    (public exports)
 │   │   │   ├── duration.ts
 │   │   │   ├── clock.ts
-│   │   │   ├── harness.ts
+│   │   │   ├── rig.ts
 │   │   │   ├── probe-engine.ts             (rule resolution, waiter mgmt)
 │   │   │   ├── expectation-engine.ts
 │   │   │   ├── stream-probe-engine.ts
@@ -581,7 +581,7 @@ folder using `expect-type`. Critical cases to cover:
 
 - `createProbedMock<T>` rejects sync methods with the branded error.
 - Filter chain narrowing produces correct pending types.
-- `harness.expect.sequence` infers tuple result types correctly.
+- `rig.expect.sequence` infers tuple result types correctly.
 - `ForwardableSelection` exposes `forward()`/`drainAndForward()` only
   on backed pending types.
 
@@ -639,7 +639,7 @@ looks like:
    that supports forwarding, install `probe.always().forward()` at
    construction.
 
-7. **Define the factory function.** Take the harness parameter, accept
+7. **Define the factory function.** Take the `harness` parameter, accept
    ORM/SDK-specific options, return the typed `ProbedAdapter`.
 
 The total package is expected to be 200-500 lines including types and

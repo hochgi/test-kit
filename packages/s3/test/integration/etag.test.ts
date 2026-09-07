@@ -17,7 +17,7 @@ import {
     PutObjectCommand,
     PutObjectTaggingCommand,
 } from '@aws-sdk/client-s3';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedS3Adapter, type ProbedS3Adapter } from '@vnatures/test-kit-s3';
 
 const BUCKET = 'test-kit-s3-etag-bucket';
@@ -27,16 +27,16 @@ function md5Etag(body: string | Buffer): string {
 }
 
 describe('createProbedS3Adapter — body-derived ETags', () => {
-    let harness: Harness;
+    let rig: Rig;
     let s3: ProbedS3Adapter;
 
     beforeEach(() => {
-        harness = createHarness();
-        s3 = harness.attach(createProbedS3Adapter({ harness, bucket: BUCKET }));
+        rig = createRig();
+        s3 = rig.attach(createProbedS3Adapter({ harness: rig, bucket: BUCKET }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('a rewritten object reports a different ETag (replaced-content detection)', async () => {

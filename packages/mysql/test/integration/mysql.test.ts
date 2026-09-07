@@ -18,7 +18,7 @@
  */
 import { execSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedMysqlAdapter, type ProbedMysqlAdapter } from '@vnatures/test-kit-mysql';
 
 // Evaluate Docker availability once at module load for describe.skipIf.
@@ -34,15 +34,15 @@ function dockerAvailable(): boolean {
 const hasDocker = dockerAvailable();
 
 describe.skipIf(!hasDocker)('createProbedMysqlAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let mysql: ProbedMysqlAdapter;
 
     // Start ONE container for the whole suite.
     beforeAll(async () => {
-        harness = createHarness();
-        mysql = await harness.attach(
+        rig = createRig();
+        mysql = await rig.attach(
             createProbedMysqlAdapter({
-                harness,
+                harness: rig,
                 async bootstrap(maintenance) {
                     await maintenance.execute(
                         `CREATE TABLE IF NOT EXISTS users (
@@ -57,12 +57,12 @@ describe.skipIf(!hasDocker)('createProbedMysqlAdapter', () => {
     });
 
     afterAll(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     // Clear probe state + truncate/re-bootstrap between tests.
     afterEach(async () => {
-        await harness.reset();
+        await rig.reset();
     });
 
     it('round-trips INSERT → SELECT through a real MySQL 8 container', async () => {

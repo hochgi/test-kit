@@ -13,7 +13,7 @@
  *   probe.drainAndRejectAll(error?)         → probe.drainAndReject(error)
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, milliseconds, type Harness } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
 import { createProbedMock } from '@vnatures/test-kit-mock';
 
 interface DemoService {
@@ -168,26 +168,24 @@ describe('createProbedMock — filter() narrowing', () => {
 });
 
 describe('createProbedMock — expect.none', () => {
-    let harness: Harness;
+    let rig: Rig;
 
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('succeeds if no matching calls were made', async () => {
-        const { probe } = harness.attach(
-            createProbedMock<DemoService>({ methods: ['getById', 'updateName', 'delete'] }),
-        );
+        const { probe } = rig.attach(createProbedMock<DemoService>({ methods: ['getById', 'updateName', 'delete'] }));
 
         await expect(probe.expect.none({ within: milliseconds(0) })).resolves.toBeUndefined();
     });
 
     it('fails if a call arrived before the assertion', async () => {
-        const { adapter, probe } = harness.attach(
+        const { adapter, probe } = rig.attach(
             createProbedMock<DemoService>({ methods: ['getById', 'updateName', 'delete'] }),
         );
 
@@ -197,7 +195,7 @@ describe('createProbedMock — expect.none', () => {
     });
 
     it('fails if a call arrives during the window', async () => {
-        const { adapter, probe } = harness.attach(
+        const { adapter, probe } = rig.attach(
             createProbedMock<DemoService>({ methods: ['getById', 'updateName', 'delete'] }),
         );
 

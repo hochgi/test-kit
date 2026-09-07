@@ -16,7 +16,7 @@ import 'reflect-metadata';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AllowNull, AutoIncrement, Column, DataType, Model, PrimaryKey, Sequelize, Table } from 'sequelize-typescript';
 import type { CreationOptional, InferAttributes, InferCreationAttributes } from 'sequelize';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedSequelizeAdapter } from '@vnatures/test-kit-pg-sequelize';
 
 @Table({ tableName: 'products', timestamps: false, underscored: true })
@@ -52,18 +52,18 @@ class Order extends Model<InferAttributes<Order>, InferCreationAttributes<Order>
 }
 
 describe('createProbedSequelizeAdapter — models option', () => {
-    let harness: Harness;
+    let rig: Rig;
 
     afterEach(async () => {
-        if (harness) await harness.close();
+        if (rig) await rig.close();
     });
 
     describe('models only (no bootstrap)', () => {
         it('creates tables from decorator metadata and supports CRUD', async () => {
-            harness = createHarness();
-            await harness.attach(
+            rig = createRig();
+            await rig.attach(
                 createProbedSequelizeAdapter({
-                    harness,
+                    harness: rig,
                     models: [Product],
                     SequelizeClass: Sequelize,
                 }),
@@ -84,10 +84,10 @@ describe('createProbedSequelizeAdapter — models option', () => {
         });
 
         it('seed() inserts rows readable by model statics', async () => {
-            harness = createHarness();
-            const db = await harness.attach(
+            rig = createRig();
+            const db = await rig.attach(
                 createProbedSequelizeAdapter({
-                    harness,
+                    harness: rig,
                     models: [Product],
                     SequelizeClass: Sequelize,
                 }),
@@ -106,11 +106,11 @@ describe('createProbedSequelizeAdapter — models option', () => {
             expect(found!.priceCents).toBe(999);
         });
 
-        it('harness.reset() drops and recreates tables', async () => {
-            harness = createHarness();
-            await harness.attach(
+        it('rig.reset() drops and recreates tables', async () => {
+            rig = createRig();
+            await rig.attach(
                 createProbedSequelizeAdapter({
-                    harness,
+                    harness: rig,
                     models: [Product],
                     SequelizeClass: Sequelize,
                 }),
@@ -119,17 +119,17 @@ describe('createProbedSequelizeAdapter — models option', () => {
             await Product.create({ name: 'Before Reset', priceCents: 100, metadata: null });
             expect(await Product.count()).toBe(1);
 
-            await harness.reset();
+            await rig.reset();
             expect(await Product.count()).toBe(0);
         });
     });
 
     describe('models + bootstrap combined', () => {
         it('bootstrap runs after sync; both work together', async () => {
-            harness = createHarness();
-            await harness.attach(
+            rig = createRig();
+            await rig.attach(
                 createProbedSequelizeAdapter({
-                    harness,
+                    harness: rig,
                     models: [Product, Order],
                     SequelizeClass: Sequelize,
                     bootstrap: async (sequelize) => {
@@ -146,10 +146,10 @@ describe('createProbedSequelizeAdapter — models option', () => {
 
     describe('probe captures queries from model statics', () => {
         it('records model.findAll() and model.create() through the probe', async () => {
-            harness = createHarness();
-            const db = await harness.attach(
+            rig = createRig();
+            const db = await rig.attach(
                 createProbedSequelizeAdapter({
-                    harness,
+                    harness: rig,
                     models: [Product],
                     SequelizeClass: Sequelize,
                 }),

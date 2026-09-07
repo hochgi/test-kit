@@ -7,7 +7,7 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
 } from '@vnatures/test-kit';
@@ -16,7 +16,7 @@ import type { KafkaCall, KafkaMethod, KafkaPendingCall, KafkaProbe, KafkaProduce
 import { InMemoryKafkaBacking } from './in-memory-backing.js';
 
 export interface CreateProbedKafkaProducerOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     /** Number of partitions per topic (default 4). */
     readonly partitionsPerTopic?: number;
     readonly defaultTimeout?: Duration;

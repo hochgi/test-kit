@@ -7,7 +7,7 @@
  * cache.on(method) typed sugar, formatted keys, getSet caching behavior.
  *
  * v1 mapping:
- *   createInMemoryCache()             → harness.attach(createProbedCacheAdapter({ harness }))
+ *   createInMemoryCache()             → rig.attach(createProbedCacheAdapter({ harness: rig }))
  *                                       (default forward; behaves as in-memory cache)
  *   createProbedCache()               → same factory
  *   probe.alwaysForward()             → (default; no call needed)
@@ -18,20 +18,20 @@
  *                                       or probe.on(method).expect.intercept(...)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@vnatures/test-kit-redis';
 
 describe('createProbedCacheAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let cache: ProbedCacheAdapter;
 
     beforeEach(() => {
-        harness = createHarness();
-        cache = harness.attach(createProbedCacheAdapter({ harness }));
+        rig = createRig();
+        cache = rig.attach(createProbedCacheAdapter({ harness: rig }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('default forward rule (in-memory ioredis-mock)', () => {

@@ -18,7 +18,7 @@ import type {
     CallTypeGuard,
     ExpectOptions,
     FilterChain,
-    HarnessRef,
+    RigRef,
     ProbeAdmin,
     RequiredWithinOptions,
 } from './types.js';
@@ -159,7 +159,7 @@ export interface StreamChannel<TChunk> extends AsyncIterable<TChunk> {
 }
 
 export interface StreamProbeRootConfig<TCall, TPending extends StreamPendingCallBase<TCall>> {
-    readonly harness?: HarnessRef;
+    readonly harness?: RigRef;
     readonly defaultTimeout?: Duration;
     readonly safetyTimeout?: Duration | null;
     readonly pendingFactory: (record: StreamRecord<TCall, unknown>) => TPending;

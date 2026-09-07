@@ -10,7 +10,7 @@ import {
     makePendingBase,
     type CallRecord,
     type Duration,
-    type Harness,
+    type Rig,
     type PendingCallBase,
     type ProbeRoot,
     type Selection,
@@ -19,7 +19,7 @@ import type { GrpcCall, GrpcClient, GrpcPendingCall, GrpcProbe, ProbedGrpcClient
 
 export interface CreateProbedGrpcClientOptions {
     /** Optional. When provided, the probe inherits harness clock + safety. */
-    readonly harness?: Harness;
+    readonly harness?: Rig;
     readonly defaultTimeout?: Duration;
 }
 

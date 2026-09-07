@@ -11,7 +11,7 @@ that provider without production refactors, while still exercising real
 enqueue / consume lifecycle in-process.
 
 The primary probed seam is the producer (`add`). Failure and hang
-injection (`reject`, `intercept` + `harness.clock.advance`) model the
+injection (`reject`, `intercept` + `rig.clock.advance`) model the
 application-observable enqueue outcome (RD-23255 stale-socket failures).
 
 ## Install
@@ -24,12 +24,12 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-bull
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedBullQueue, maxRetriesPerRequestError } from "@vnatures/test-kit-bull";
 import { getQueueToken } from "@nestjs/bull";
 
-const harness = createHarness();
-const queue = harness.attach(createProbedBullQueue({ harness, name: "exports" }));
+const rig = createRig();
+const queue = rig.attach(createProbedBullQueue({ harness: rig, name: "exports" }));
 
 // NestJS: override the queue provider — do NOT import BullModule.
 // .overrideProvider(getQueueToken("exports")).useValue(queue.adapter)
@@ -41,13 +41,13 @@ expect(job.id).toBeDefined();
 // Model an enqueue failure:
 queue.probe.on("add").once().reject(maxRetriesPerRequestError());
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
 
 ```typescript
-const { adapter, probe, reset, close } = createProbedBullQueue({ harness, name });
+const { adapter, probe, reset, close } = createProbedBullQueue({ harness: rig, name });
 ```
 
 - `adapter: Queue<TData>` — inject at `getQueueToken(name)`. Default rule
@@ -55,7 +55,7 @@ const { adapter, probe, reset, close } = createProbedBullQueue({ harness, name }
 - `probe: BullQueueProbe` — `.on('add')`, `.calls`, `.expect.*`,
   `.drain()`, `.drainAndReject()`.
 - `reset()` — empties the in-memory queue between tests.
-- `close()` — disposes the backing. Handled by `harness.close()` if attached.
+- `close()` — disposes the backing. Handled by `rig.close()` if attached.
 
 ## Supported Bull surface (v1)
 

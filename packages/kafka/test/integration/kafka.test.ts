@@ -13,20 +13,20 @@
  * connect/disconnect routed through the probe.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { brokerDownError, createProbedKafkaProducer, type ProbedKafkaProducer } from '@vnatures/test-kit-kafka';
 
 describe('createProbedKafkaProducer', () => {
-    let harness: Harness;
+    let rig: Rig;
     let kafka: ProbedKafkaProducer;
 
     beforeEach(() => {
-        harness = createHarness();
-        kafka = harness.attach(createProbedKafkaProducer({ harness, partitionsPerTopic: 4 }));
+        rig = createRig();
+        kafka = rig.attach(createProbedKafkaProducer({ harness: rig, partitionsPerTopic: 4 }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('send → topicLog', () => {

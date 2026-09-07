@@ -10,7 +10,7 @@
  *  3. long-poll parked until a send arrives.
  *  4. probe can reject a receive to simulate transport failure.
  *
- * Timing is driven by `harness.clock` under vitest fake timers
+ * Timing is driven by `rig.clock` under vitest fake timers
  * (visibility timeout expiry, long-poll wait). See the backing's header
  * comment for the fake-timer rationale.
  */
@@ -22,25 +22,25 @@ import {
     ReceiveMessageCommand,
     SendMessageCommand,
 } from '@aws-sdk/client-sqs';
-import { createHarness, seconds, type Harness } from '@vnatures/test-kit';
+import { createRig, seconds, type Rig } from '@vnatures/test-kit';
 import { createProbedSqsAdapter, type ProbedSqsAdapter } from '@vnatures/test-kit-sqs';
 
 const QUEUE_NAME = 'test-queue';
 
 describe('createProbedSqsAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let sqs: ProbedSqsAdapter;
 
     beforeEach(() => {
         vi.useFakeTimers();
-        harness = createHarness();
-        sqs = harness.attach(
-            createProbedSqsAdapter({ harness, queueName: QUEUE_NAME, defaultVisibilityTimeoutSeconds: 30 }),
+        rig = createRig();
+        sqs = rig.attach(
+            createProbedSqsAdapter({ harness: rig, queueName: QUEUE_NAME, defaultVisibilityTimeoutSeconds: 30 }),
         );
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
         vi.useRealTimers();
     });
 
@@ -86,7 +86,7 @@ describe('createProbedSqsAdapter', () => {
             await sqs.adapter.send(new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: handle }));
 
             // Advancing past the visibility timeout should NOT redeliver — it was deleted.
-            await harness.clock.advance(seconds(60));
+            await rig.clock.advance(seconds(60));
             const second = await receive({ max: 1 });
             expect(second?.Messages).toBeUndefined();
         });
@@ -138,12 +138,12 @@ describe('createProbedSqsAdapter', () => {
             // Do NOT delete — leave it unacked.
 
             // Before the timeout: nothing to receive.
-            await harness.clock.advance(seconds(10));
+            await rig.clock.advance(seconds(10));
             const early = await receive({ max: 1 });
             expect(early?.Messages).toBeUndefined();
 
             // After the timeout: redelivered with count 2 and a NEW receipt handle.
-            await harness.clock.advance(seconds(30));
+            await rig.clock.advance(seconds(30));
             const second = await receive({ max: 1 });
             expect(second?.Messages).toHaveLength(1);
             expect(second?.Messages?.[0].Body).toBe('task');
@@ -158,12 +158,12 @@ describe('createProbedSqsAdapter', () => {
             const staleHandle = first!.Messages![0].ReceiptHandle;
 
             // Let it become visible again (redeliverable), then receive with a fresh handle.
-            await harness.clock.advance(seconds(30));
+            await rig.clock.advance(seconds(30));
             await receive({ max: 1 });
 
             // Deleting with the stale handle is a no-op: message still present.
             await sqs.adapter.send(new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: staleHandle }));
-            await harness.clock.advance(seconds(31));
+            await rig.clock.advance(seconds(31));
             const third = await receive({ max: 1 });
             expect(third?.Messages).toHaveLength(1);
 
@@ -171,7 +171,7 @@ describe('createProbedSqsAdapter', () => {
             // removes it for good.
             const currentHandle = third!.Messages![0].ReceiptHandle;
             await sqs.adapter.send(new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: currentHandle }));
-            await harness.clock.advance(seconds(31));
+            await rig.clock.advance(seconds(31));
             const fourth = await receive({ max: 1 });
             expect(fourth?.Messages).toBeUndefined();
         });
@@ -205,7 +205,7 @@ describe('createProbedSqsAdapter', () => {
             // Let a microtask flush; the receive should be parked (unresolved).
             await Promise.resolve();
             // Advancing less than the wait window must NOT resolve it (no message).
-            await harness.clock.advance(seconds(5));
+            await rig.clock.advance(seconds(5));
             // Pending still — but we can't easily assert "pending"; instead, deliver.
             const sendPromise = sqs.adapter.send(
                 new SendMessageCommand({ QueueUrl: sqs.queueUrl, MessageBody: 'late' }),
@@ -219,7 +219,7 @@ describe('createProbedSqsAdapter', () => {
             // The wait timer must have been cancelled — advancing past the wait
             // window must not produce a spurious second resolution. A subsequent
             // receive should be empty (the message was delivered to the parked one).
-            await harness.clock.advance(seconds(25));
+            await rig.clock.advance(seconds(25));
             const next = await receive({ max: 1 });
             // The delivered message is now invisible (visibility timeout); nothing available.
             expect(next?.Messages).toBeUndefined();
@@ -228,7 +228,7 @@ describe('createProbedSqsAdapter', () => {
         it('a parked receive resolves with empty when the wait window elapses with no send', async () => {
             const parked = receive({ max: 1, wait: 10 });
 
-            await harness.clock.advance(seconds(10));
+            await rig.clock.advance(seconds(10));
 
             const result = (await parked) as { Messages?: unknown };
             expect(result.Messages).toBeUndefined();

@@ -9,22 +9,22 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedS3Adapter, type ProbedS3Adapter } from '@vnatures/test-kit-s3';
 
 const BUCKET = 'test-kit-s3-list-bucket';
 
 describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
-    let harness: Harness;
+    let rig: Rig;
     let s3: ProbedS3Adapter;
 
     beforeEach(() => {
-        harness = createHarness();
-        s3 = harness.attach(createProbedS3Adapter({ harness, bucket: BUCKET }));
+        rig = createRig();
+        s3 = rig.attach(createProbedS3Adapter({ harness: rig, bucket: BUCKET }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     async function seedKeys(count: number, prefix = 'k'): Promise<void> {

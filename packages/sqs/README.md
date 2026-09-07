@@ -28,7 +28,7 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-sqs
 ## Quick start
 
 ```typescript
-import { createHarness, seconds } from "@vnatures/test-kit";
+import { createRig, seconds } from "@vnatures/test-kit";
 import {
     createProbedSqsAdapter,
 } from "@vnatures/test-kit-sqs";
@@ -38,9 +38,9 @@ import {
     DeleteMessageCommand,
 } from "@aws-sdk/client-sqs";
 
-const harness = createHarness();
-const sqs = harness.attach(
-    createProbedSqsAdapter({ harness, queueName: "work", defaultVisibilityTimeoutSeconds: 30 }),
+const rig = createRig();
+const sqs = rig.attach(
+    createProbedSqsAdapter({ harness: rig, queueName: "work", defaultVisibilityTimeoutSeconds: 30 }),
 );
 
 // Default rule forwards to the in-memory backing.
@@ -58,7 +58,7 @@ await sqs.adapter.send(
     new DeleteMessageCommand({ QueueUrl: sqs.queueUrl, ReceiptHandle: msg.ReceiptHandle }),
 );
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
@@ -66,7 +66,7 @@ await harness.close();
 ```typescript
 const { adapter, probe, queueUrl, queueName, reset, close } =
     createProbedSqsAdapter({
-        harness,
+        harness: rig,
         queueName,                       // default "test-queue"
         queueUrl,                        // default derived from queueName
         defaultVisibilityTimeoutSeconds, // default 30
@@ -82,8 +82,8 @@ const { adapter, probe, queueUrl, queueName, reset, close } =
   transparently against the in-memory backing.
 - `queueUrl` / `queueName` — the configured queue identity.
 - `reset()` — empties every queue and cancels pending timers; useful
-  between tests. `harness.reset()` runs it automatically.
-- `close()` — disposes the backing; `harness.close()` runs it
+  between tests. `rig.reset()` runs it automatically.
+- `close()` — disposes the backing; `rig.close()` runs it
   automatically.
 
 ## Three verbs: `forward` / `answer` / `reject`
@@ -108,12 +108,12 @@ sqs.probe.command(ReceiveMessageCommand).once().reject(new Error("transport fail
 sqs.probe.command(SendMessageCommand).once().answer({ MessageId: "stub-1" });
 ```
 
-## Semantics that are real (driven by `harness.clock`)
+## Semantics that are real (driven by `rig.clock`)
 
 Timing is fake-timer friendly: the backing schedules with the ambient
 `setTimeout` (so it follows vitest/jest/sinon fake timers or real timers)
-and computes deadlines against `harness.clock.now()`. Drive visibility
-expiry and long-poll waits with `harness.clock.advance(...)` under fake
+and computes deadlines against `rig.clock.now()`. Drive visibility
+expiry and long-poll waits with `rig.clock.advance(...)` under fake
 timers.
 
 - **Visibility timeout.** A received message is invisible until the
@@ -144,11 +144,11 @@ standard queues).
 
 ```typescript
 import { vi } from "vitest";
-import { createHarness, seconds } from "@vnatures/test-kit";
+import { createRig, seconds } from "@vnatures/test-kit";
 
 beforeEach(() => {
     vi.useFakeTimers();
-    harness = createHarness(); // auto-detects the active fake clock
+    rig = createRig(); // auto-detects the active fake clock
 });
 
 it("redelivers after the visibility timeout", async () => {
@@ -158,7 +158,7 @@ it("redelivers after the visibility timeout", async () => {
     );
     expect(first.Messages![0].Attributes!.ApproximateReceiveCount).toBe("1");
 
-    await harness.clock.advance(seconds(30));
+    await rig.clock.advance(seconds(30));
 
     const second = await sqs.adapter.send(
         new ReceiveMessageCommand({ QueueUrl: sqs.queueUrl, AttributeNames: ["All"] }),

@@ -50,7 +50,7 @@ describe('pump vs. competing settlement', () => {
 });
 
 describe('close() settles in-flight streams', () => {
-    it('a parked consumer errors with harness-closed instead of hanging', async () => {
+    it('a parked consumer errors with rig-closed instead of hanging', async () => {
         const { adapter, probe, close } = createProbedStreamMock<StreamService>({ methods: ['stream'] });
         probe.on('stream').always().park();
 
@@ -73,7 +73,7 @@ describe('close() settles in-flight streams', () => {
         close();
 
         // The buffered chunk is still delivered; the next pull surfaces the
-        // harness-closed error instead of hanging forever.
+        // rig-closed error instead of hanging forever.
         expect(await it.next()).toEqual({ done: false, value: 'delivered' });
         await expect(it.next()).rejects.toThrow(/Harness is closed/);
     });

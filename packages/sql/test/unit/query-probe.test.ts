@@ -20,7 +20,7 @@
  *   pendingCount()                    → (dropped)
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, milliseconds, type Harness, type ProbeRoot } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig, type ProbeRoot } from '@vnatures/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
@@ -40,7 +40,7 @@ const insertOrder: QueryCall = {
  * forward call is settled by `nextResult` (or throws if a forward error
  * has been queued). Exposes `dispatch(call)` as the SUT entry point.
  */
-function setup(harness: Harness): {
+function setup(rig: Rig): {
     probe: QueryProbe;
     dispatch: (call: QueryCall) => Promise<unknown>;
     setNextResult: (value: unknown) => void;
@@ -66,7 +66,7 @@ function setup(harness: Harness): {
         },
     };
 
-    const sqlAdapter = createProbedSqlAdapter({ harness, driver });
+    const sqlAdapter = createProbedSqlAdapter({ harness: rig, driver });
     root = sqlAdapter.probeRoot;
 
     return {
@@ -84,19 +84,19 @@ function setup(harness: Harness): {
 }
 
 describe('QueryProbe (synthetic driver)', () => {
-    let harness: Harness;
+    let rig: Rig;
     let probe: QueryProbe;
     let dispatch: (call: QueryCall) => Promise<unknown>;
     let setNextResult: (value: unknown) => void;
     let setForwardError: (err: Error) => void;
 
     beforeEach(() => {
-        harness = createHarness();
-        ({ probe, dispatch, setNextResult, setForwardError } = setup(harness));
+        rig = createRig();
+        ({ probe, dispatch, setNextResult, setForwardError } = setup(rig));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('default forward rule', () => {

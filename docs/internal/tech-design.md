@@ -63,7 +63,7 @@ interface ProbeState<TCall, TPending extends PendingCallBase<TCall>> {
     /**
      * All recorded calls in arrival order. Append-only during the
      * probe's lifetime; cleared by clearCalls() / resetProbe() /
-     * harness.reset(). Each entry is an internal record (CallRecord),
+     * rig.reset(). Each entry is an internal record (CallRecord),
      * not the public TCall view.
      */
     readonly history: CallRecord<TCall, TPending>[];
@@ -98,7 +98,7 @@ interface ProbeState<TCall, TPending extends PendingCallBase<TCall>> {
     readonly config: ProbeConfig<TCall, TPending>;
 
     /**
-     * Whether the probe's owning harness has been closed. After
+     * Whether the probe's owning rig has been closed. After
      * close, all probe operations throw.
      */
     closed: boolean;
@@ -168,9 +168,9 @@ interface RuleEntry<TCall, TPending extends PendingCallBase<TCall>> {
     readonly action: RuleAction<TCall, TPending>;
 
     /**
-     * Tag identifying whether this rule was installed by the harness
+     * Tag identifying whether this rule was installed by the rig
      * (factory-default) or by user code. clearRules() with default
-     * options preserves harness-installed rules.
+     * options preserves rig-installed rules.
      */
     readonly origin: 'harness' | 'user';
 }
@@ -251,13 +251,13 @@ export function createProbeRoot<TCall, TPending extends PendingCallBase<TCall>>(
 ): ProbeRoot<TCall, TPending>;
 
 export interface ProbeRootConfig<TCall, TPending extends PendingCallBase<TCall>> {
-    /** Harness reference. Required for backed adapters; optional for mocks. */
-    readonly harness?: Harness;
+    /** Rig reference. Required for backed adapters; optional for mocks. */
+    readonly harness?: Rig;
 
     /**
      * Default expectation timeout when `within` is omitted on a
-     * positive expectation. Overrides harness.defaultTimeout for
-     * this probe. Falls back to harness.defaultTimeout, then to
+     * positive expectation. Overrides rig.defaultTimeout for
+     * this probe. Falls back to rig.defaultTimeout, then to
      * seconds(5).
      */
     readonly defaultTimeout?: Duration;
@@ -306,7 +306,7 @@ export interface ProbeRoot<TCall, TPending extends PendingCallBase<TCall>> {
 
     /**
      * Domain-package-only: dispose internal state. Called by the
-     * harness during close(). Cancels all in-flight waiters with the
+     * rig during close(). Cancels all in-flight waiters with the
      * standard "Harness closed with N unsettled waiter(s)" error.
      */
     dispose(): void;
@@ -827,7 +827,7 @@ export interface SqlDriver {
 
     /**
      * Truncate all user tables on the maintenance connection,
-     * bypassing the probe. Called by harness.reset() when the
+     * bypassing the probe. Called by rig.reset() when the
      * adapter implements ProbedResource.reset().
      */
     reset(): Promise<void>;
@@ -932,7 +932,7 @@ export async function createProbedKyselyAdapter<DB>(
         dialect: createProbedKyselyDialect(driver),
     });
 
-    // Create the probe. Forward rule installed as the harness default.
+    // Create the probe. Forward rule installed as the rig default.
     const sqlAdapter = createProbedSqlAdapter({
         harness: options.harness,
         defaultTimeout: options.defaultTimeout,
@@ -961,7 +961,7 @@ export interface ProbedSqlAdapter {
 }
 
 export function createProbedSqlAdapter(options: {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
     readonly driver: SqlDriver;
 }): ProbedSqlAdapter {
@@ -1099,14 +1099,14 @@ The presigner adapter is similar but with no backing and no default
 rule. Forward rules and `pending.forward()` are unavailable (the type
 system enforces this; runtime throws if reached via `as any`).
 
-## Harness Implementation
+## Rig Implementation
 
 ### `attach`
 
 Single implementation, two type signatures:
 
 ```typescript
-export function createHarness(options?: CreateHarnessOptions): Harness {
+export function createRig(options?: CreateRigOptions): Rig {
     const state = {
         clock: options?.clock ?? autoDetectClock(),
         defaultTimeout: options?.defaultTimeout ?? seconds(5),
@@ -1115,17 +1115,17 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
         closed: false,
     };
 
-    const harness: Harness = {
+    const rig: Rig = {
         get clock() { return state.clock; },
         get defaultTimeout() { return state.defaultTimeout; },
-        expect: makeHarnessExpectations(state),
+        expect: makeRigExpectations(state),
         attach(adapter: any): any {
             if (state.closed) {
                 throw new Error('Harness is closed.');
             }
             if (isPromise(adapter)) {
                 return adapter.then((a: ProbedAdapter<any, any>) =>
-                    harness.attach(a),
+                    rig.attach(a),
                 );
             }
             state.registered.push(adapter);
@@ -1163,7 +1163,7 @@ export function createHarness(options?: CreateHarnessOptions): Harness {
         },
     };
 
-    return harness;
+    return rig;
 }
 ```
 
@@ -1173,7 +1173,7 @@ Each waiter (capturing or observing) is registered with two timers:
 
 1. The user-specified `within` timer (or `defaultTimeout`). Fires the
    "Timed out after Nms waiting for ..." error.
-2. The harness safety timer. Fires the "Test exceeded the harness
+2. The rig safety timer. Fires the "Test exceeded the harness
    safety timeout (30000ms wall-clock) ..." error if the per-call
    `within` timer hasn't fired first.
 
@@ -1185,7 +1185,7 @@ last-resort failsafe for tests that omit `within` and rely on
 Implementation: when registering a waiter, install both timers; when
 the waiter resolves or one timer fires, clear the other.
 
-### `harness.expect.sequence` and `allOf`
+### `rig.expect.sequence` and `allOf`
 
 Both helpers register on multiple probes simultaneously and coordinate
 their resolution.
@@ -1461,7 +1461,7 @@ A standalone TS file (`packages/core/test/types/poc.ts`) that:
 - Calls `createProbedMock` with each, asserting type narrowing on the
   returned probe.
 - Constructs filter chains and asserts narrow types propagate.
-- Builds `harness.expect.sequence` with mixed Selection/Observation
+- Builds `rig.expect.sequence` with mixed Selection/Observation
   steps and asserts the result tuple is correctly typed.
 - Includes intentional negative tests (sync method in list, wrong
   method name, etc.) commented out with `// @ts-expect-error`
@@ -1726,7 +1726,7 @@ A suggested sequence that lets each layer be tested before the next is
 built on top:
 
 1. **`@vnatures/test-kit` foundations**: `Duration`, `Clock` (all 5
-   variants), `Harness` skeleton without `attach`/`reset`/`close`
+   variants), `Rig` skeleton without `attach`/`reset`/`close`
    wiring.
 2. **`createProbeRoot` + storage model**: implement the full state
    struct, `recordCall`, the four-tier rule resolution engine,
@@ -1735,8 +1735,8 @@ built on top:
    on top of the engine. `intercept`, `observe`, `none`, `atLeast`,
    `exactly`, `calledTimes`, `neverCalled`, `called`. `filter` chain
    composition.
-4. **Harness wire-up**: `attach` (sync + Promise), `reset`,
-   `close`, safety timeout, `harness.expect.sequence`/`allOf`.
+4. **Rig wire-up**: `attach` (sync + Promise), `reset`,
+   `close`, safety timeout, `rig.expect.sequence`/`allOf`.
 5. **TS POC**: validate the type machinery before building domain
    packages on top.
 6. **`@vnatures/test-kit-mock`**: simplest domain package; validates the
@@ -1814,5 +1814,5 @@ make the call with code in front of them):
   `vite-plugin-dts` advanced options).
 - Whether the `examples/grpc-client/` uses a real gRPC library or a
   mock to demonstrate the pattern.
-- Logging / debug-output strategy (e.g., a `harness.debug()` mode that
+- Logging / debug-output strategy (e.g., a `rig.debug()` mode that
   logs every rule resolution decision).

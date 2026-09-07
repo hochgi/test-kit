@@ -18,7 +18,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@vnatures/test-kit": "^1.0.0"
+    "@vnatures/test-kit": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

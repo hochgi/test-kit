@@ -30,7 +30,7 @@ import type {
     FilterChain,
     ForwardablePendingCall,
     ForwardableSelection,
-    HarnessRef,
+    RigRef,
     ObserverEntry,
     PendingAnswer,
     PendingCallBase,
@@ -60,7 +60,7 @@ interface ProbeState<TCall, TPending extends PendingCallBase<TCall>> {
 }
 
 interface ResolvedConfig<TCall, TPending extends PendingCallBase<TCall>> {
-    harness?: HarnessRef;
+    harness?: RigRef;
     defaultTimeout: Duration;
     safetyTimeout: Duration | null;
     pendingFactory: (record: CallRecord<TCall, TPending>) => TPending;

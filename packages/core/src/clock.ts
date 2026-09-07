@@ -149,7 +149,7 @@ export function manualClock(): ManualClock {
  *
  * Sinon does not have a global "are fake timers active?" check that can be
  * relied on, so users wanting Sinon must pass `clock: sinonFakeClock(timers)`
- * to createHarness explicitly.
+ * to createRig explicitly.
  */
 export function autoDetectClock(): Clock {
     const vi = getViGlobal();

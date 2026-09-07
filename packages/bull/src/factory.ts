@@ -7,7 +7,7 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
 } from '@vnatures/test-kit';
@@ -49,7 +49,7 @@ const KNOWN_UNSUPPORTED_METHODS: ReadonlySet<string> = new Set([
 ]);
 
 export interface CreateProbedBullQueueOptions<TData = unknown> {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly name?: string;
     readonly defaultJobOptions?: AddOptions;
     readonly defaultTimeout?: Duration;

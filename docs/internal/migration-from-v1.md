@@ -1,13 +1,14 @@
-# Internal Migration: pre-OSS → v1.0.0
+# Internal Migration: pre-OSS → 2.0.0
 
 This document maps the pre-OSS internal test-kit API (referred to here as
-"v1") to the v1.0.0 public release. It is **internal documentation**:
+"v1") to the 2.0.0 public release. It is **internal documentation**:
 OSS adopters never see the pre-OSS API, and the public release is
-presented as version 1 of a fresh library.
+presented as a fresh library, now at 2.0.0 after the lifecycle owner
+was renamed to Rig (RD-24143).
 
 This document exists to support the migration of internal services
 (approximately 10 repos: 8 services + 2 shared model libraries) from
-the pre-OSS patterns currently in use to the v1.0.0 grammar.
+the pre-OSS patterns currently in use to the 2.0.0 grammar.
 
 ## Migration Approach
 
@@ -34,7 +35,7 @@ For organizational planning, suggested order:
 
 ### Mock package (probed interfaces)
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
 | `createProbePair<T>()` | `createProbedMock<T>({ methods: [...] })` |
 | `{ fake, probe }` | `{ adapter, probe }` |
@@ -47,14 +48,14 @@ For organizational planning, suggested order:
 | `expectNext(timeoutMs?)` | `probe.expect.intercept({ within: ms(...) })` (or `expect.observe(...)` if not capturing) |
 | `expectMatching(predicate, timeoutMs?)` | `probe.filter(predicate).expect.intercept({ within: ms(...) })` |
 | `expectNoMsgWithin(ms)` | `probe.expect.none({ within: ms(...) })` |
-| `clearBehavior()` | `probe.clearRules()` (preserves harness defaults) |
+| `clearBehavior()` | `probe.clearRules()` (preserves rig defaults) |
 | `callsOf(method)` | `probe.on(method).calls` |
 | `pendingCount()` | (no v2 equivalent; computed from `probe.calls` if needed) |
 | `drainAndRejectAll(error?)` | `probe.drainAndReject(error)` |
 
 ### DB package (probed Kysely / Knex / Sequelize)
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
 | `createProbedTestDb<DB>({ bootstrap })` | `createProbedKyselyAdapter<DB>({ bootstrap })` (and equivalents for knex/sequelize) |
 | `testDb.db` | `db.adapter` |
@@ -71,7 +72,7 @@ For organizational planning, suggested order:
 
 ### Cache package (probed Redis)
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
 | `createProbedCache(...)` | `createProbedCacheAdapter(...)` |
 | `cache.fake` | `cache.adapter` |
@@ -81,7 +82,7 @@ For organizational planning, suggested order:
 
 ### S3 package
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
 | `createProbedS3(...)` | `createProbedS3Adapter(...)` |
 | `s3.client` | `s3.adapter` |
@@ -93,28 +94,28 @@ For organizational planning, suggested order:
 
 ### Time
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
 | Raw `number` for timeouts (`timeoutMs`) | `Duration` via `seconds(...)` / `milliseconds(...)` |
-| `jest.advanceTimersByTime(ms)` | `await harness.clock.advance(ms(...))` (recommended; jest direct still works) |
+| `jest.advanceTimersByTime(ms)` | `await rig.clock.advance(ms(...))` (recommended; jest direct still works) |
 
 ### Lifecycle
 
-| pre-OSS | v1.0.0 |
+| pre-OSS | 2.0.0 |
 | --- | --- |
-| Per-adapter `await testDb.close()` in `afterAll` | `await harness.close()` cascades to all attached adapters |
-| Per-adapter `await testDb.reset()` in `beforeEach` | `await harness.reset()` cascades; also clears probe rules + call history |
-| Manual harness composition (no shared object) | `createHarness()` + `harness.attach(...)` |
+| Per-adapter `await testDb.close()` in `afterAll` | `await rig.close()` cascades to all attached adapters |
+| Per-adapter `await testDb.reset()` in `beforeEach` | `await rig.reset()` cascades; also clears probe rules + call history |
+| Manual rig composition (no shared object) | `createRig()` + `rig.attach(...)` |
 
 ## Notes For The Migration
 
-- The biggest behavioral change to watch for is **`harness.reset()`
+- The biggest behavioral change to watch for is **`rig.reset()`
   now clears probe state by default** (rules + call history). v1
   required separate `clearBehavior()` calls. If your tests use
   `beforeEach` to set up rules and `afterEach` to do per-test
   cleanup, the v2 default is what you want. If your tests need to
   preserve rules across resets within a single test, pass
-  `harness.reset({ keepRules: true })`.
+  `rig.reset({ keepRules: true })`.
 
 - `expect.next` does **not** exist in v2. The capturing waiter is
   named `expect.intercept` in v2, with no alias. The new
@@ -130,11 +131,11 @@ For organizational planning, suggested order:
 - v1's `expectNoMsgWithin(ms)` advanced fake-timer time as a side
   effect of the assertion. v2's `expect.none({ within })` does **not**
   advance virtual time. If your existing tests rely on the side
-  effect, add an explicit `await harness.clock.advance(...)` before
+  effect, add an explicit `await rig.clock.advance(...)` before
   the `expect.none` call.
 
-- v1's `clearBehavior()` cleared everything (no concept of "harness-
-  installed defaults"). v2's `probe.clearRules()` preserves harness
+- v1's `clearBehavior()` cleared everything (no concept of
+  "rig-installed defaults"). v2's `probe.clearRules()` preserves rig
   defaults; `probe.clearRules({ includeDefaults: true })` matches the
   v1 behavior.
 

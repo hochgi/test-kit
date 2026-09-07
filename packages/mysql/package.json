@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-mysql",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Probe-driven MySQL adapter backed by a real MySQL 8 Testcontainer",
   "license": "UNLICENSED",
   "repository": {
@@ -43,10 +43,10 @@
   },
   "dependencies": {
     "@testcontainers/mysql": "^12.0.4",
-    "@vnatures/test-kit": "^1.0.6",
-    "@vnatures/test-kit-sql": "^1.0.3"
+    "@vnatures/test-kit-sql": "^2.0.0"
   },
   "peerDependencies": {
+    "@vnatures/test-kit": "^2.0.0",
     "mysql2": ">=3.0.0"
   },
   "devDependencies": {

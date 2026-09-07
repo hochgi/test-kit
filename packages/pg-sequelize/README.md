@@ -29,14 +29,14 @@ If your test runner needs an ESM dynamic-import flag (Jest), set:
 
 ```typescript
 import { Sequelize } from "sequelize-typescript";
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedSequelizeAdapter } from "@vnatures/test-kit-pg-sequelize";
 import Models from "../src/models";
 
-const harness = createHarness();
-const db = await harness.attach(
+const rig = createRig();
+const db = await rig.attach(
     createProbedSequelizeAdapter({
-        harness,
+        harness: rig,
         SequelizeClass: Sequelize,
         models: Object.values(Models),
     }),
@@ -45,7 +45,7 @@ const db = await harness.attach(
 // Models are registered and tables already exist on db.adapter.
 const rows = await MyModel.findAll();
 
-await harness.close();
+await rig.close();
 ```
 
 The `models` option triggers `addModels(models) + sync()`. You can pass
@@ -56,13 +56,13 @@ indexes; it runs after `sync()`.
 
 ```typescript
 import { Sequelize, QueryTypes } from "sequelize";
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedSequelizeAdapter } from "@vnatures/test-kit-pg-sequelize";
 
-const harness = createHarness();
-const db = await harness.attach(
+const rig = createRig();
+const db = await rig.attach(
     createProbedSequelizeAdapter({
-        harness,
+        harness: rig,
         bootstrap: async (s) => {
             await s.query(`
                 CREATE TABLE IF NOT EXISTS users (
@@ -84,7 +84,7 @@ const rows = await db.adapter.query("SELECT * FROM users", {
 ```typescript
 const { adapter, probe, seed, reset, close } =
     await createProbedSequelizeAdapter({
-        harness,
+        harness: rig,
         SequelizeClass,   // optional; required when `models` is provided
         models,           // optional; sequelize-typescript model classes
         bootstrap,        // optional; runs after sync()
@@ -109,9 +109,9 @@ const { adapter, probe, seed, reset, close } =
 ```typescript
 import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
 
-const db = await harness.attach(
+const db = await rig.attach(
     createProbedSequelizeAdapter({
-        harness,
+        harness: rig,
         SequelizeClass,
         models: Object.values(Models),
         extensions: { uuid_ossp },

@@ -41,7 +41,7 @@ export type {
     WaiterEntry,
     ObserverEntry,
     CallNotifier,
-    HarnessRef,
+    RigRef,
     ProbeRootConfig,
     ProbeRoot,
 } from './types.js';
@@ -72,6 +72,6 @@ export type {
 } from './stream-types.js';
 export { createStreamProbeRoot, createChannel, makeStreamPendingBase } from './stream-probe-engine.js';
 
-// ── Harness (skeleton; full implementation in step 4) ──────────────────────
-export type { Harness, CreateHarnessOptions, HarnessExpectations, Observation, SequenceResult } from './harness.js';
-export { createHarness, observation } from './harness.js';
+// ── Rig ────────────────────────────────────────────────────────────────────
+export type { Rig, CreateRigOptions, RigExpectations, Observation, SequenceResult } from './rig.js';
+export { createRig, observation } from './rig.js';

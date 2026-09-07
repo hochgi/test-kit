@@ -42,7 +42,7 @@ Vitest handles this transparently.
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
 import { sql } from "kysely";
 
@@ -50,10 +50,10 @@ interface MyDatabase {
     users: { id: number; name: string };
 }
 
-const harness = createHarness();
-const db = await harness.attach(
+const rig = createRig();
+const db = await rig.attach(
     createProbedKyselyAdapter<MyDatabase>({
-        harness,
+        harness: rig,
         bootstrap: async (k) => {
             await sql`
                 CREATE TABLE users (
@@ -71,7 +71,7 @@ await db.seed("users", [{ name: "Alice" }]);
 const rows = await db.adapter.selectFrom("users").select(["name"]).execute();
 expect(rows).toEqual([{ name: "Alice" }]);
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
@@ -79,7 +79,7 @@ await harness.close();
 ```typescript
 const { adapter, probe, seed, reset, close } =
     await createProbedKyselyAdapter<DB>({
-        harness,
+        harness: rig,
         bootstrap,
         extensions, // optional
     });
@@ -93,7 +93,7 @@ const { adapter, probe, seed, reset, close } =
   auto-serialized for JSONB columns.
 - `reset({ keepRules? })` — drops user tables and re-runs `bootstrap`.
 - `close()` — disposes Kysely + PGlite. Handled automatically by
-  `harness.close()` if attached.
+  `rig.close()` if attached.
 - `pglite` — the underlying `PgliteHandle` (see
   `@vnatures/test-kit-pglite-driver`), shared with the probed Kysely.
   Exposed so consumers can reach the SAME PGlite instance without
@@ -138,8 +138,8 @@ SAME PGlite instance the adapter writes through, so post-commit
 delivery works exactly as in production:
 
 ```typescript
-const db = await harness.attach(
-    createProbedKyselyAdapter<DB>({ harness, bootstrap }),
+const db = await rig.attach(
+    createProbedKyselyAdapter<DB>({ harness: rig, bootstrap }),
 );
 
 const received: string[] = [];
@@ -174,9 +174,9 @@ via `extensions` and activate them in `bootstrap`:
 ```typescript
 import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
 
-const db = await harness.attach(
+const db = await rig.attach(
     createProbedKyselyAdapter<DB>({
-        harness,
+        harness: rig,
         extensions: { uuid_ossp },
         bootstrap: async (k) => {
             await sql.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').execute(k);
@@ -194,18 +194,18 @@ const db = await harness.attach(
 ## Component-test wiring
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMock } from "@vnatures/test-kit-mock";
 import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
 import { Test } from "@nestjs/testing";
 
 async function createTestHarness() {
-    const harness = createHarness();
-    const db = await harness.attach(
-        createProbedKyselyAdapter<DB>({ harness, bootstrap }),
+    const rig = createRig();
+    const db = await rig.attach(
+        createProbedKyselyAdapter<DB>({ harness: rig, bootstrap }),
     );
-    const auth = harness.attach(
-        createProbedMock<IAuthService>({ harness, methods: ["verify"] }),
+    const auth = rig.attach(
+        createProbedMock<IAuthService>({ harness: rig, methods: ["verify"] }),
     );
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -216,12 +216,12 @@ async function createTestHarness() {
     const app = moduleRef.createNestApplication();
     await app.init();
 
-    return { harness, app, db, auth };
+    return { rig, app, db, auth };
 }
 ```
 
-The `harness.close()` call in your `afterEach` runs `app.close()` —
-attached resources before the harness is closed. Production teardown
+The `rig.close()` call in your `afterEach` runs `app.close()` —
+attached resources before the rig is closed. Production teardown
 order is preserved.
 
 ## See also

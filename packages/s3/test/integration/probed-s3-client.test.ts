@@ -8,10 +8,10 @@
  * command failure, isolation between probed clients.
  *
  * v1 mapping:
- *   createProbedS3Client(...)              → harness.attach(createProbedS3Adapter(...))
+ *   createProbedS3Client(...)              → rig.attach(createProbedS3Adapter(...))
  *   probed.client                          → s3.adapter
  *   probed.probe                           → s3.probe
- *   probed.close()                         → harness.close()
+ *   probed.close()                         → rig.close()
  *   probe.alwaysForward()                  → (default; no call needed)
  *   probe.alwaysReject(error)              → probe.always().reject(error)
  *   probe.alwaysAnswer(fn)                 → probe.always().answerWith(fn)
@@ -29,7 +29,7 @@ import {
     HeadObjectCommand,
     PutObjectCommand,
 } from '@aws-sdk/client-s3';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedS3Adapter, type ProbedS3Adapter } from '@vnatures/test-kit-s3';
 
 const BUCKET = 'test-kit-s3-bucket';
@@ -42,16 +42,16 @@ async function bodyToString(body: unknown): Promise<string> {
 }
 
 describe('createProbedS3Adapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let s3: ProbedS3Adapter;
 
     beforeEach(() => {
-        harness = createHarness();
-        s3 = harness.attach(createProbedS3Adapter({ harness, bucket: BUCKET }));
+        rig = createRig();
+        s3 = rig.attach(createProbedS3Adapter({ harness: rig, bucket: BUCKET }));
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     describe('default forward rule', () => {
@@ -246,8 +246,8 @@ describe('createProbedS3Adapter', () => {
 
     describe('isolation between probed clients', () => {
         it('two probed clients keep separate state', async () => {
-            const otherHarness = createHarness();
-            const other = otherHarness.attach(createProbedS3Adapter({ harness: otherHarness, bucket: 'other-bucket' }));
+            const otherRig = createRig();
+            const other = otherRig.attach(createProbedS3Adapter({ harness: otherRig, bucket: 'other-bucket' }));
             try {
                 await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: 'k', Body: 'from-probed' }));
                 await other.adapter.send(
@@ -264,14 +264,14 @@ describe('createProbedS3Adapter', () => {
                 expect(await bodyToString(a.Body)).toBe('from-probed');
                 expect(await bodyToString(b.Body)).toBe('from-other');
             } finally {
-                await otherHarness.close();
+                await otherRig.close();
             }
         });
 
         it('reset() wipes in-memory state for subsequent tests', async () => {
             await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: 'k', Body: 'first' }));
 
-            await harness.reset();
+            await rig.reset();
 
             await expect(s3.adapter.send(new GetObjectCommand({ Bucket: BUCKET, Key: 'k' }))).rejects.toMatchObject({
                 name: 'NoSuchKey',

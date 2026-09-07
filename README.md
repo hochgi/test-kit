@@ -12,16 +12,16 @@ dependency — databases, caches, S3, third-party APIs.
   proxy-based mocks for everything else.
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMock } from "@vnatures/test-kit-mock";
 import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
 
-const harness = createHarness();
-const users = harness.attach(
-    createProbedMock<IUserService>({ harness, methods: ["getUser"] }),
+const rig = createRig();
+const users = rig.attach(
+    createProbedMock<IUserService>({ harness: rig, methods: ["getUser"] }),
 );
-const db = await harness.attach(
-    createProbedKyselyAdapter<Database>({ harness, bootstrap }),
+const db = await rig.attach(
+    createProbedKyselyAdapter<Database>({ harness: rig, bootstrap }),
 );
 
 users.probe.on("getUser").always().answer({ id: 1, name: "Alice" });
@@ -54,7 +54,7 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 
 | Package | Purpose |
 | :--- | :--- |
-| [`@vnatures/test-kit`](packages/core/README.md) | Core probe engine: `Harness`, `Clock`, `Selection`, `RuleBuilder`, `Expectations`, shared types. Domain packages are built on top of this. |
+| [`@vnatures/test-kit`](packages/core/README.md) | Core probe engine: `Rig`, `Clock`, `Selection`, `RuleBuilder`, `Expectations`, shared types. Domain packages are built on top of this. |
 | [`@vnatures/test-kit-mock`](packages/mock/README.md) | `createProbedMock<T>` for faking any TypeScript interface (REST clients, internal service interfaces, …). |
 | [`@vnatures/test-kit-sql`](packages/sql/README.md) | Shared `QueryProbe` surface and `SqlDriver` seam consumed by every `pg-*` adapter. |
 | [`@vnatures/test-kit-pglite-driver`](packages/pglite-driver/README.md) | Shared PGlite lifecycle helper (`createPgliteHandle`) used by the `pg-*` packages. Published. |
@@ -99,17 +99,17 @@ For the full rule grammar (`once`/`always`, `answer`/`answerWith`/`reject`,
 ## A worked example
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMock } from "@vnatures/test-kit-mock";
 import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
 
 async function createTestHarness() {
-    const harness = createHarness();
-    const users = harness.attach(
-        createProbedMock<IUserService>({ harness, methods: ["getUser"] }),
+    const rig = createRig();
+    const users = rig.attach(
+        createProbedMock<IUserService>({ harness: rig, methods: ["getUser"] }),
     );
-    const db = await harness.attach(
-        createProbedKyselyAdapter<Database>({ harness, bootstrap }),
+    const db = await rig.attach(
+        createProbedKyselyAdapter<Database>({ harness: rig, bootstrap }),
     );
 
     const app = App.init({
@@ -117,11 +117,11 @@ async function createTestHarness() {
         db: db.adapter,
     });
 
-    return { harness, app, users, db };
+    return { rig, app, users, db };
 }
 
 it("tests the component", async () => {
-    const { harness, app, users, db } = await createTestHarness();
+    const { rig, app, users, db } = await createTestHarness();
     try {
         users.probe.on("getUser").always().answer({ id: 1, name: "Alice" });
 
@@ -134,7 +134,7 @@ it("tests the component", async () => {
         const response = await responsePromise;
         expect(response.status).toBe(200);
     } finally {
-        await harness.close();
+        await rig.close();
     }
 });
 ```

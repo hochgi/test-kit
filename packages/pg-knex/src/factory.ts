@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { type Duration, type Harness, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
+import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
@@ -11,7 +11,7 @@ import { createPgliteHandle } from '@vnatures/test-kit-pglite-driver';
 import { createPgliteKnex, createProbedPgliteKnex } from './driver.js';
 
 export interface CreateProbedKnexAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap: (knex: Knex) => Promise<void>;
     readonly extensions?: Record<string, unknown>;
     readonly knexConfig?: Partial<Knex.Config>;

@@ -8,7 +8,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { QueryTypes, Sequelize } from 'sequelize';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedSequelizeAdapter, type ProbedSequelizeAdapter } from '@vnatures/test-kit-pg-sequelize';
 
 async function bootstrap(sequelize: Sequelize): Promise<void> {
@@ -47,20 +47,20 @@ async function bootstrap(sequelize: Sequelize): Promise<void> {
 }
 
 describe('createProbedSequelizeAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let db: ProbedSequelizeAdapter;
 
     beforeAll(async () => {
-        harness = createHarness();
-        db = await harness.attach(createProbedSequelizeAdapter({ harness, bootstrap }));
+        rig = createRig();
+        db = await rig.attach(createProbedSequelizeAdapter({ harness: rig, bootstrap }));
     });
 
     afterAll(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     afterEach(async () => {
-        await harness.reset();
+        await rig.reset();
     });
 
     describe('default forward rule', () => {

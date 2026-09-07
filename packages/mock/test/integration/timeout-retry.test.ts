@@ -1,11 +1,11 @@
 /**
  * Translated from v1 packages/core/test/integration.test.ts to v2 grammar.
  *
- * Demonstrates intercept + reject/answer + harness.clock.advance for testing
- * timeout and retry semantics. Uses Vitest fake timers via the harness.
+ * Demonstrates intercept + reject/answer + rig.clock.advance for testing
+ * timeout and retry semantics. Uses Vitest fake timers via the rig.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHarness, seconds, type Harness } from '@vnatures/test-kit';
+import { createRig, seconds, type Rig } from '@vnatures/test-kit';
 import { createProbedMock } from '@vnatures/test-kit-mock';
 
 interface Dep {
@@ -40,25 +40,25 @@ async function callWithRetry(dep: Dep, retryDelayMs: number): Promise<{ ok: bool
     }
 }
 
-describe('integration: probes + harness fake clock', () => {
-    let harness: Harness;
+describe('integration: probes + rig fake clock', () => {
+    let rig: Rig;
 
     beforeEach(() => {
         vi.useFakeTimers();
-        harness = createHarness();
+        rig = createRig();
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
         vi.useRealTimers();
     });
 
     it('times out when downstream call is not answered', async () => {
-        const { adapter, probe } = harness.attach(createProbedMock<Dep>({ methods: ['request'] }));
+        const { adapter, probe } = rig.attach(createProbedMock<Dep>({ methods: ['request'] }));
 
         const resultPromise = callWithTimeout(adapter, 30_000);
         // Attach the assertion's .catch eagerly. The timer fires synchronously
-        // inside `harness.clock.advance` below, and without an already-attached
+        // inside `rig.clock.advance` below, and without an already-attached
         // handler vitest's microtask cycle reports the rejection as unhandled
         // before our `await` here installs one.
         const expectTimeout = expect(resultPromise).rejects.toThrow('call has been timed out');
@@ -67,12 +67,12 @@ describe('integration: probes + harness fake clock', () => {
         expect(pending.method).toBe('request');
         expect(pending.args).toEqual([{ siteId: 1 }]);
 
-        await harness.clock.advance(seconds(30));
+        await rig.clock.advance(seconds(30));
         await expectTimeout;
     });
 
     it('retries after first failure and succeeds on the second response', async () => {
-        const { adapter, probe } = harness.attach(createProbedMock<Dep>({ methods: ['request'] }));
+        const { adapter, probe } = rig.attach(createProbedMock<Dep>({ methods: ['request'] }));
 
         const resultPromise = callWithRetry(adapter, 2_000);
 
@@ -80,7 +80,7 @@ describe('integration: probes + harness fake clock', () => {
         first.reject(new Error('temporary failure'));
         await Promise.resolve();
 
-        await harness.clock.advance(seconds(2));
+        await rig.clock.advance(seconds(2));
 
         const second = await probe.expect.intercept();
         second.answer({ ok: true });
@@ -89,7 +89,7 @@ describe('integration: probes + harness fake clock', () => {
     });
 
     it('multiple concurrent calls answered out of order', async () => {
-        const { adapter, probe } = harness.attach(createProbedMock<Dep>({ methods: ['request'] }));
+        const { adapter, probe } = rig.attach(createProbedMock<Dep>({ methods: ['request'] }));
 
         const p1 = adapter.request({ siteId: 1 });
         const p2 = adapter.request({ siteId: 2 });

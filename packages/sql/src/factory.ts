@@ -6,13 +6,13 @@ import {
     type Duration,
     type ForwardablePendingCall,
     type ForwardableSelection,
-    type Harness,
+    type Rig,
     type ProbeRoot,
 } from '@vnatures/test-kit';
 import type { QueryCall, QueryPendingCall, QueryProbe, SqlDriver } from './types.js';
 
 export interface CreateProbedSqlAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
     readonly driver: SqlDriver;
 }

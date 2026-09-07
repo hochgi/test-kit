@@ -6,7 +6,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Knex } from 'knex';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedKnexAdapter, type ProbedKnexAdapter } from '@vnatures/test-kit-pg-knex';
 
 async function bootstrap(db: Knex): Promise<void> {
@@ -34,20 +34,20 @@ async function bootstrap(db: Knex): Promise<void> {
 }
 
 describe('createProbedKnexAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let db: ProbedKnexAdapter;
 
     beforeAll(async () => {
-        harness = createHarness();
-        db = await harness.attach(createProbedKnexAdapter({ harness, bootstrap }));
+        rig = createRig();
+        db = await rig.attach(createProbedKnexAdapter({ harness: rig, bootstrap }));
     });
 
     afterAll(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     afterEach(async () => {
-        await harness.reset();
+        await rig.reset();
     });
 
     describe('default forward rule', () => {

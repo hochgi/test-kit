@@ -6,7 +6,7 @@
  * engine breaks the extender path, this test fails first.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, milliseconds, type Harness } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
 import { createProbedGrpcClient } from '../src/index.js';
 
 interface ListUsersRequest {
@@ -17,18 +17,18 @@ interface ListUsersResponse {
 }
 
 describe('createProbedGrpcClient (extender example)', () => {
-    let harness: Harness;
+    let rig: Rig;
 
     beforeEach(() => {
-        harness = createHarness();
+        rig = createRig();
     });
 
     afterEach(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     it('records calls with service/method/request shape', async () => {
-        const grpc = createProbedGrpcClient({ harness });
+        const grpc = createProbedGrpcClient({ harness: rig });
 
         void grpc.adapter.unary<ListUsersResponse>({
             service: 'users.UserService',
@@ -45,7 +45,7 @@ describe('createProbedGrpcClient (extender example)', () => {
     });
 
     it('typed sugar — probe.on({ service, method }) narrows correctly', async () => {
-        const grpc = createProbedGrpcClient({ harness });
+        const grpc = createProbedGrpcClient({ harness: rig });
 
         void grpc.adapter.unary({
             service: 'users.UserService',
@@ -69,7 +69,7 @@ describe('createProbedGrpcClient (extender example)', () => {
     });
 
     it('always().answerWith — dynamic per-call response', async () => {
-        const grpc = createProbedGrpcClient({ harness });
+        const grpc = createProbedGrpcClient({ harness: rig });
 
         grpc.probe
             .service('users.UserService')
@@ -89,13 +89,13 @@ describe('createProbedGrpcClient (extender example)', () => {
     });
 
     it('intercept times out cleanly when no call arrives', async () => {
-        const grpc = createProbedGrpcClient({ harness });
+        const grpc = createProbedGrpcClient({ harness: rig });
 
         await expect(grpc.probe.expect.intercept({ within: milliseconds(50) })).rejects.toThrow(/Timed out/);
     });
 
     it('expect.observe is non-consuming alongside an always() answer', async () => {
-        const grpc = createProbedGrpcClient({ harness });
+        const grpc = createProbedGrpcClient({ harness: rig });
 
         grpc.probe.always().answer({ ok: true });
 

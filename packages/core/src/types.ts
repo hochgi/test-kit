@@ -193,15 +193,15 @@ export interface CallNotifier<TCall> {
     onCall(call: TCall): void;
 }
 
-// Forward-declared to avoid circularity with harness.ts.
-export interface HarnessRef {
+// Forward-declared to avoid circularity with rig.ts.
+export interface RigRef {
     readonly clock: Clock;
     readonly defaultTimeout: Duration;
     readonly safetyTimeout: Duration | null;
 }
 
 export interface ProbeRootConfig<TCall, TPending extends PendingCallBase<TCall>> {
-    readonly harness?: HarnessRef;
+    readonly harness?: RigRef;
     readonly defaultTimeout?: Duration;
     readonly safetyTimeout?: Duration | null;
     readonly pendingFactory: (record: CallRecord<TCall, TPending>) => TPending;

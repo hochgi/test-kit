@@ -3,7 +3,7 @@ import {
     errors,
     makeStreamPendingBase,
     type Duration,
-    type HarnessRef,
+    type RigRef,
     type StreamPendingCallBase,
     type StreamProbeRoot,
     type StreamRecord,
@@ -23,7 +23,7 @@ export interface CreateProbedStreamMockOptions<T extends object, M extends Reado
     readonly methods: CheckedStreamMethods<T, M>;
     readonly defaultTimeout?: Duration;
     /** Optional harness reference; see {@link CreateProbedMockOptions.harness}. */
-    readonly harness?: HarnessRef;
+    readonly harness?: RigRef;
 }
 
 /**

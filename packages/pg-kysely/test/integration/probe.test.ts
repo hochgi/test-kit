@@ -9,7 +9,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { ColumnType, JSONColumnType, Kysely, sql } from 'kysely';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
 
 interface OrderTable {
@@ -75,20 +75,20 @@ async function bootstrap(db: Kysely<TestDatabase>): Promise<void> {
 }
 
 describe('createProbedKyselyAdapter', () => {
-    let harness: Harness;
+    let rig: Rig;
     let db: ProbedKyselyAdapter<TestDatabase>;
 
     beforeAll(async () => {
-        harness = createHarness();
-        db = await harness.attach(createProbedKyselyAdapter<TestDatabase>({ harness, bootstrap }));
+        rig = createRig();
+        db = await rig.attach(createProbedKyselyAdapter<TestDatabase>({ harness: rig, bootstrap }));
     });
 
     afterAll(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     afterEach(async () => {
-        await harness.reset();
+        await rig.reset();
     });
 
     describe('default forward rule', () => {
@@ -309,10 +309,10 @@ describe('createProbedKyselyAdapter — extensions', () => {
             uuid_ossp: unknown;
         };
 
-        const harness = createHarness();
-        const db = await harness.attach(
+        const rig = createRig();
+        const db = await rig.attach(
             createProbedKyselyAdapter<{ uuid_test: { id: string; label: string } }>({
-                harness,
+                harness: rig,
                 extensions: { uuid_ossp },
                 bootstrap: async (db) => {
                     await sql.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').execute(db);
@@ -335,20 +335,20 @@ describe('createProbedKyselyAdapter — extensions', () => {
             expect(rows[0].label).toBe('auto-uuid');
             expect(rows[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
         } finally {
-            await harness.close();
+            await rig.close();
         }
     });
 
-    it('extensions survive harness.reset()', async () => {
+    it('extensions survive rig.reset()', async () => {
         // @ts-expect-error — TS "node" moduleResolution can't resolve wildcard package exports
         const { uuid_ossp } = (await import('@electric-sql/pglite/contrib/uuid_ossp')) as {
             uuid_ossp: unknown;
         };
 
-        const harness = createHarness();
-        const db = await harness.attach(
+        const rig = createRig();
+        const db = await rig.attach(
             createProbedKyselyAdapter<{ uuid_test: { id: string; label: string } }>({
-                harness,
+                harness: rig,
                 extensions: { uuid_ossp },
                 bootstrap: async (db) => {
                     await sql.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').execute(db);
@@ -366,14 +366,14 @@ describe('createProbedKyselyAdapter — extensions', () => {
 
         try {
             await db.seed('uuid_test', [{ label: 'before-reset' }]);
-            await harness.reset();
+            await rig.reset();
             await db.seed('uuid_test', [{ label: 'after-reset' }]);
 
             const rows = await db.adapter.selectFrom('uuid_test').select(['id', 'label']).execute();
             expect(rows).toHaveLength(1);
             expect(rows[0].label).toBe('after-reset');
         } finally {
-            await harness.close();
+            await rig.close();
         }
     });
 });

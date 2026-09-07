@@ -20,5 +20,5 @@ cover the deeper material.
   specification: internal core API, storage model, rule resolution algorithm,
   per-domain implementation patterns, build/test/distribution choices.
 - [`internal/migration-from-v1.md`](internal/migration-from-v1.md) — Mapping
-  from the pre-OSS internal test-kit API to the v1.0.0 surface. Used by the
+  from the pre-OSS internal test-kit API to the 2.0.0 surface. Used by the
   vnatures team to rewrite legacy tests; does not apply to OSS adopters.

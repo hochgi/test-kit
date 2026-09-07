@@ -37,18 +37,18 @@ package (erased at runtime), so S3-only consumers can omit it; it's marked
 
 ```typescript
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import {
     createProbedS3Adapter,
     createProbedPresignerAdapter,
 } from "@vnatures/test-kit-s3";
 
-const harness = createHarness();
-const s3 = harness.attach(
-    createProbedS3Adapter({ harness, bucket: "my-bucket" }),
+const rig = createRig();
+const s3 = rig.attach(
+    createProbedS3Adapter({ harness: rig, bucket: "my-bucket" }),
 );
-const presigner = harness.attach(
-    createProbedPresignerAdapter({ harness }),
+const presigner = rig.attach(
+    createProbedPresignerAdapter({ harness: rig }),
 );
 
 // Default rule for s3.adapter is forward — commands hit the in-memory backing.
@@ -74,17 +74,17 @@ const url = await presigner.adapter.signUrl(
 );
 expect(url).toBe("https://fake/my-bucket/a?expires=3600");
 
-await harness.close();
+await rig.close();
 ```
 
 ## What each adapter returns
 
 ```typescript
 const { adapter, probe, reset, close } =
-    createProbedS3Adapter({ harness, bucket });
+    createProbedS3Adapter({ harness: rig, bucket });
 
 const { adapter, probe, close } =
-    createProbedPresignerAdapter({ harness });
+    createProbedPresignerAdapter({ harness: rig });
 ```
 
 - `s3.adapter: S3Client` — `.send(command)` returns a Promise that the
@@ -95,7 +95,7 @@ const { adapter, probe, close } =
   `.expect.*`, `.drain()`, `.drainAndReject(error)`.
 - `reset()` (S3 only) — clears the in-memory store; useful between
   tests.
-- `close()` — disposes; `harness.close()` runs it automatically.
+- `close()` — disposes; `rig.close()` runs it automatically.
 
 ## Three verbs: `forward` / `answer` / `reject`
 

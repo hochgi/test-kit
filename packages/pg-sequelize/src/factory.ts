@@ -1,5 +1,5 @@
 import { Sequelize, type Options as SequelizeOptions } from 'sequelize';
-import { type Duration, type Harness, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
+import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
@@ -20,7 +20,7 @@ export type ModelCtor = abstract new (...args: unknown[]) => unknown;
 export type SequelizeCtor = new (...args: unknown[]) => Sequelize;
 
 export interface CreateProbedSequelizeAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly bootstrap?: (sequelize: Sequelize) => Promise<void>;
     readonly preBootstrap?: (sequelize: Sequelize) => Promise<void>;
     readonly models?: ReadonlyArray<ModelCtor>;

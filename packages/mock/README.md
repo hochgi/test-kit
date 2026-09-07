@@ -14,7 +14,7 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-mock
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMock } from "@vnatures/test-kit-mock";
 
 interface UserService {
@@ -22,10 +22,10 @@ interface UserService {
     create(input: { name: string }): Promise<{ id: number }>;
 }
 
-const harness = createHarness();
-const users = harness.attach(
+const rig = createRig();
+const users = rig.attach(
     createProbedMock<UserService>({
-        harness,
+        harness: rig,
         methods: ["getUser", "create"],
     }),
 );
@@ -48,7 +48,7 @@ await promise; // → { id: 42 }
 
 ```typescript
 const { adapter, probe, close } = createProbedMock<T>({
-    harness,             // optional; recommended for shared lifecycle
+    harness: rig,        // optional; recommended for shared lifecycle
     methods: [...],      // explicit allowlist of async method names
     defaultTimeout,      // optional override
 });
@@ -62,7 +62,7 @@ const { adapter, probe, close } = createProbedMock<T>({
   `.filter(predicate)`, `.calls`, `.expect.*`, `.drain()`,
   `.drainAndReject(error)`.
 - `close()` — disposes the underlying probe; runs automatically on
-  `harness.close()` if attached.
+  `rig.close()` if attached.
 
 ## The `methods` allowlist
 
@@ -138,7 +138,7 @@ it("times out when downstream does not respond", async () => {
 
     // Capture the call, never answer.
     await users.probe.on("getUser").expect.intercept();
-    await harness.clock.advance(seconds(30));
+    await rig.clock.advance(seconds(30));
 
     await expect(responsePromise).rejects.toThrow(/timed out/);
 });
@@ -153,7 +153,7 @@ it("retries after a transient failure", async () => {
     const first = await users.probe.on("getUser").expect.intercept();
     first.reject(new Error("temporary"));
 
-    await harness.clock.advance(seconds(2));
+    await rig.clock.advance(seconds(2));
 
     const second = await users.probe.on("getUser").expect.intercept();
     second.answer({ id: 1, name: "Alice" });
@@ -271,14 +271,14 @@ instead of wrapping it, just applied to a class-shaped seam. See the
 
 ## Working with fake timers
 
-The harness auto-detects `vi.useFakeTimers()` and `jest.useFakeTimers()`
-on construction. Use `harness.clock.advance(duration)` to drive the
+The rig auto-detects `vi.useFakeTimers()` and `jest.useFakeTimers()`
+on construction. Use `rig.clock.advance(duration)` to drive the
 SUT's timers; `expect.intercept`/`expect.observe` deadlines run on real
 wall-clock time so a forgotten `clock.advance` produces a clean timeout
 diagnostic instead of a 30s hang.
 
 For Sinon, pass an installed `FakeTimers` instance explicitly:
-`createHarness({ clock: sinonFakeClock(timers) })`.
+`createRig({ clock: sinonFakeClock(timers) })`.
 
 ## See also
 

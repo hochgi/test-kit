@@ -19,7 +19,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { Kysely, sql } from 'kysely';
-import { createHarness, type Harness } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
 
 interface TestDatabase {
@@ -36,20 +36,20 @@ async function bootstrap(db: Kysely<TestDatabase>): Promise<void> {
 }
 
 describe('createProbedKyselyAdapter — notifications', () => {
-    let harness: Harness;
+    let rig: Rig;
     let db: ProbedKyselyAdapter<TestDatabase>;
 
     beforeAll(async () => {
-        harness = createHarness();
-        db = await harness.attach(createProbedKyselyAdapter<TestDatabase>({ harness, bootstrap }));
+        rig = createRig();
+        db = await rig.attach(createProbedKyselyAdapter<TestDatabase>({ harness: rig, bootstrap }));
     });
 
     afterAll(async () => {
-        await harness.close();
+        await rig.close();
     });
 
     afterEach(async () => {
-        await harness.reset();
+        await rig.reset();
     });
 
     it('exposes a notifications façade backed by the same PGlite instance', () => {

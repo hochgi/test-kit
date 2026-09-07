@@ -1,4 +1,4 @@
-import type { Duration, Harness, ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
+import type { Duration, Rig, ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
 import type { QueryProbe } from '@vnatures/test-kit-sql';
 
 /**
@@ -40,7 +40,7 @@ export interface MysqlContainerInfo {
 }
 
 export interface CreateProbedMysqlAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     /**
      * Called once on the maintenance pool (bypassing the probe) after the
      * container starts. Typically creates schemas / tables and seeds

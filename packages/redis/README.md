@@ -24,24 +24,24 @@ npm install --save-dev @vnatures/test-kit @vnatures/test-kit-redis
 ## Quick start
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedCacheAdapter } from "@vnatures/test-kit-redis";
 
-const harness = createHarness();
-const cache = harness.attach(createProbedCacheAdapter({ harness }));
+const rig = createRig();
+const cache = rig.attach(createProbedCacheAdapter({ harness: rig }));
 
 // Default rule is forward — calls pass through to the in-memory store.
 await cache.adapter.set({ key: "user:1", val: { name: "Alice" } });
 const user = await cache.adapter.get<{ name: string }>("user:1");
 expect(user).toEqual({ name: "Alice" });
 
-await harness.close();
+await rig.close();
 ```
 
 ## What the adapter returns
 
 ```typescript
-const { adapter, probe, close } = createProbedCacheAdapter({ harness });
+const { adapter, probe, close } = createProbedCacheAdapter({ harness: rig });
 ```
 
 - `adapter: CacheAdapter` — inject this into production wiring. Default
@@ -50,7 +50,7 @@ const { adapter, probe, close } = createProbedCacheAdapter({ harness });
 - `probe: CacheProbe` — `.on(method)`, `.calls`,
   `.expect.*`, `.drain()`, `.drainAndReject(error)`.
 - `close()` — disposes the underlying store. Handled automatically by
-  `harness.close()` if attached.
+  `rig.close()` if attached.
 
 ## The `CacheAdapter` interface
 

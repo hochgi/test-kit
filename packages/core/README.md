@@ -1,6 +1,6 @@
 # @vnatures/test-kit
 
-Core engine for probe-driven component testing. Provides the `Harness`,
+Core engine for probe-driven component testing. Provides the `Rig`,
 `Clock`, lifecycle, and the `Probe` / `Selection` / `RuleBuilder` /
 `Expectations` types that every domain adapter is built on top of.
 
@@ -20,12 +20,12 @@ npm install --save-dev @vnatures/test-kit
 
 ```typescript
 import {
-    createHarness,
+    createRig,
     milliseconds,
     seconds,
     realClock,
     viFakeClock,
-    type Harness,
+    type Rig,
     type Probe,
     type Selection,
     type RuleBuilder,
@@ -35,11 +35,11 @@ import {
 } from "@vnatures/test-kit";
 ```
 
-- `createHarness()` — Constructs a `Harness` that owns a `Clock`,
+- `createRig()` — Constructs a `Rig` that owns a `Clock`,
   `defaultTimeout`, cross-probe expectations, and a list of attached
   resources for cleanup.
 - `Clock` factories — `realClock`, `jestFakeClock`, `viFakeClock`,
-  `sinonFakeClock`, `manualClock`. The harness auto-detects Vitest /
+  `sinonFakeClock`, `manualClock`. The rig auto-detects Vitest /
   Jest fake timers when none is supplied.
 - `Duration` factories — `milliseconds`, `seconds`, `minutes`. All
   public timing APIs use `Duration`; raw numbers are rejected.
@@ -57,38 +57,38 @@ import {
 For full type signatures and matching semantics see
 [`docs/api-surface.md`](../../docs/api-surface.md).
 
-## Harness lifecycle
+## Rig lifecycle
 
 ```typescript
-import { createHarness } from "@vnatures/test-kit";
+import { createRig } from "@vnatures/test-kit";
 import { createProbedMock } from "@vnatures/test-kit-mock";
 
-let harness: Harness;
+let rig: Rig;
 
 beforeEach(() => {
-    harness = createHarness();
+    rig = createRig();
 });
 
 afterEach(async () => {
-    await harness.close();
+    await rig.close();
 });
 
-it("uses the harness", async () => {
-    const users = harness.attach(
-        createProbedMock<IUserService>({ harness, methods: ["getUser"] }),
+it("uses the rig", async () => {
+    const users = rig.attach(
+        createProbedMock<IUserService>({ harness: rig, methods: ["getUser"] }),
     );
     users.probe.on("getUser").always().answer({ id: 1, name: "Alice" });
     // …
 });
 ```
 
-The harness:
+The rig:
 
 - shares a single `defaultTimeout` and `Clock` across every attached probe;
 - closes attached `ProbedResource`s in LIFO order on `close()`;
-- exposes `harness.expect.sequence([...])` and `harness.expect.allOf([...])`
+- exposes `rig.expect.sequence([...])` and `rig.expect.allOf([...])`
   for asserting orderings across probes (see
-  [`docs/api-surface.md`](../../docs/api-surface.md#harnessexpectations)).
+  [`docs/api-surface.md`](../../docs/api-surface.md#rig)).
 
 ## Building a custom domain adapter
 

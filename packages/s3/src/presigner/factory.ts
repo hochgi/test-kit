@@ -4,7 +4,7 @@ import {
     makePendingBase,
     type CallRecord,
     type Duration,
-    type Harness,
+    type Rig,
     type PendingCallBase,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
@@ -20,7 +20,7 @@ import type {
 } from '../types.js';
 
 export interface CreateProbedPresignerAdapterOptions {
-    readonly harness: Harness;
+    readonly harness: Rig;
     readonly defaultTimeout?: Duration;
 }
 
