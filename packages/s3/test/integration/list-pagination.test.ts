@@ -194,7 +194,7 @@ describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     });
 
     it('prefix filtering is preserved across pages', async () => {
-        // Two prefixes interleaved on disk; pagination must still return only
+        // Two prefixes interleaved in the backing; pagination must still return only
         // the matching prefix, in order, across the correct number of pages.
         await seedKeys(3, 'alpha');
         await seedKeys(3, 'beta');

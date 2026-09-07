@@ -268,7 +268,7 @@ describe('createProbedS3Adapter', () => {
             }
         });
 
-        it('reset() wipes disk state for subsequent tests', async () => {
+        it('reset() wipes in-memory state for subsequent tests', async () => {
             await s3.adapter.send(new PutObjectCommand({ Bucket: BUCKET, Key: 'k', Body: 'first' }));
 
             await harness.reset();
