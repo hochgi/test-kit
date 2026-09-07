@@ -34,6 +34,9 @@ workflows:
             docs/.* build_workspace true
             \.circleci/.* build_workspace true
             \.cursor/.* build_workspace true
+            \.claude/.* build_workspace true
+            \.harness/.* build_workspace true
+            \.opencode/.* build_workspace true
             examples/grpc-client/.* build_grpc_client true
 
   backup:

@@ -16,5 +16,6 @@ export default defineWorkspace([
     'packages/pg-sequelize',
     'examples/grpc-client',
     'test/ci-gate',
+    'test/harness-scaffold',
     'test/docs-truth',
 ]);

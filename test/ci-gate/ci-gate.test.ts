@@ -33,6 +33,9 @@ const workspaceWideSamplePaths = [
     '.circleci/ci.yml',
     '.circleci/config.yml',
     '.cursor/commands/spec-to-ship.md',
+    '.claude/agents/spec-author.md',
+    '.harness/models.json',
+    '.opencode/opencode.json',
 ] as const;
 
 const publishedPackages = [

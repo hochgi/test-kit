@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "litellm/vn-coding",
+  "default_agent": "spec-to-ship",
+  "skills": {
+    "paths": ["./.cursor/skills"]
+  },
+  "agent": {
+    "spec-to-ship": {
+      "description": "Orchestrates the @vnatures/test-kit spec→ship pipeline. Phase 1 (spec-author) runs in the main thread; phases 2–5 are delegated via task — test-author → coder → reviewer → verifier. Runner is Vitest at the repo root (`npm run check`). Use for any non-trivial change.",
+      "mode": "primary",
+      "model": "litellm/vn-spec",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "spec-author": "allow",
+          "test-author": "allow",
+          "coder": "allow",
+          "reviewer": "allow",
+          "verifier": "allow",
+          "explore": "allow",
+          "general": "allow"
+        },
+        "question": "allow"
+      }
+    },
+    "build": {
+      "model": "litellm/vn-coding"
+    }
+  }
+}
