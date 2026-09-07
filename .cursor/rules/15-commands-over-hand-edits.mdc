@@ -1,0 +1,10 @@
+---
+description: Prefer deterministic commands over hand-edits when reproducing known state
+alwaysApply: true
+---
+
+# Commands Over Hand-Edits
+
+- If a file's target state already exists at a git ref, restore it with `git checkout <ref> -- <path>` (or `git restore --source=<ref> -- <path>`). Do not reconstruct it via StrReplace/Write — you will leak formatting drift and waste tokens.
+- Prefer known-correct commands (`git mv`, `git revert`, `git restore`, codemods, package-manager installs) over hand-editing whenever they produce the exact target state.
+- Reserve manual edits for code that has no canonical source elsewhere.

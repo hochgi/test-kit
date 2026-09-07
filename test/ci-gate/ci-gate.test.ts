@@ -18,6 +18,7 @@ const harnessMarkdownDirs = [
     '.cursor/agents',
     '.cursor/skills',
     '.cursor/commands',
+    '.cursor/rules',
     '.claude/agents',
     '.claude/skills',
     '.claude/commands',

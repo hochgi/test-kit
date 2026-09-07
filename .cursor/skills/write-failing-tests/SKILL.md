@@ -19,14 +19,9 @@ Goldilocks boundaries. **That is not what you are doing.** Here, test-kit is the
 artifact under development. You test the packages directly: call the factory,
 drive the probe, assert on what it recorded.
 
-> **Do not follow `.cursor/skills/component-testing/SKILL.md` as a whole.**
-> Cursor will surface it because it sits right there. It teaches consumers how
-> to *use* this library, in **Jest**, pinned at v1.0.0 while core is at 1.0.6,
-> and RD-24147 replaces it. Ignore its Jest APIs (`jest.useFakeTimers`,
-> `jest.advanceTimersByTimeAsync`) and its version pin. Keep the parts that still
-> describe this repo's own tests: Goldilocks boundaries, leaf-only probing,
-> explicit probe methods, and harness lifecycle (`harness.close()` in `afterEach`
-> or `try/finally`).
+Follow `component-testing` for Goldilocks boundaries, leaf-only probing,
+explicit probe methods, and rig lifecycle (`rig.close()` in `afterEach` or
+`try/finally`).
 
 ## Where tests live
 
@@ -85,10 +80,10 @@ Do **not** implement production logic. That is `code-to-green`.
 - **Confirm every new test fails for a behavioural reason** — an assertion or a
   `not implemented` throw. A test that fails to compile proves nothing and will
   later pass for the wrong reason.
-- **Harness-based `it`s are disposable.** Each such test creates its own harness
-  and closes it in `afterEach` or `try/finally` so a failed assertion cannot leak
-  adapters or probe state. That rule comes from `component-testing` and still
-  applies here.
+- **Rig-based `it`s are disposable.** Each such test creates its own rig
+  and closes it with `rig.close()` in `afterEach` or `try/finally` so a failed
+  assertion cannot leak adapters or probe state. That convention comes from
+  `component-testing` and still applies here.
 - Prefer extending an existing package's test file over adding a parallel one.
 
 ## Handoff

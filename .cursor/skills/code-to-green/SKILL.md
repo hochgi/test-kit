@@ -43,7 +43,7 @@ npm run format:check   # prettier: packages/**/*.ts + examples/**/*.ts + test/**
 npm run lint           # eslint --max-warnings 0, test/ + vitest.workspace.ts + each workspace
 npm run typecheck      # tsc --build across 14 project references (ci-gate is Vitest-only)
 npm run build          # Vite lib mode + vite-plugin-dts, all workspaces
-npm test               # vitest run, all 15 projects (13 packages + grpc-client + ci-gate)
+npm test               # vitest run, every project in vitest.workspace.ts
 ```
 
 Run `build` before a root `test`, always. The suite resolves into `dist/`.

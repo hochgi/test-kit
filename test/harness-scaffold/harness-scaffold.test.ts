@@ -591,6 +591,25 @@ describe('Agents and commands generate from Claude when canonical files exist', 
         expect(check.code, `check-agent-skills must exit 0 after generating mirrors: ${check.stderr}`).toBe(0);
     });
 
+    it('perturbed Cursor agent mirror fails the check', () => {
+        assertProgramExists('sync');
+        assertProgramExists('check');
+        const root = createTempHarnessRepo({
+            claudeAgents: { 'spec-author.md': claudeAgentBody },
+            cursorAgents: {},
+        });
+        const sync = runNpm(root, 'sync-agent-skills');
+        expect(sync.code, `sync-agent-skills must succeed: ${sync.stderr}`).toBe(0);
+        const generated = path.join(root, '.cursor/agents/spec-author.md');
+        expect(existsSync(generated), 'sync-agent-skills must write .cursor/agents/spec-author.md').toBe(true);
+        writeFileSync(generated, `${readUtf8(generated)}\n# perturbed\n`);
+        const check = runNpm(root, 'check-agent-skills');
+        expect(
+            check.code,
+            'check-agent-skills must exit non-zero when a generated Cursor agent mirror is edited',
+        ).not.toBe(0);
+    });
+
     it('claude agent model disagrees with the manifest', () => {
         assertProgramExists('check');
         const root = createTempHarnessRepo({
@@ -648,6 +667,21 @@ describe('Empty Claude canonical dirs do not destroy Cursor bootstrap', () => {
             result.code,
             `check-agent-skills must exit 0 when Claude agents and commands are empty: ${result.stderr}`,
         ).toBe(0);
+    });
+
+    it('live canonical Claude trees are populated', () => {
+        const agentDir = path.join(repoRoot, '.claude/agents');
+        const commandDir = path.join(repoRoot, '.claude/commands');
+        const agentMd = existsSync(agentDir) ? readdirSync(agentDir).filter((name) => name.endsWith('.md')) : [];
+        const commandMd = existsSync(commandDir) ? readdirSync(commandDir).filter((name) => name.endsWith('.md')) : [];
+        expect(agentMd.length, '.claude/agents must contain at least one *.md').toBeGreaterThan(0);
+        expect(commandMd.length, '.claude/commands must contain at least one *.md').toBeGreaterThan(0);
+    });
+
+    it('check-agent-skills compares the live mirrors', () => {
+        assertProgramExists('check');
+        const result = runNpm(repoRoot, 'check-agent-skills');
+        expect(result.code, `check-agent-skills must exit 0 on the live tree: ${result.stderr}`).toBe(0);
     });
 });
 

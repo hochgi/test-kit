@@ -182,7 +182,6 @@ sense lives everywhere else.
 
 | Gap | Consequence |
 | --- | --- |
-| `.claude/skills/component-testing/SKILL.md` and its `.cursor/` twin teach `createHarness` / `harness.clock.advance` in the **library** sense | The guide this pipeline's own `coder` and `test-author` read teaches a removed API. Owned by RD-24147, which already scopes replacing that skill. |
 | Published `.d.ts` JSDoc still says "the harness" in several factories; `packages/sql/src/factory.ts:38` shows `{ harness, driver }` shorthand | Editor-hover text for 2.x consumers is stale in prose. Cosmetic; no compile impact. |
 | No mechanical guard against prose naming a `rig` parameter or key | The regression class that reached PR #50 review (six sites) can recur. A docs test would catch it. |
 | No mutation testing or CRAP (RD-24153) | Phase 5 can show the gate is green but not that green *means* anything: most test files resolve through `dist/`, so a mutant applied to `src` is never loaded. |

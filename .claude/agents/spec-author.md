@@ -1,9 +1,8 @@
 ---
 name: spec-author
 description: Turns a packet or ticket into a reviewable spec delta against current truth — EARS requirements + Gherkin scenarios + mermaid where a flow needs one. Resolves behavioural questions from the source, then from sibling-package precedent, and asks only as a last resort. Phase 1 of /spec-to-ship.
-model: cursor-grok-4.6-xhigh
-readonly: false
-is_background: false
+model: opus
+tools: Read, Grep, Glob, Edit, Write, AskUserQuestion
 ---
 
 # spec-author

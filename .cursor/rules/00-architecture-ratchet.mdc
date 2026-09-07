@@ -1,0 +1,13 @@
+---
+description: Ratchet package, adapter, and probe quality upward in touched slices
+globs: packages/**/*.ts
+alwaysApply: true
+---
+
+# Architecture Ratchet
+
+- Existing code is context, not precedent.
+- Do not copy nearby layer leaks into new or touched code.
+- When changing a package, adapter, probe, factory, or backing, fix obvious local boundary violations if the right home is clear.
+- Keep cleanup proportional: stay in the same package slice and avoid repo-wide redesigns.
+- If the correct home is not clear, stop at the smallest safe improvement and call out what still looks wrong.

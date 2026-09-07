@@ -1,9 +1,9 @@
 ---
-name: reviewer
 description: Correctness review of the completed change — spec↔tests↔code coherence, public-API consistency, and regressions. Read-only; does not fix what it finds. Phase 4 of /spec-to-ship.
-model: cursor-grok-4.6-xhigh
-readonly: true
-is_background: false
+mode: subagent
+model: litellm/vn-review
+permission:
+  edit: deny
 ---
 
 # reviewer

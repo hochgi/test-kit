@@ -17,5 +17,6 @@ export default defineWorkspace([
     'examples/grpc-client',
     'test/ci-gate',
     'test/harness-scaffold',
+    'test/harness-prose',
     'test/docs-truth',
 ]);

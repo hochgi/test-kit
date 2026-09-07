@@ -1,9 +1,7 @@
 ---
-name: coder
 description: Implements production code until the failing Vitest suite is green and every blinker is clean. Does not measure coverage quality — mutation testing and CRAP are deferred to RD-24153. Phase 3 of /spec-to-ship.
-model: cursor-grok-4.6-xhigh
-readonly: false
-is_background: false
+mode: subagent
+model: litellm/vn-coding
 ---
 
 # coder

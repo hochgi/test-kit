@@ -1,0 +1,12 @@
+---
+description: Prevent any, as any, and Record<string, any> from spreading in touched code
+globs: packages/**/*.ts
+alwaysApply: true
+---
+
+# No Escape Hatches
+
+- Do not introduce `any`, `as any`, or `Record<string, any>` in new or touched code.
+- If a library generic forces a cast, isolate it in one small adapter or private helper and add a one-line comment explaining why the cast is safe.
+- When touching a function that already contains an escape hatch, fix it if the proper type is obvious and local. Otherwise leave it alone and do not add more.
+- `unknown` with a narrowing guard is always preferable to `any`.

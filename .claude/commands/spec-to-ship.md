@@ -6,7 +6,7 @@ argument-hint: <RD-NNNNN, or a path to a packet / spec input>
 # /spec-to-ship
 
 Drive a packet all the way to a shippable PR. Phase 1 runs in the **main thread**;
-phases 2–5 are delegated to their dedicated subagents.
+phases 2–5 are delegated to their dedicated subagents via the **Agent** tool.
 After the five phases, open a PR, let the review bots run, and iterate until
 every thread is addressed.
 **Do not merge, fold, or archive until the PR is merged onto `main`.** Archive is
@@ -33,7 +33,7 @@ collapse phases.
 **Who runs where.** Phase 1 lives in the main thread because it is the only phase
 that *might* need to reach the user, and a delegated background agent cannot.
 Needing to is the exception, not the plan. Phases 2–5 are delegated to their
-subagents. You collect each result and launch the next
+subagents via the **Agent** tool. You collect each result and launch the next
 directly.
 
 **Verify, never trust.** A subagent's "all green" is a hypothesis until you have
@@ -41,12 +41,10 @@ re-run it yourself. This is why phases 4 and 5 are separate agents from phase 3
 and why neither may write production code: the agent that produced an artifact is
 the worst available judge of it.
 
-**Model selection.** When launching a subagent, **omit the
+**Model selection.** When launching a subagent via the **Agent** tool, **omit the
 `model` argument** unless the human explicitly asked for a specific listed model.
 Agent frontmatter is authoritative per tool, and every tool's choice comes from
 one file: `.harness/models.json`.
-Prefer the named agent if the tool lists it; otherwise `generalPurpose`
-instructed to follow `.cursor/agents/<name>.md` and the phase skill.
 
 ## Repo facts that trip up every run
 

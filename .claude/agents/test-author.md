@@ -1,9 +1,8 @@
 ---
 name: test-author
 description: Derives failing Vitest tests from a spec delta — one test per scenario, plus the minimal type/skeleton stubs they compile against. May write tests and types only, never production behaviour. Phase 2 of /spec-to-ship.
-model: cursor-grok-4.6-xhigh
-readonly: false
-is_background: false
+model: claude-opus-4-8
+tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
 # test-author

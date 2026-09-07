@@ -1,0 +1,19 @@
+---
+description: Library BSSN constraints for touched package code
+globs: packages/**/*.ts
+alwaysApply: true
+---
+
+# Library BSSN
+
+- Improve the touched slice. Do not mirror nearby debt into new code.
+- Existing code is context, not precedent.
+- Reuse an existing adapter, probe, factory, helper, or backing before creating a new file.
+- Add code only when it reduces net complexity.
+- Prefer narrow, deep interfaces: fewer public methods that hide meaningful behavior.
+- Do not widen a public API, adapter, probe, or factory with pass-through, renamed, or pre-filled variants of existing behavior.
+- Keep changes local and proportional to the user request.
+- Prefer a private method or pure helper for in-process logic with one caller.
+- Prefer a thin adapter when isolating a real external boundary.
+- Do not add speculative abstractions that do not hide infrastructure, create immediate reuse, or make testing easier now.
+- If the correct home is unclear, choose the smallest safe improvement and say what still looks wrong.

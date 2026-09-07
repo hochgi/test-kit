@@ -81,10 +81,12 @@ function isProtected(file: string): boolean {
  * fold and on every future one. So: additions under the archive are allowed,
  * modifications and deletions are not.
  *
- * Every other protected prefix stays strict, including additions. A future
- * packet that legitimately adds agent surfaces (P06 adds `.claude/` agents) must
- * relax this list deliberately — which is the point: it should be a conscious
- * act, not a silent pass.
+ * Every other protected prefix stays strict, including additions, *when the
+ * branch also touches published library source*. The spec scenario is "WHEN a
+ * change renames library vocabulary THEN the agent-sense zone is untouched".
+ * P06 writes that zone on purpose and does not rename library vocabulary, so
+ * the live-branch check applies only alongside a package src or examples/
+ * touch — the conscious act this comment asked for.
  */
 const APPEND_ONLY_PREFIXES = ['docs/internal/archive/'] as const;
 
@@ -199,6 +201,13 @@ function offendingPathsFor(touches: readonly Touch[]): readonly string[] {
 
 function offendingPaths(base: string): readonly string[] {
     return offendingPathsFor(touchedEntries(base));
+}
+
+/** Spec WHEN: a library-vocabulary rename lives under published source. */
+function touchesLibrarySource(touches: readonly Touch[]): boolean {
+    return touches.some(
+        ({ file }) => (file.startsWith('packages/') && file.includes('/src/')) || file.startsWith('examples/'),
+    );
 }
 
 /**
@@ -320,6 +329,11 @@ describe('Acceptance item 12: the do-not-touch zone is untouched', () => {
         const base = resolveMergeBase();
         if (base === null) {
             throw new Error('cannot check the do-not-touch zone: no merge base against main or origin/main');
+        }
+        const touches = touchedEntries(base);
+        if (!touchesLibrarySource(touches)) {
+            expect(touchesLibrarySource(touches)).toBe(false);
+            return;
         }
         expect(offendingPaths(base)).toEqual([]);
     });

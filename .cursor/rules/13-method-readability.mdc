@@ -1,0 +1,13 @@
+---
+description: Ratchet method length, nesting depth, and parameter count in touched code
+globs: packages/**/*.ts
+alwaysApply: true
+---
+
+# Method Readability
+
+- When touching a method longer than ~40 lines, do not add more logic inline. Extract named private methods or pure helpers so the top-level method reads as orchestration of clear steps.
+- When touching a block nested deeper than 2 levels (e.g. `for > if > for`), extract the inner body into a named helper with intent-revealing name.
+- When a function or method exceeds 4 positional parameters, group related parameters into a typed object. Do not keep adding optional trailing arguments.
+- Prefer many short methods with clear names assembled in a top-level orchestrator over one long method with section comments.
+- These thresholds are ratchets: existing violations are context, not permission to add more.

@@ -1,0 +1,30 @@
+---
+description: Production-code complexity budget — extract, don't accrete
+globs: packages/**/*.ts
+alwaysApply: true
+---
+
+# Complexity budget (blinker convention)
+
+The budget is a blinker convention, not an ESLint rule. This repository's ESLint
+does not currently enforce it. There are **no git hooks**, so nothing will catch
+a breach for you. Stay inside it anyway:
+
+- `complexity` (cyclomatic) ≤ 12
+- `max-depth` (block nesting) ≤ 4
+- `max-lines-per-function` ≤ 80
+- `max-params` ≤ 5
+
+New or edited code must comply. Do not disable a diagnostic to get a big
+function past review — extract instead.
+
+## When you touch code here
+
+- **Make it work, then make it right.** After the suite is green and before you
+  ship, extract any function you pushed over budget. This is the Refactor leg of
+  Red-Green-Refactor.
+- **Don't accrete into orchestrators.** Bolting "one more branch / guard" onto a
+  big function is how factories and dispatchers rot. Prefer a pipeline of named
+  helpers over a deeper `if` tree.
+- Mutation testing and CRAP have not landed (RD-24153). Do not wait for a
+  coverage-quality score to tell you a function is too big — trust the budget.

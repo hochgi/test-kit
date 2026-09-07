@@ -1,9 +1,9 @@
 ---
-name: verifier
 description: Re-runs the full gate independently of phase 3, audits every suppression added on the patch, and sweeps for regressions. Read-only on production code — it kicks findings back, never fixes them. Phase 5 of /spec-to-ship.
-model: cursor-grok-4.6-xhigh
-readonly: true
-is_background: false
+mode: subagent
+model: litellm/vn-verify
+permission:
+  edit: deny
 ---
 
 # verifier
