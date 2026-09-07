@@ -51,8 +51,10 @@ published. The former names SHALL be absent from the built type declarations.
   closed
 - **THEN** the observable outcomes match those specified for the former
   `Harness` — attach returns the adapter (and a promise for a promised adapter),
-  `reset` clears call history and rules unless `keepRules` is set, `close` runs
-  adapters in reverse registration order, and operating on a closed rig rejects
+  `reset` clears call history and user-installed rules (rig-installed defaults
+  are retained) unless `keepRules` is set, `close` runs adapters in reverse
+  registration order, and operating on a closed rig fails with
+  `Harness is closed.` (attach throws synchronously; reset rejects)
 
 ### Requirement: Every workspace package is on major version 2
 All 13 workspace packages under `packages/` SHALL declare a version on major

@@ -375,12 +375,19 @@ target".
   includes the `atLeast` and `cannotForwardNoBacking` messages from
   `packages/core/src/errors.ts`
 
-### Requirement: v1/v2 framing matches shipped 1.x
+### Requirement: Version framing matches the shipped major
 `docs/internal/migration-from-v1.md` SHALL not contradict itself: the
-migration target is v1.0.0 of this OSS line (as the title and
-`docs/internal/README.md` already say), not a "v2" column. Consumer-facing
-`docs/concepts.md` SHALL NOT say "v2 uses" / "A v2 adapter" / "v2 inverts
-the model" for behaviour that is true of the shipped 1.x API.
+migration target is **2.0.0** of this OSS line (as the title, `docs/README.md`
+and `docs/internal/README.md` now say), not a "v1.0.0" claim beside a 2.x API
+and not a "v2" column. Consumer-facing `docs/concepts.md` SHALL NOT say
+"v2 uses" / "A v2 adapter" / "v2 inverts the model" for behaviour that is
+simply true of the shipped API.
+
+Retargeted from `v1.0.0` by RD-24143/RD-24144, which moved the shipped surface
+to major 2. Note the published patch advances on its own: `vn-ci/init` bumps it
+on every merge to `main`, so the first published 2.x was `2.0.1`. Prose should
+name the **major line**, not a frozen patch — see
+[`core-public-api.md`](core-public-api.md).
 
 #### Scenario: migration tables are not headed v1 vs v2
 - **WHEN** mapping tables in `docs/internal/migration-from-v1.md` are read
@@ -458,7 +465,6 @@ sequenceDiagram
 
 | Item | Consequence of deferring |
 | --- | --- |
-| Harness → Rig rename (RD-24143) | Docs still say `Harness` / `createHarness`, matching shipped 1.x |
 | Documenting remaining internal engine exports (`FilterChain`, `CallRecord`, `StreamRecord`, …) | api-surface still omits types that domain packages import from core |
 | Mapping `test/` onto CircleCI `build_workspace` | A tests-only PR under `test/docs-truth/` would not start CI; this packet also changes mapped paths |
 | Adding a `packages/pglite-driver/test/` suite | Package still uses `--passWithNoTests`; a README is added, not tests |

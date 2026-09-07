@@ -72,15 +72,133 @@ function isProtected(file: string): boolean {
     return PROTECTED_PREFIXES.some((prefix) => file.startsWith(prefix)) || PROTECTED_FILES.includes(file as never);
 }
 
-function touchedPaths(base: string): readonly string[] {
-    const committed = git(['diff', '--name-only', base, 'HEAD']).split('\n');
-    // Uncommitted work counts too: porcelain lines are "XY path" or
-    // "XY old -> new" for renames.
-    const working = git(['status', '--porcelain'])
-        .split('\n')
-        .flatMap((line) => (line.length > 3 ? line.slice(3).split(' -> ') : []))
-        .map((entry) => entry.replace(/^"|"$/g, ''));
-    return [...new Set([...committed, ...working].map((file) => file.trim()).filter((file) => file !== ''))];
+/**
+ * `docs/internal/archive/` is protected against being *rewritten* — it holds the
+ * agent-sense harness history (P05) that this rename must not touch. But it is
+ * also where the pipeline's own final step writes: every fold moves a packet and
+ * its applied delta into a new dated directory there. Flagging additions would
+ * make this guard fail the archive step it is supposed to coexist with, on this
+ * fold and on every future one. So: additions under the archive are allowed,
+ * modifications and deletions are not.
+ *
+ * Every other protected prefix stays strict, including additions. A future
+ * packet that legitimately adds agent surfaces (P06 adds `.claude/` agents) must
+ * relax this list deliberately — which is the point: it should be a conscious
+ * act, not a silent pass.
+ */
+const APPEND_ONLY_PREFIXES = ['docs/internal/archive/'] as const;
+
+function isAppendOnly(file: string): boolean {
+    return APPEND_ONLY_PREFIXES.some((prefix) => file.startsWith(prefix));
+}
+
+type Touch = { readonly added: boolean; readonly file: string };
+
+function clean(file: string): string {
+    return file.trim().replace(/^"|"$/g, '');
+}
+
+/**
+ * A rename is an addition at its destination and a deletion at its source, so
+ * the two sides must not share one status — treating both as "R" is what made
+ * an archive move look like a rewrite of the archive. A copy, by contrast,
+ * leaves its source untouched: only the destination is new, so the source must
+ * not be recorded as a touch at all.
+ */
+function pushPaths(out: Touch[], status: string, paths: readonly string[]): void {
+    const files = paths.map(clean).filter((file) => file !== '');
+    if (files.length === 0) return;
+    if (status.startsWith('R')) {
+        // Last path is the destination; anything before it is the source.
+        files.slice(0, -1).forEach((file) => out.push({ added: false, file }));
+        out.push({ added: true, file: files[files.length - 1] });
+        return;
+    }
+    if (status.startsWith('C')) {
+        out.push({ added: true, file: files[files.length - 1] });
+        return;
+    }
+    // Committed-diff output is exactly "A"; porcelain can yield "AM"/"AA" for an
+    // added file with further unstaged or conflicting state, which is still an
+    // addition.
+    const added = status.startsWith('A') || status.startsWith('?');
+    files.forEach((file) => out.push({ added, file }));
+}
+
+/**
+ * `git diff --name-status -z -M` emits `STATUS\0path\0` records, a rename/copy
+ * carrying its source right after the path: `R100\0old\0new\0` (source first,
+ * destination second). NUL-delimited output never quotes or escapes paths, so
+ * a filename containing " -> " or a tab cannot be misparsed.
+ */
+function pushDiffZ(out: Touch[], raw: string): void {
+    const fields = raw.split('\0');
+    let i = 0;
+    while (i < fields.length) {
+        const status = (fields[i] ?? '').trim();
+        if (status === '') {
+            i += 1;
+            continue;
+        }
+        if (status.startsWith('R') || status.startsWith('C')) {
+            pushPaths(out, status, [fields[i + 1] ?? '', fields[i + 2] ?? '']);
+            i += 3;
+        } else {
+            pushPaths(out, status, [fields[i + 1] ?? '']);
+            i += 2;
+        }
+    }
+}
+
+/**
+ * `git status --porcelain -z` emits `XY path\0` records — the status and path
+ * share one field, separated by a space. A rename/copy is
+ * `XY destination\0source\0`: destination in the record, source as the next
+ * field. As with diff, NUL delimiters mean no quoting and no " -> " ambiguity.
+ */
+function pushStatusZ(out: Touch[], raw: string): void {
+    const fields = raw.split('\0');
+    let i = 0;
+    while (i < fields.length) {
+        const record = fields[i] ?? '';
+        if (record.length <= 3) {
+            i += 1;
+            continue;
+        }
+        const status = record.slice(0, 2).trim();
+        const destination = record.slice(3);
+        if (status.startsWith('R') || status.startsWith('C')) {
+            pushPaths(out, status, [fields[i + 1] ?? '', destination]);
+            i += 2;
+        } else {
+            pushPaths(out, status, [destination]);
+            i += 1;
+        }
+    }
+}
+
+/** Touched paths, each tagged with whether it was newly added. */
+function touchedEntries(base: string): readonly Touch[] {
+    const out: Touch[] = [];
+    pushDiffZ(out, git(['diff', '--name-status', '-z', '-M', base, 'HEAD']));
+    pushStatusZ(out, git(['status', '--porcelain', '-z']));
+    return out;
+}
+
+/** Pure classifier so the status handling above is testable without git. */
+function offendingPathsFor(touches: readonly Touch[]): readonly string[] {
+    const offenders = new Set<string>();
+    for (const { added, file } of touches) {
+        if (!isProtected(file)) continue;
+        // An addition into an append-only zone is the archive step, not a leak.
+        if (isAppendOnly(file) && added) continue;
+        offenders.add(file);
+    }
+    return [...offenders].sort();
+}
+
+function offendingPaths(base: string): readonly string[] {
+    return offendingPathsFor(touchedEntries(base));
 }
 
 /**
@@ -100,6 +218,96 @@ function resolveMergeBase(): string | null {
     return null;
 }
 
+// The classification above only bites if the checkout happens to contain the
+// relevant status — regressions could pass silently otherwise. So exercise
+// every branch with synthetic statuses, independent of the live checkout.
+describe('guard classification', () => {
+    it('a rename adds its destination and deletes its source', () => {
+        const out: Touch[] = [];
+        pushPaths(out, 'R100', [
+            'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md',
+            'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta-moved.md',
+        ]);
+        expect(out).toEqual([
+            { added: false, file: 'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md' },
+            { added: true, file: 'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta-moved.md' },
+        ]);
+        // Moving an archived file away deletes it — the destination is fine,
+        // the vanished source is an offender.
+        expect(offendingPathsFor(out)).toEqual(['docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md']);
+    });
+
+    it('a copy leaves its source untouched — only the destination is new', () => {
+        const out: Touch[] = [];
+        pushPaths(out, 'C', ['.harness/pipeline.json', '.harness/pipeline-copy.json']);
+        expect(offendingPathsFor(out)).toEqual(['.harness/pipeline-copy.json']);
+    });
+
+    it('an archive addition is allowed, even with further unstaged edits (`AM`)', () => {
+        const out: Touch[] = [];
+        pushPaths(out, 'AM', ['docs/internal/archive/2027-01-01-P99-x/delta.md']);
+        expect(out).toEqual([{ added: true, file: 'docs/internal/archive/2027-01-01-P99-x/delta.md' }]);
+        expect(offendingPathsFor(out)).toEqual([]);
+    });
+
+    it('an untracked file is an addition', () => {
+        const out: Touch[] = [];
+        pushPaths(out, '??', ['docs/internal/archive/2027-01-01-P99-x/packet.md']);
+        expect(offendingPathsFor(out)).toEqual([]);
+    });
+
+    it('an archive modification or deletion is flagged', () => {
+        expect(
+            offendingPathsFor([{ added: false, file: 'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md' }]),
+        ).toEqual(['docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md']);
+    });
+
+    it('an addition outside the archive is flagged even though it is new', () => {
+        expect(offendingPathsFor([{ added: true, file: '.claude/skills/new-skill/SKILL.md' }])).toEqual([
+            '.claude/skills/new-skill/SKILL.md',
+        ]);
+    });
+
+    it('files outside every protected zone never offend', () => {
+        expect(offendingPathsFor([{ added: false, file: 'packages/core/src/rig.ts' }])).toEqual([]);
+    });
+
+    it('a porcelain filename containing " -> " is one path, not a rename', () => {
+        const out: Touch[] = [];
+        pushStatusZ(out, '?? .claude/a -> b.md\0');
+        expect(out).toEqual([{ added: true, file: '.claude/a -> b.md' }]);
+        expect(offendingPathsFor(out)).toEqual(['.claude/a -> b.md']);
+    });
+
+    it('a porcelain -z rename record is destination, then source as the next field', () => {
+        const out: Touch[] = [];
+        pushStatusZ(out, 'R  docs/new.md\0docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md\0');
+        expect(out).toEqual([
+            { added: false, file: 'docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md' },
+            { added: true, file: 'docs/new.md' },
+        ]);
+        expect(offendingPathsFor(out)).toEqual(['docs/internal/archive/2026-09-07-P02-P03-rig-rename/delta.md']);
+    });
+
+    it('a diff -z rename record is source, then destination', () => {
+        const out: Touch[] = [];
+        pushDiffZ(out, 'R100\0docs/old.md\0docs/new.md\0');
+        expect(out).toEqual([
+            { added: false, file: 'docs/old.md' },
+            { added: true, file: 'docs/new.md' },
+        ]);
+    });
+
+    it('diff -z plain records parse one path each, " -> " included', () => {
+        const out: Touch[] = [];
+        pushDiffZ(out, 'A\0.claude/x -> y.md\0M\0docs/README.md\0');
+        expect(out).toEqual([
+            { added: true, file: '.claude/x -> y.md' },
+            { added: false, file: 'docs/README.md' },
+        ]);
+    });
+});
+
 describe('Acceptance item 12: the do-not-touch zone is untouched', () => {
     it('resolves a merge base against main', () => {
         expect(
@@ -113,7 +321,6 @@ describe('Acceptance item 12: the do-not-touch zone is untouched', () => {
         if (base === null) {
             throw new Error('cannot check the do-not-touch zone: no merge base against main or origin/main');
         }
-        const offenders = touchedPaths(base).filter(isProtected);
-        expect(offenders).toEqual([]);
+        expect(offendingPaths(base)).toEqual([]);
     });
 });
