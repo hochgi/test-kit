@@ -2,7 +2,7 @@
 
 What currently gates a change to this repository: CircleCI path-filtered
 per-package jobs, a workspace-wide `npm run check` workflow for named
-root/docs/CI paths, a lint+test workflow for `examples/grpc-client`, and
+root/docs/CI and harness-surface paths, a lint+test workflow for `examples/grpc-client`, and
 main-only backup/audit. There are no git hooks (no husky, no lefthook).
 
 ## Requirements
@@ -97,6 +97,9 @@ per-package `build_*` parameters):
 - anything under `docs/`
 - anything under `.circleci/`
 - anything under `.cursor/`
+- anything under `.claude/`
+- anything under `.harness/`
+- anything under `.opencode/`
 
 A workflow in `.circleci/ci.yml` gated on that parameter SHALL run the root
 `check` script (`npm run check`).
@@ -195,7 +198,7 @@ sequenceDiagram
 | Git hooks are not added | Document absence in gate-describing harness prose | Ticket ("document, do not fix here") |
 | Tests live at repo-file boundaries, not inside a published package | A Vitest project included from `vitest.workspace.ts` that reads tracked files | Ticket (this capability is the repo gate) plus write-failing-tests layout does not apply to a non-package |
 | `.cursor/` is mapped onto `build_workspace` | Harness-only PRs run `npm run check` | Source: `.circleci/config.yml` (added by RD-24147) |
-| `.claude/` is not mapped onto `build_workspace` | Tracked Claude markdown is only checked when another mapped path also changes | Source: `.circleci/config.yml`; P05 stands up `.claude/` trees |
+| `.claude/`, `.harness/`, `.opencode/` are mapped onto `build_workspace` | Harness-only PRs on any of the three surfaces run `npm run check` | Superseded by P05 (RD-24146): P00 deferred this until the trees existed |
 | `package-lock.json` and `.prettierrc` are not mapped | Unlisted root files can still miss CI | Ticket (only the named paths) — deferred |
 | No public API / version bump | Root `package.json` is private; no package `src/` change | Source |
 
