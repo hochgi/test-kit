@@ -87,12 +87,12 @@ and `.opencode/commands/` SHALL contain `spec-to-ship.md`.
   the commands directory contains `spec-to-ship.md`
 
 ### Requirement: Support skills exist under the Cursor canonical tree
-`.cursor/skills/` SHALL contain a `SKILL.md` in each of these directories:
-`engineering-principles`, `regression-dog`, `pr-review-style`,
-`hotspot-expansion-review`, `mutation-testing`, and `component-testing`,
-in addition to the existing phase skills (`spec-to-ship`, `write-spec`,
-`write-failing-tests`, `code-to-green`, `review-changes`,
-`verify-changes`).
+`.cursor/skills/` SHALL contain a `SKILL.md` in each of these
+directories: `engineering-principles`, `regression-dog`,
+`pr-review-style`, `hotspot-expansion-review`, `mutation-testing`, and
+`component-testing`, and in each of these phase-skill directories:
+`spec-to-ship`, `write-spec`, `write-failing-tests`, `code-to-green`,
+`review-changes`, `verify-changes`.
 
 It SHALL NOT contain skill directories named `slack-driven-sessions`,
 `post-deploy-verify`, `help-docs-sync`, `refactor-to-hexagonal`,
@@ -109,6 +109,12 @@ Donor service names SHALL NOT leak into the ported skills: none of
   `regression-dog`, `pr-review-style`, `hotspot-expansion-review`,
   `mutation-testing`, and `component-testing`, each with a `SKILL.md`
 
+#### Scenario: six phase skills are present
+- **WHEN** `.cursor/skills/` is listed
+- **THEN** it contains directories named `spec-to-ship`, `write-spec`,
+  `write-failing-tests`, `code-to-green`, `review-changes`, and
+  `verify-changes`, each with a `SKILL.md`
+
 #### Scenario: service-shaped donor skills are absent
 - **WHEN** `.cursor/skills/` is listed
 - **THEN** it has no directory named `slack-driven-sessions`,
@@ -121,15 +127,24 @@ Donor service names SHALL NOT leak into the ported skills: none of
 - **THEN** none of them contains `@cycle-processing/contracts`,
   `pnpm verify`, or `lefthook`
 
+
 ### Requirement: component-testing teaches this repo's current API in Vitest
 `.cursor/skills/component-testing/SKILL.md` SHALL be written for this
 repository (test-kit is the artifact under development). It SHALL name
 `createRig` as the lifecycle-owner factory and SHALL NOT name
-`createHarness`. It SHALL show a factory call that injects the rig under
-the option key `harness` (for example `harness: rig`). It SHALL close the
-lifecycle owner with `rig.close()`. In-repo timer examples SHALL use
-`vi.useFakeTimers`. The skill SHALL NOT contain `jest.advanceTimersByTimeAsync`
-and SHALL NOT pin the library at `v1.0.0`.
+`createHarness`. It SHALL show a factory call that injects the rig
+under the option key `harness` (for example `harness: rig`). It SHALL
+close the lifecycle owner with `rig.close()`. In-repo timer examples
+SHALL use `vi.useFakeTimers`. The skill SHALL NOT contain
+`jest.advanceTimersByTimeAsync` and SHALL NOT pin the library at
+`v1.0.0`.
+
+Every fenced `typescript` or `ts` code block in that file that uses the
+identifier `rig` SHALL declare `rig` in the same block: a `const rig`
+or `let rig` binding, or a destructuring binding that includes `rig`.
+
+This packet does not compile markdown fences with `tsc`. Declaration
+in the same fence is the observable boundary.
 
 #### Scenario: component-testing names createRig not createHarness
 - **WHEN** `.cursor/skills/component-testing/SKILL.md` is read
@@ -137,8 +152,8 @@ and SHALL NOT pin the library at `v1.0.0`.
 
 #### Scenario: component-testing keeps the harness option key
 - **WHEN** `.cursor/skills/component-testing/SKILL.md` is read
-- **THEN** it contains a factory options example that includes `harness:`
-  as a property name next to a `rig` value
+- **THEN** it contains a factory options example that includes
+  `harness:` as a property name next to a `rig` value
 
 #### Scenario: component-testing uses Vitest fake timers
 - **WHEN** `.cursor/skills/component-testing/SKILL.md` is read
@@ -148,6 +163,14 @@ and SHALL NOT pin the library at `v1.0.0`.
 #### Scenario: component-testing is not pinned to v1.0.0
 - **WHEN** `.cursor/skills/component-testing/SKILL.md` is read
 - **THEN** it does not contain the string `v1.0.0`
+
+#### Scenario: component-testing TypeScript fences declare rig before using it
+- **WHEN** each fenced `typescript` or `ts` code block in
+  `.cursor/skills/component-testing/SKILL.md` is read
+- **THEN** every block that contains the identifier `rig` also contains
+  a `const rig`, `let rig`, or destructuring binding that includes
+  `rig` in that same block
+
 
 ### Requirement: write-failing-tests no longer warns agents off component-testing
 `.cursor/skills/write-failing-tests/SKILL.md` SHALL NOT tell the agent to
@@ -184,11 +207,11 @@ as a current gate of this repository.
 
 - `12-no-escape-hatches.mdc` — glob covering `packages/**/*.ts`
 - `13-method-readability.mdc` — glob covering `packages/**/*.ts`
-- `15-commands-over-hand-edits.mdc` — `alwaysApply: true` and no `globs:`
-  key
+- `15-commands-over-hand-edits.mdc` — `alwaysApply: true` and no
+  `globs:` key
 - `complexity-budget.mdc` — names the complexity ≤ 12, max-depth ≤ 4,
-  max-lines-per-function ≤ 80, max-params ≤ 5 budget, and SHALL NOT claim
-  a git hook enforces those numbers (this repository has none)
+  max-lines-per-function ≤ 80, max-params ≤ 5 budget, and SHALL NOT
+  claim a git hook enforces those numbers (this repository has none)
 - `00-architecture-ratchet.mdc` — glob covering `packages/**/*.ts`
 - `01-architecture-bssn.mdc` — glob covering `packages/**/*.ts`
 
@@ -196,8 +219,8 @@ It SHALL NOT contain `component-testing.mdc` or `10-http-boundaries.mdc`.
 
 Tracked markdown under `.cursor/agents/`, `.claude/agents/`,
 `.cursor/skills/`, and `.claude/skills/` that points at `.cursor/rules/`
-SHALL use the word `blinker` or `blinkers` and SHALL NOT call those files
-"rules" (the published API already owns `Rule`).
+SHALL use the word `blinker` or `blinkers` and SHALL NOT call those
+files "rules" (the published API already owns `Rule`).
 
 #### Scenario: portable blinker files exist
 - **WHEN** `.cursor/rules/` is listed
@@ -206,8 +229,9 @@ SHALL use the word `blinker` or `blinkers` and SHALL NOT call those files
   `complexity-budget.mdc`, `00-architecture-ratchet.mdc`, and
   `01-architecture-bssn.mdc`
 
-#### Scenario: no-escape-hatches and method-readability globs cover packages
-- **WHEN** `12-no-escape-hatches.mdc` and `13-method-readability.mdc` are
+#### Scenario: globbed blinkers cover packages
+- **WHEN** `12-no-escape-hatches.mdc`, `13-method-readability.mdc`,
+  `00-architecture-ratchet.mdc`, and `01-architecture-bssn.mdc` are
   read
 - **THEN** each file's frontmatter `globs` value contains `packages/`
 
@@ -215,10 +239,11 @@ SHALL use the word `blinker` or `blinkers` and SHALL NOT call those files
 - **WHEN** `15-commands-over-hand-edits.mdc` is read
 - **THEN** its frontmatter has `alwaysApply: true` and no `globs:` key
 
-#### Scenario: complexity-budget does not invent a hook gate
+#### Scenario: complexity-budget names the four limits and does not invent a hook gate
 - **WHEN** `complexity-budget.mdc` is read
-- **THEN** it names `complexity` and `12`, and it does not contain
-  `lefthook`, `pre-push`, or `husky`
+- **THEN** it names `complexity` and `12`, `max-depth` and `4`,
+  `max-lines-per-function` and `80`, and `max-params` and `5`, and it
+  does not contain `lefthook`, `pre-push`, or `husky`
 
 #### Scenario: dropped donor blinkers are absent
 - **WHEN** `.cursor/rules/` is listed
@@ -231,6 +256,7 @@ SHALL use the word `blinker` or `blinkers` and SHALL NOT call those files
   `.cursor/rules` is read
 - **THEN** each such file contains `blinker` and does not contain the
   phrase `the rules in`
+
 
 ### Requirement: Per-agent files name their skills and do not import donor bugs
 `.claude/agents/spec-author.md` SHALL name `write-spec`.
@@ -607,10 +633,10 @@ sequenceDiagram
 3. After sync, Cursor agent `readonly` is false/false/false/true/true; OpenCode reviewer and verifier deny edit; OpenCode agents and commands trees are populated.
 4. Editing a generated `.cursor/agents` file makes `check-agent-skills` exit non-zero.
 5. `.cursor/skills/` has the six support skills plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
-6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`.
+6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`, and every `typescript`/`ts` fence that uses `rig` declares `rig` in the same fence.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
 8. `mutation-testing` names RD-24153 and `dist/` and does not instruct running Stryker as a current gate.
-9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply; dropped donor blinkers are absent; complexity-budget does not claim ESLint or a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
+9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply, including `packages/` globs on the two architecture blinkers; dropped donor blinkers are absent; complexity-budget names 12 / 4 / 80 / 5 and does not claim ESLint or a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
 10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names RD-24153 and no mutation testing.
 11. Empty-canonical skip still holds on fixtures; the live `.claude/agents` and `.claude/commands` trees each contain `*.md`.
 12. Gate-describing markdown under `.cursor/rules/` is in the ci-gate scan.

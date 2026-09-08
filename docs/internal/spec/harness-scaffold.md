@@ -135,31 +135,37 @@ third copy.
 - **THEN** `skills.paths` is exactly `["./.cursor/skills"]`
 
 ### Requirement: Agents and commands generate from Claude when canonical files exist
+`.claude/agents` is canonical for agents. `.claude/commands` is
+canonical for commands. When those directories contain `*.md` files,
+`sync-agent-skills` SHALL write `.cursor/agents` and `.opencode/agents`
+from the agents, and `.cursor/commands` and `.opencode/commands` from
+the commands, using per-tool frontmatter (Cursor schema for Cursor
+agents; OpenCode schema for OpenCode agents; Cursor wording for Cursor
+commands; OpenCode wording for OpenCode commands). `check-agent-skills`
+SHALL regenerate into a temp tree and exit non-zero on drift against
+those four mirrors.
 
-`.claude/agents` is canonical for agents. `.claude/commands` is canonical for
-commands. When those directories contain `*.md` files, `sync-agent-skills`
-SHALL write `.cursor/agents` and `.opencode/agents` from the agents, and
-`.cursor/commands` and `.opencode/commands` from the commands, using
-per-tool frontmatter (Cursor schema for Cursor agents; OpenCode schema for
-OpenCode agents; Cursor wording for Cursor commands; OpenCode wording for
-OpenCode commands). `check-agent-skills` SHALL regenerate into a temp tree
-and exit non-zero on drift against those four mirrors.
-
-A canonical `.claude/agents/<name>.md` `model:` frontmatter value SHALL equal
-`agents[name].claude` in the manifest, or `check-agent-skills` SHALL fail.
+A canonical `.claude/agents/<name>.md` `model:` frontmatter value SHALL
+equal `agents[name].claude` in the manifest, or `check-agent-skills`
+SHALL fail.
 
 A generated mirror that no longer matches regeneration SHALL fail the
-check. Without that, `check-agent-skills` can exit 0 on a tree whose mirrors
-are stale.
+check.
+
+When the generated OpenCode command text lists per-phase LiteLLM role
+aliases, those aliases SHALL be the live `agents[name].opencode` values
+from `.harness/models.json` for all five agents. `check-agent-skills`
+SHALL exit non-zero when the tracked OpenCode command omits or
+contradicts any of those live values.
 
 #### Scenario: populated claude agents produce matching cursor and opencode mirrors
-- **WHEN** `.claude/agents` contains at least one `*.md` and `sync-agent-skills`
-  then `check-agent-skills` are run
+- **WHEN** `.claude/agents` contains at least one `*.md` and
+  `sync-agent-skills` then `check-agent-skills` are run
 - **THEN** `check-agent-skills` exits 0
 
 #### Scenario: claude agent model disagrees with the manifest
-- **WHEN** a canonical `.claude/agents/<name>.md` pins a `model` other than
-  `agents[name].claude` in `.harness/models.json`
+- **WHEN** a canonical `.claude/agents/<name>.md` pins a `model` other
+  than `agents[name].claude` in `.harness/models.json`
 - **THEN** `check-agent-skills` exits non-zero
 
 #### Scenario: perturbed Cursor agent mirror fails the check
@@ -168,44 +174,67 @@ are stale.
   edited so its bytes differ, and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
+#### Scenario: OpenCode command aliases that disagree with the manifest fail the check
+- **WHEN** a tree's `.harness/models.json` has at least one
+  `agents[name].opencode` value that does not appear in the tracked
+  `.opencode/commands/spec-to-ship.md`, and `check-agent-skills` is run
+- **THEN** the process exits non-zero
+
+
 ### Requirement: Empty Claude canonical dirs do not destroy Cursor bootstrap
+`.claude/agents` and `.claude/commands` MAY contain no `*.md` in a
+fixture or a partial clone. In that case `sync-agent-skills` SHALL NOT
+delete or replace existing `*.md` under `.cursor/agents` or
+`.cursor/commands`.
 
-`.claude/agents` and `.claude/commands` MAY contain no `*.md` in a fixture
-or a partial clone. In that case `sync-agent-skills` SHALL NOT delete or
-replace existing `*.md` under `.cursor/agents` or `.cursor/commands`, and
-`check-agent-skills` SHALL NOT fail solely because those Cursor trees
-contain files the empty Claude trees would not generate.
+On a fixture tree, `check-agent-skills` SHALL NOT fail solely because
+those Cursor trees contain files the empty Claude trees would not
+generate.
 
-The live repository is no longer in that state. Canonical Claude agent and
-command trees SHALL contain the files required by harness-prose, so on the
-live tree `check-agent-skills` SHALL compare generated agent and command
+On the live repository working tree, `check-agent-skills` SHALL exit
+non-zero when `.claude/agents` has no `*.md`, and SHALL exit non-zero
+when `.claude/commands` has no `*.md`. The live skip that treated an
+empty canonical dir like a fixture is closed.
+
+The live repository's canonical Claude agent and command trees SHALL
+contain the files required by harness-prose, so on a consistent live
+tree `check-agent-skills` SHALL compare generated agent and command
 mirrors rather than skip that comparison.
 
-The empty-dir scenarios below hold only for fixtures and partial clones.
-
 #### Scenario: empty claude agents leave cursor agents in place
-- **WHEN** `.claude/agents` has no `*.md` and `.cursor/agents` already has
-  `*.md` and `sync-agent-skills` is run
-- **THEN** every `*.md` that was in `.cursor/agents` beforehand is still
-  present with the same bytes
+- **WHEN** `.claude/agents` has no `*.md` and `.cursor/agents` already
+  has `*.md` and `sync-agent-skills` is run
+- **THEN** every `*.md` that was in `.cursor/agents` beforehand is
+  still present with the same bytes
 
 #### Scenario: empty claude commands leave cursor commands in place
-- **WHEN** `.claude/commands` has no `*.md` and `.cursor/commands` already
-  has `*.md` and `sync-agent-skills` is run
-- **THEN** every `*.md` that was in `.cursor/commands` beforehand is still
-  present with the same bytes
+- **WHEN** `.claude/commands` has no `*.md` and `.cursor/commands`
+  already has `*.md` and `sync-agent-skills` is run
+- **THEN** every `*.md` that was in `.cursor/commands` beforehand is
+  still present with the same bytes
 
 #### Scenario: check passes with empty claude agents and commands
-- **WHEN** `.claude/agents` and `.claude/commands` have no `*.md`, skills
-  are in sync, the manifest is valid, and `opencode.json` agrees with the
-  manifest
+- **WHEN** a fixture tree's `.claude/agents` and `.claude/commands`
+  have no `*.md`, skills are in sync, the manifest is valid, and
+  `opencode.json` agrees with the manifest
 - **THEN** `npm run check-agent-skills` exits 0
 
 #### Scenario: live canonical Claude trees are populated
-- **WHEN** the repository's `.claude/agents` and `.claude/commands` are
-  listed
+- **WHEN** the repository's `.claude/agents` and `.claude/commands`
+  are listed
 - **THEN** `.claude/agents` contains at least one `*.md` and
   `.claude/commands` contains at least one `*.md`
+
+#### Scenario: empty canonical agents on the live working tree fail the check
+- **WHEN** the live repository working tree's `.claude/agents` has no
+  `*.md` and `check-agent-skills` is run against that working tree
+- **THEN** the process exits non-zero
+
+#### Scenario: empty canonical commands on the live working tree fail the check
+- **WHEN** the live repository working tree's `.claude/commands` has
+  no `*.md` and `check-agent-skills` is run against that working tree
+- **THEN** the process exits non-zero
+
 
 ### Requirement: OpenCode config tracks the manifest
 `.opencode/opencode.json` SHALL exist. Its `model` and `agent.build.model`
@@ -280,8 +309,10 @@ sequenceDiagram
     Check-->>Dev: non-zero
   else claude agents has md
     Check->>Check: regenerate cursor and opencode agents, diff
-  else claude agents has no md
+  else claude agents has no md on a fixture tree
     Check->>Check: skip agent wipe and skip agent-mirror drift
+  else claude agents has no md on the live working tree
+    Check-->>Dev: non-zero
   end
   Dev->>Sync: npm run sync-agent-skills
   Sync->>Skills: rsync to claude/skills
@@ -302,7 +333,7 @@ sequenceDiagram
 | `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree | Ticket + donor precedent |
 | `.github/skills` and `.agents/skills` are not created | Ticket called them droppable | Ticket |
 | No new agent/skill/command bodies | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`) |
-| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Skip generation and skip that drift comparison while canonical `*.md` count is zero | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) |
+| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Sync still skips generation while canonical `*.md` count is zero. Superseded by P13 (RD-24164) for the check: fixtures still skip the drift comparison, but the live working tree fails it | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) |
 | Skills *are* mirrored Cursor → Claude even though P06 still owns skill *prose* | `.cursor/skills` is already canonical and populated; rsync is machinery, not new content | Source + ticket canonical direction |
 | `check-agent-skills` is an npm script; not added to the five-step `npm run check` chain | P00 pinned that chain. Harness-scaffold tests invoke the script during `npm test` | Source (`docs/internal/spec/ci-gate.md`) + ticket (script, not a hook) |
 | Map `.claude/`, `.harness/`, `.opencode/` onto `build_workspace` | P00 deferred `.claude/` mapping until P05 stood the trees up | Source (ci-gate decision table) + ticket (this PR touches harness paths) |
@@ -328,8 +359,8 @@ sequenceDiagram
 4. `.harness/models.example.json` matches `agents` / `orchestrator` / `rationale`; a tree without `models.json` fails `check-agent-skills` with a copy instruction and does not create the file.
 5. Root npm scripts `sync-agent-skills` and `check-agent-skills` exist; the check is read-only; no git hooks are added.
 6. After a passing check, `.claude/skills` is byte-identical to `.cursor/skills`; OpenCode `skills.paths` is `["./.cursor/skills"]`.
-7. When `.claude/agents` has `*.md`, sync+check round-trip the Cursor and OpenCode agent mirrors; a disagreeing Claude `model:` fails the check.
-8. When `.claude/agents` or `.claude/commands` have no `*.md`, sync leaves existing Cursor `*.md` in place and check still exits 0 if skills/manifest/opencode are consistent.
+7. When `.claude/agents` has `*.md`, sync+check round-trip the Cursor and OpenCode agent mirrors; a disagreeing Claude `model:` fails the check, and a manifest `agents.*.opencode` alias changed without regenerating `.opencode/commands/spec-to-ship.md` fails the check.
+8. When `.claude/agents` or `.claude/commands` have no `*.md`, sync leaves existing Cursor `*.md` in place; on a fixture tree check still exits 0 if skills/manifest/opencode are consistent, while on the live working tree empty canonical agents or commands fail the check.
 9. `.opencode/opencode.json` exists; `model` / `agent.build.model` are `litellm/vn-coding`; `agent["spec-to-ship"].model` is `litellm/vn-spec`; drift fails the check.
 10. Non-boolean `readonly`, unexplained `claude`/`cursor` deviation, and a symlink under canonical skills each fail `check-agent-skills`.
 11. Path-filtering maps `.claude/**`, `.harness/**`, and `.opencode/**` (in addition to the P00 list) onto `build_workspace true`.

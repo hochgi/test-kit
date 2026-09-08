@@ -85,11 +85,13 @@ Root `.gitignore` SHALL ignore `.claude/settings.local.json` and
   it has no ignore pattern that is exactly `.claude/`
 
 ### Requirement: Workspace-wide path changes run the root check in CI
-CircleCI path-filtering SHALL map a change to any of these paths onto a boolean
-pipeline parameter dedicated to a workspace-wide gate (distinct from the
-per-package `build_*` parameters):
+CircleCI path-filtering SHALL map a change to any of these paths onto a
+boolean pipeline parameter dedicated to a workspace-wide gate (distinct
+from the per-package `build_*` parameters):
 
 - `package.json` (repository root only)
+- `package-lock.json` (repository root only)
+- `.prettierrc` (repository root only)
 - `tsconfig.json`
 - `tsconfig.base.json`
 - `.eslintrc.json`
@@ -100,22 +102,32 @@ per-package `build_*` parameters):
 - anything under `.claude/`
 - anything under `.harness/`
 - anything under `.opencode/`
+- anything under repository-root `test/` (not `packages/*/test/`)
 
-A workflow in `.circleci/ci.yml` gated on that parameter SHALL run the root
-`check` script (`npm run check`).
+A workflow in `.circleci/ci.yml` gated on that parameter SHALL run the
+root `check` script (`npm run check`).
+
+The existing `.cursor/**` / `.claude/**` / `.harness/**` / `.opencode/**`
+mappings SHALL remain. Harness-only PRs still set `build_workspace`.
+That job's `npm test` still includes the suites that invoke
+`check-agent-skills`. This packet SHALL NOT add a markdown or
+frontmatter linter to `npm run check`.
 
 #### Scenario: workspace-wide paths are mapped
-- **WHEN** the path-filtering mapping in `.circleci/config.yml` is evaluated
-  with `^`/`$` anchors as the orb applies them
+- **WHEN** the path-filtering mapping in `.circleci/config.yml` is
+  evaluated with `^`/`$` anchors as the orb applies them
 - **THEN** each of those paths matches a mapping line that sets the
-  workspace-wide parameter to `true`, and `packages/core/package.json` does not
-  match the root `package.json` mapping
+  workspace-wide parameter to `true`, and `packages/core/package.json`
+  does not match the root `package.json` mapping, and
+  `packages/core/test/unit/duration.test.ts` does not match the
+  repository-root `test/` mapping
 
 #### Scenario: workspace-wide workflow runs check
 - **WHEN** `.circleci/ci.yml` is read
-- **THEN** it declares that workspace-wide parameter (boolean, default `false`)
-  and a workflow that runs when the parameter is true whose steps invoke
-  `npm run check`
+- **THEN** it declares that workspace-wide parameter (boolean, default
+  `false`) and a workflow that runs when the parameter is true whose
+  steps invoke `npm run check`
+
 
 ### Requirement: grpc-client is a CI-checked extender guard
 Changes under `examples/grpc-client/` SHALL trigger a CircleCI workflow that
@@ -135,7 +147,6 @@ registry and SHALL NOT push a version-bump commit for it.
   for `examples/grpc-client`, and does not invoke `vn-ci/build-publish`
 
 ### Requirement: Gate-describing harness prose names the real gates
-
 Any tracked markdown file under `.cursor/agents/`, `.cursor/skills/`,
 `.cursor/commands/`, `.cursor/rules/`, `.claude/agents/`,
 `.claude/skills/`, or `.claude/commands/` that tells an agent how to run
@@ -143,17 +154,44 @@ the repository-wide quality gate SHALL instruct `npm run check` and SHALL
 state that the repository has no git hooks (no husky, no lefthook). It
 SHALL NOT claim that there is no `check` script.
 
+It SHALL NOT claim that `package-lock.json` or `.prettierrc` remain
+unmapped CircleCI holes.
+
+`.cursor/skills/spec-to-ship/SKILL.md` SHALL state that harness markdown
+under `.cursor/` and `.claude/` is not format-checked or linted by
+`npm run check`. It SHALL state that changes there still run the
+workspace-wide `check` job in CI via the `.cursor/**` and `.claude/**`
+path-filter mappings, and that that job's `npm test` includes the
+suites that invoke `check-agent-skills`. It SHALL NOT contain the
+phrase `a later packet` about a markdown or frontmatter linter. It
+SHALL NOT instruct inventing a markdown or frontmatter linter.
+
 #### Scenario: existing gate prose uses check and names the missing hooks
-- **WHEN** those directories are scanned for markdown that mentions running
-  `format:check` together with `lint`, `typecheck`, `build`, and `test`, or
-  that mentions there being no `check` script
-- **THEN** every such file contains `npm run check` and states that there
-  are no git hooks, and none of them claim the `check` script is absent
+- **WHEN** those directories are scanned for markdown that mentions
+  running `format:check` together with `lint`, `typecheck`, `build`,
+  and `test`, or that mentions there being no `check` script
+- **THEN** every such file contains `npm run check` and states that
+  there are no git hooks, and none of them claim the `check` script is
+  absent
 
 #### Scenario: files that do not describe the repo gate are out of this requirement
-- **WHEN** a tracked markdown file in those directories does not describe
-  the repository-wide quality gate
+- **WHEN** a tracked markdown file in those directories does not
+  describe the repository-wide quality gate
 - **THEN** this requirement does not constrain it
+
+#### Scenario: gate prose does not claim lockfile or prettier holes
+- **WHEN** those directories are scanned for markdown that describes
+  the repository-wide quality gate
+- **THEN** none of those files claim that `package-lock.json` or
+  `.prettierrc` remain unmapped
+
+#### Scenario: spec-to-ship does not defer a markdown linter as a later packet
+- **WHEN** `.cursor/skills/spec-to-ship/SKILL.md` is read
+- **THEN** it does not contain `a later packet`, it states that harness
+  markdown is not format-checked or linted by `npm run check`, and it
+  states that `.cursor/**` and `.claude/**` still run the workspace-wide
+  `check` job whose tests invoke `check-agent-skills`
+
 
 ### Requirement: New TypeScript for this capability is on the root test and format paths
 Tests that encode these scenarios SHALL run as part of the root `npm test`
@@ -201,7 +239,6 @@ sequenceDiagram
 | Tests live at repo-file boundaries, not inside a published package | A Vitest project included from `vitest.workspace.ts` that reads tracked files | Ticket (this capability is the repo gate) plus write-failing-tests layout does not apply to a non-package |
 | `.cursor/` is mapped onto `build_workspace` | Harness-only PRs run `npm run check` | Source: `.circleci/config.yml` (added by RD-24147) |
 | `.claude/`, `.harness/`, `.opencode/` are mapped onto `build_workspace` | Harness-only PRs on any of the three surfaces run `npm run check` | Superseded by P05 (RD-24146): P00 deferred this until the trees existed |
-| `package-lock.json` and `.prettierrc` are not mapped | Unlisted root files can still miss CI | Ticket (only the named paths) — deferred |
 | No public API / version bump | Root `package.json` is private; no package `src/` change | Source |
 
 ## Out of scope (deferred)
@@ -209,7 +246,6 @@ sequenceDiagram
 | Item | Consequence of deferring |
 | --- | --- |
 | Adding husky/lefthook/`prepare` / setting `core.hooksPath` | Agents and humans can still push without running `check`; CircleCI plus `npm run check` remain the only gates |
-| Mapping `package-lock.json`, `.prettierrc`, or other unlisted root files | A lockfile-only or prettier-config-only PR can still trigger zero package workflows (the workspace mapping does not cover them) |
 | Running grpc-client tests when `packages/core` changes | A core-only PR still does not execute the extender guard in CircleCI; root `check` does, when a workspace-wide path also changed |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
 
@@ -220,10 +256,11 @@ sequenceDiagram
 3. `.claude/launch.json` does not exist.
 4. If `.claude/settings.local.json` exists, it lacks the forbidden push/PR/cross-repo-read grants and the listed residue commands.
 5. `.gitignore` ignores `.claude/settings.local.json` and `.claude/worktrees/` and does not ignore `.claude/` wholesale.
-6. Path-filtering maps root `package.json`, `tsconfig.json`, `tsconfig.base.json`, `.eslintrc.json`, `vitest.workspace.ts`, `docs/**`, `.circleci/**`, `.cursor/**` onto `build_workspace true`.
+6. Path-filtering maps root `package.json`, root `package-lock.json`, root `.prettierrc`, `tsconfig.json`, `tsconfig.base.json`, `.eslintrc.json`, `vitest.workspace.ts`, `docs/**`, `.circleci/**`, `.cursor/**`, `.claude/**`, `.harness/**`, `.opencode/**`, and repository-root `test/**` onto `build_workspace true`, without `packages/core/package.json` matching a root-file line or `packages/core/test/**` matching the `test/` line.
 7. `.circleci/ci.yml` has `build_workspace` and a workflow that runs `npm run check` when it is true.
 8. Path-filtering maps `examples/grpc-client/**` onto `build_grpc_client true`.
 9. `.circleci/ci.yml` has `build_grpc_client` and a workflow that builds core, then lints, typechecks, and tests `examples/grpc-client` without `vn-ci/build-publish`.
 10. The thirteen existing `packages/<name>/.*` mappings remain.
-11. Gate-describing harness markdown, if any, says `npm run check` and that there are no git hooks.
+11. Gate-describing harness markdown, if any, says `npm run check` and that there are no git hooks, and does not claim `package-lock.json` or `.prettierrc` remain unmapped.
 12. The tests for these scenarios run under root `npm test` and are in the root `format:check` glob.
+13. `.cursor/skills/spec-to-ship/SKILL.md` contains no `a later packet` about a markdown linter, states that harness markdown under `.cursor/` and `.claude/` is not format-checked or linted by `npm run check`, and states that those paths still run the workspace-wide `check` job whose `npm test` invokes `check-agent-skills`.

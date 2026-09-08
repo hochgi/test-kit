@@ -459,14 +459,12 @@ sequenceDiagram
 | Library-docs corpus excludes spec/packets/archive | So a delta can name phantoms without failing its own tests | Precedent: P00 tests read tracked files at a defined boundary |
 | Tests live at `test/docs-truth/` | Sibling of `test/ci-gate/`, not inside a published package | P00 precedent (repo-file boundary) plus write-failing-tests |
 | No public API / version bump | Docs follow code | Source: no `packages/*/src` behaviour change |
-| Mapping `test/` onto CircleCI `build_workspace` is not added | This packet also touches `docs/**` and `vitest.workspace.ts`, which already map | Ticket (docs truth); deferred CI hole |
 
 ## Out of scope (deferred)
 
 | Item | Consequence of deferring |
 | --- | --- |
 | Documenting remaining internal engine exports (`FilterChain`, `CallRecord`, `StreamRecord`, …) | api-surface still omits types that domain packages import from core |
-| Mapping `test/` onto CircleCI `build_workspace` | A tests-only PR under `test/docs-truth/` would not start CI; this packet also changes mapped paths |
 | Adding a `packages/pglite-driver/test/` suite | Package still uses `--passWithNoTests`; a README is added, not tests |
 | Compiling every markdown TypeScript fence | Signature drift is locked by string/shape assertions, not `tsc` on fences |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
