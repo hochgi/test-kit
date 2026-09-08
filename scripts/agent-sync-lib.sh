@@ -54,6 +54,15 @@ has_canonical_md() {
   return 1
 }
 
+# Harness fixtures copy scripts/ into a temp git repo without packages/core.
+# The live monorepo working tree always has that package; check-agent-skills
+# uses this to fail an empty canonical dir on the live tree while fixtures skip.
+is_live_monorepo() {
+  local root
+  root="$(git rev-parse --show-toplevel)"
+  [ -f "$root/packages/core/package.json" ]
+}
+
 # harness_field <agent> <field> -> value from the manifest (empty + rc1 if absent).
 # Callers may assume the value is well-typed ONLY because harness_validate ran
 # first; on its own this still stringifies whatever JSON it finds.
@@ -504,12 +513,34 @@ emit_opencode_agents() {
   done
 }
 
+# Live LiteLLM role aliases from the manifest, backtick-quoted, comma-separated,
+# in phase order. The OpenCode command rewrite interpolates this list so a
+# drifted agents.*.opencode fails check-agent-skills instead of matching a
+# hardcoded alias set.
+opencode_role_alias_markup() {
+  local name alias out=""
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    alias="$(agent_model "$name" opencode)" || return 1
+    if [ -n "$out" ]; then
+      out="$out, "
+    fi
+    out="$out\`$alias\`"
+  done < <(harness_agents)
+  printf '%s' "$out"
+}
+
 # Translate a Claude/Cursor command into OpenCode wording (Task tool, model map).
 # Frontmatter drops argument-hint (OpenCode uses $ARGUMENTS in the body only).
 translate_opencode_command() {
   local src="$1"
-  awk '
-    BEGIN { fm = 0 }
+  local aliases
+  aliases="$(opencode_role_alias_markup)" || return 1
+  OPENCODE_ROLE_ALIASES="$aliases" awk '
+    BEGIN {
+      fm = 0
+      aliases = ENVIRON["OPENCODE_ROLE_ALIASES"]
+    }
     NR == 1 && $0 == "---" { fm = 1; print "---"; next }
     fm == 1 && $0 == "---" {
       print "description: " desc
@@ -533,8 +564,7 @@ translate_opencode_command() {
         print "**Model selection.** When launching a subagent via task, **omit any"
         print "`model` override** unless the human explicitly asked for a specific"
         print "listed model. Agent frontmatter is authoritative, and on OpenCode every"
-        print "phase targets a LiteLLM **role alias** (`litellm/vn-spec`, `litellm/vn-test`,"
-        print "`litellm/vn-coding`, `litellm/vn-review`, `litellm/vn-verify`) rather than a vendor"
+        print "phase targets a LiteLLM **role alias** (" aliases ") rather than a vendor"
         print "model id. The alias is repointed centrally in LiteLLM, so the best"
         print "capability-per-dollar model for each phase arrives without a repo change."
         skip_model_para = 1

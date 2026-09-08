@@ -144,6 +144,8 @@ function createMyRig() {
 ```
 
 ```typescript
+const { rig } = createMyRig();
+
 afterEach(async () => {
     await rig.close();
 });
@@ -250,6 +252,7 @@ requires a Promise-returning method. Use the sibling factory:
 ```typescript
 import { createProbedStreamMock } from '@vnatures/test-kit-mock';
 
+const rig = createRig();
 const model = rig.attach(createProbedStreamMock<Model>({
     harness: rig,
     methods: ['stream'],
@@ -295,6 +298,8 @@ In-repo recipes use **Vitest**. The library auto-detects Jest timers for
 ### Retry: first call fails, second succeeds
 
 ```typescript
+const { service, probe, rig } = createMyRig();
+
 vi.useFakeTimers();
 try {
     probe.on('download').once().reject(new Error('ECONNRESET'));
@@ -314,6 +319,8 @@ try {
 ### Timeout: probe parks, real timeout fires
 
 ```typescript
+const { service, probe, rig } = createMyRig();
+
 vi.useFakeTimers();
 try {
     probe.on('download').always().answerWith(() => new Promise<never>(() => {}));
@@ -350,6 +357,8 @@ probe.on('download').always().answerWith((c) => {
 ```typescript
 import { milliseconds } from '@vnatures/test-kit';
 
+const { rig, authProbe, usersProbe, paymentsProbe, eventsProbe } = createMyRig();
+
 await rig.expect.sequence(
     [
         authProbe.on('verifyToken'),
@@ -382,6 +391,10 @@ See `packages/mock/test/integration/cross-probe-expectations.test.ts` and
   timer ticks.
 
 ```typescript
+import { createRig, type Rig } from '@vnatures/test-kit';
+
+let rig: Rig;
+
 beforeEach(() => {
     vi.useFakeTimers();
     rig = createRig();

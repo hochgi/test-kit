@@ -44,8 +44,7 @@ the worst available judge of it.
 **Model selection.** When launching a subagent via task, **omit any
 `model` override** unless the human explicitly asked for a specific
 listed model. Agent frontmatter is authoritative, and on OpenCode every
-phase targets a LiteLLM **role alias** (`litellm/vn-spec`, `litellm/vn-test`,
-`litellm/vn-coding`, `litellm/vn-review`, `litellm/vn-verify`) rather than a vendor
+phase targets a LiteLLM **role alias** (`litellm/vn-spec`, `litellm/vn-test`, `litellm/vn-coding`, `litellm/vn-review`, `litellm/vn-verify`) rather than a vendor
 model id. The alias is repointed centrally in LiteLLM, so the best
 capability-per-dollar model for each phase arrives without a repo change.
 

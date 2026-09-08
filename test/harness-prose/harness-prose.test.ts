@@ -27,6 +27,15 @@ const supportSkills = [
     'component-testing',
 ] as const;
 
+const phaseSkills = [
+    'spec-to-ship',
+    'write-spec',
+    'write-failing-tests',
+    'code-to-green',
+    'review-changes',
+    'verify-changes',
+] as const;
+
 const portedSupportSkills = [
     'engineering-principles',
     'regression-dog',
@@ -54,6 +63,13 @@ const blinkerFiles = [
     '13-method-readability.mdc',
     '15-commands-over-hand-edits.mdc',
     'complexity-budget.mdc',
+    '00-architecture-ratchet.mdc',
+    '01-architecture-bssn.mdc',
+] as const;
+
+const globbedBlinkers = [
+    '12-no-escape-hatches.mdc',
+    '13-method-readability.mdc',
     '00-architecture-ratchet.mdc',
     '01-architecture-bssn.mdc',
 ] as const;
@@ -236,6 +252,32 @@ function trackedMarkdownUnder(dirs: readonly string[]): string[] {
     return listed.split('\0').filter((file) => file !== '' && (file.endsWith('.md') || file.endsWith('.mdc')));
 }
 
+function fencedTypescriptBlocks(markdown: string): string[] {
+    const blocks: string[] = [];
+    const pattern = /^```(?:typescript|ts)[^\n]*\n([\s\S]*?)^```/gm;
+    let match: RegExpExecArray | null = pattern.exec(markdown);
+    while (match !== null) {
+        const body = match[1];
+        if (body !== undefined) {
+            blocks.push(body);
+        }
+        match = pattern.exec(markdown);
+    }
+    return blocks;
+}
+
+function typescriptFenceDeclaresRig(block: string): boolean {
+    return (
+        /\b(?:const|let)\s+rig\b/.test(block) ||
+        /\b(?:const|let)\s*\{[^}]*\brig\b/.test(block) ||
+        /\b(?:const|let)\s*\[[^\]]*\brig\b/.test(block)
+    );
+}
+
+function typescriptFenceUsesRigIdentifier(block: string): boolean {
+    return /\brig\b/.test(block);
+}
+
 describe('Canonical Claude agent files exist', () => {
     it('five canonical Claude agent files exist', () => {
         const dir = path.join(repoRoot, '.claude/agents');
@@ -344,6 +386,13 @@ describe('Support skills exist under the Cursor canonical tree', () => {
         }
     });
 
+    it('six phase skills are present', () => {
+        for (const name of phaseSkills) {
+            const relative = `.cursor/skills/${name}/SKILL.md`;
+            expect(existsSync(path.join(repoRoot, relative)), `${relative} must exist`).toBe(true);
+        }
+    });
+
     it('service-shaped donor skills are absent', () => {
         for (const name of donorSkillDirectories) {
             expect(
@@ -396,6 +445,21 @@ describe("component-testing teaches this repo's current API in Vitest", () => {
         const content = readExisting('.cursor/skills/component-testing/SKILL.md');
         expect(content.includes('v1.0.0'), 'component-testing must not contain v1.0.0').toBe(false);
     });
+
+    it('component-testing TypeScript fences declare rig before using it', () => {
+        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+        const usingRig = fencedTypescriptBlocks(content).filter(typescriptFenceUsesRigIdentifier);
+        expect(
+            usingRig.length,
+            'component-testing must have at least one typescript fence that uses rig',
+        ).toBeGreaterThan(0);
+        for (const block of usingRig) {
+            expect(
+                typescriptFenceDeclaresRig(block),
+                'each typescript/ts fence that uses identifier rig must declare const rig, let rig, or a destructuring binding that includes rig in that same block',
+            ).toBe(true);
+        }
+    });
 });
 
 describe('write-failing-tests no longer warns agents off component-testing', () => {
@@ -439,11 +503,11 @@ describe('Glob-scoped blinkers live under .cursor/rules', () => {
         }
     });
 
-    it('no-escape-hatches and method-readability globs cover packages', () => {
-        for (const file of ['12-no-escape-hatches.mdc', '13-method-readability.mdc'] as const) {
+    it('globbed blinkers cover packages', () => {
+        for (const file of globbedBlinkers) {
             const relative = `.cursor/rules/${file}`;
             const globs = frontmatterGlobsText(yamlFrontmatter(readExisting(relative)));
-            expect(globs.includes('packages/'), `${relative} globs must contain packages/`).toBe(true);
+            expect(globs.includes('packages/**/*.ts'), `${relative} globs must contain packages/**/*.ts`).toBe(true);
         }
     });
 
@@ -454,10 +518,25 @@ describe('Glob-scoped blinkers live under .cursor/rules', () => {
         expect(frontmatterHasKey(frontmatter, 'globs'), `${relative} must not have a globs: key`).toBe(false);
     });
 
-    it('complexity-budget does not invent a hook gate', () => {
+    it('complexity-budget names the four limits and does not invent a hook gate', () => {
         const content = readExisting('.cursor/rules/complexity-budget.mdc');
-        expect(content.includes('complexity'), 'complexity-budget must name complexity').toBe(true);
-        expect(content.includes('12'), 'complexity-budget must name 12').toBe(true);
+        const lines = content.split('\n');
+        expect(
+            lines.some((line) => line.includes('complexity') && line.includes('12')),
+            'the complexity line must name 12',
+        ).toBe(true);
+        expect(
+            lines.some((line) => line.includes('max-depth') && line.includes('4')),
+            'the max-depth line must name 4',
+        ).toBe(true);
+        expect(
+            lines.some((line) => line.includes('max-lines-per-function') && line.includes('80')),
+            'the max-lines-per-function line must name 80',
+        ).toBe(true);
+        expect(
+            lines.some((line) => line.includes('max-params') && line.includes('5')),
+            'the max-params line must name 5',
+        ).toBe(true);
         expect(content.includes('lefthook'), 'complexity-budget must not contain lefthook').toBe(false);
         expect(content.includes('pre-push'), 'complexity-budget must not contain pre-push').toBe(false);
         expect(content.includes('husky'), 'complexity-budget must not contain husky').toBe(false);

@@ -35,11 +35,12 @@ npm run check   # = format:check && lint && typecheck && build && test (RD-24141
 
 **A skipped run is not a clean run.** If you did not run it, do not report it.
 CircleCI path-filtering maps these onto `build_workspace` (which runs
-`npm run check`): root `package.json`, `tsconfig.json`, `tsconfig.base.json`,
-`.eslintrc.json`, `vitest.workspace.ts`, `docs/**`, `.circleci/**`, and
-`.cursor/**`. Per-package dirs still only *build* that package. Unmapped holes
-remain (`package-lock.json`, `.prettierrc`, and similar). There are **no git hooks**.
-You are still the gate for anything unmapped and for every local run.
+`npm run check`): root `package.json`, `package-lock.json`, `.prettierrc`,
+`tsconfig.json`, `tsconfig.base.json`, `.eslintrc.json`, `vitest.workspace.ts`,
+`docs/**`, `.circleci/**`, `.cursor/**`, `.claude/**`, `.harness/**`,
+`.opencode/**`, and repository-root `test/**`. Per-package dirs still only
+*build* that package. There are **no git hooks**. You are still the gate for
+every local run.
 
 ## 2. Audit every suppression added on the patch
 

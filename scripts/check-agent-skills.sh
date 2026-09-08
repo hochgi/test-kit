@@ -51,6 +51,19 @@ check_dir() {
   fi
 }
 
+# Generate-and-diff when canonical *.md exist. Empty dirs are fixture-safe;
+# on the live monorepo they are drift (the skip used to hide a hollow tree).
+canonical_md_ready() {
+  local dir="$1" label="$2"
+  if has_canonical_md "$dir"; then
+    return 0
+  fi
+  if is_live_monorepo; then
+    DRIFT="$DRIFT\n  [$label] live working tree has no *.md under ${dir#$ROOT/}"
+  fi
+  return 1
+}
+
 # --- skills: canonical .cursor/skills vs generated .claude/skills -----------
 if [ ! -d "$ROOT/$SKILLS_CURSOR_DIR" ]; then
   echo "Error: canonical skills directory missing: $SKILLS_CURSOR_DIR" >&2
@@ -71,8 +84,8 @@ if ! assert_no_symlinks "$ROOT/$AGENTS_CLAUDE_DIR"; then
   DRIFT="$DRIFT\n  [agents] symlinks under $AGENTS_CLAUDE_DIR (see above)"
 fi
 # Empty Claude canonical dirs must not fail the check solely because Cursor
-# bootstrap files exist. When *.md are present, keep generate-and-diff.
-if has_canonical_md "$ROOT/$AGENTS_CLAUDE_DIR"; then
+# bootstrap files exist — except on the live monorepo, where empty is drift.
+if canonical_md_ready "$ROOT/$AGENTS_CLAUDE_DIR" "agents"; then
   # Canonical Claude frontmatter must agree with the model manifest. This is the
   # check that catches a single agent hand-pinned to a stale vendor tier while its
   # siblings still follow the central mapping.
@@ -93,7 +106,7 @@ fi
 if ! assert_no_symlinks "$ROOT/$COMMANDS_CLAUDE_DIR"; then
   DRIFT="$DRIFT\n  [commands] symlinks under $COMMANDS_CLAUDE_DIR (see above)"
 fi
-if has_canonical_md "$ROOT/$COMMANDS_CLAUDE_DIR"; then
+if canonical_md_ready "$ROOT/$COMMANDS_CLAUDE_DIR" "commands"; then
   generate_cursor_commands "$TMP_DIR/commands-cursor" "$ROOT/$COMMANDS_CLAUDE_DIR"
   check_dir "commands-cursor" "$TMP_DIR/commands-cursor" "$ROOT/$COMMANDS_CURSOR_DIR"
   generate_opencode_commands "$TMP_DIR/commands-opencode" "$ROOT/$COMMANDS_CLAUDE_DIR"

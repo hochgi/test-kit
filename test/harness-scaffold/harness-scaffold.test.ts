@@ -9,6 +9,7 @@ import {
     readdirSync,
     rmSync,
     symlinkSync,
+    unlinkSync,
     writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -72,6 +73,16 @@ const claudeAgentBody =
     '---\nname: spec-author\ndescription: Spec author\nmodel: opus\n---\n\nCanonical Claude agent.\n';
 const disagreeingClaudeAgentBody =
     '---\nname: spec-author\ndescription: Spec author\nmodel: sonnet\n---\n\nCanonical Claude agent with a disagreeing model.\n';
+const claudeCommandWithModelSelectionBody = `---
+description: spec to ship
+---
+
+Canonical Claude command.
+
+**Model selection.** When launching a subagent via the **Agent** tool, omit the model argument.
+
+## After models
+`;
 
 const tempRoots: string[] = [];
 
@@ -180,6 +191,73 @@ function validOpencodeJson(): Record<string, unknown> {
             paths: ['./.cursor/skills'],
         },
     };
+}
+
+function populatedClaudeAgentFiles(): FileMap {
+    const files: FileMap = {};
+    for (const name of agentOrder) {
+        files[`${name}.md`] =
+            `---\nname: ${name}\ndescription: ${name}\nmodel: ${donorColumns[name].claude}\n---\n\nCanonical Claude agent.\n`;
+    }
+    return files;
+}
+
+function opencodeJsonFromManifest(manifest: ModelsManifest): Record<string, unknown> {
+    const conf = validOpencodeJson();
+    conf['model'] = manifest.agents.coder.opencode;
+    const agent = conf['agent'];
+    if (isRecord(agent)) {
+        if (isRecord(agent['build'])) {
+            agent['build']['model'] = manifest.agents.coder.opencode;
+        }
+        if (isRecord(agent['spec-to-ship'])) {
+            agent['spec-to-ship']['model'] = manifest.orchestrator.opencode;
+        }
+    }
+    return conf;
+}
+
+function rewriteOpencodeAgentModels(root: string, manifest: ModelsManifest): void {
+    const dir = path.join(root, '.opencode/agents');
+    if (!existsSync(dir)) {
+        return;
+    }
+    for (const name of agentOrder) {
+        const filePath = path.join(dir, `${name}.md`);
+        if (!existsSync(filePath)) {
+            continue;
+        }
+        writeFileSync(
+            filePath,
+            readUtf8(filePath).replace(/^model:\s*.+$/m, `model: ${manifest.agents[name].opencode}`),
+        );
+    }
+}
+
+function driftOpencodeAlias(
+    root: string,
+    manifest: ModelsManifest,
+    agent: (typeof agentOrder)[number],
+    alias: string,
+): void {
+    manifest.agents[agent] = { ...manifest.agents[agent], opencode: alias };
+    writeRelativeFile(root, '.harness/models.json', jsonFile(manifest));
+    writeRelativeFile(root, '.opencode/opencode.json', jsonFile(opencodeJsonFromManifest(manifest)));
+    rewriteOpencodeAgentModels(root, manifest);
+}
+
+function restoreMarkdownSnapshots(dir: string, snapshots: Record<string, string>): void {
+    for (const [name, contents] of Object.entries(snapshots)) {
+        writeFileSync(path.join(dir, name), contents);
+    }
+}
+
+function emptyMarkdownDir(dir: string): Record<string, string> {
+    const snapshots = mdSnapshots(dir);
+    for (const name of Object.keys(snapshots)) {
+        unlinkSync(path.join(dir, name));
+    }
+    return snapshots;
 }
 
 function jsonFile(value: unknown): string {
@@ -621,6 +699,42 @@ describe('Agents and commands generate from Claude when canonical files exist', 
             'check-agent-skills must exit non-zero when the Claude model disagrees with the manifest',
         ).not.toBe(0);
     });
+
+    it('OpenCode command aliases that disagree with the manifest fail the check', () => {
+        assertProgramExists('sync');
+        assertProgramExists('check');
+        const manifest = validManifest();
+        const root = createTempHarnessRepo({
+            models: manifest,
+            claudeAgents: populatedClaudeAgentFiles(),
+            cursorAgents: {},
+            claudeCommands: { 'spec-to-ship.md': claudeCommandWithModelSelectionBody },
+            cursorCommands: {},
+        });
+        const sync = runNpm(root, 'sync-agent-skills');
+        expect(sync.code, `sync-agent-skills must succeed: ${sync.stderr}`).toBe(0);
+
+        const commandPath = path.join(root, '.opencode/commands/spec-to-ship.md');
+        expect(existsSync(commandPath), 'sync-agent-skills must write .opencode/commands/spec-to-ship.md').toBe(true);
+        const trackedCommand = readUtf8(commandPath);
+        const driftedAlias = 'litellm/vn-review-drifted';
+        expect(
+            trackedCommand.includes(driftedAlias),
+            'precondition: tracked OpenCode command must not already list the drifted alias',
+        ).toBe(false);
+        expect(
+            trackedCommand.includes(manifest.agents.reviewer.opencode),
+            'precondition: tracked OpenCode command must list the live reviewer alias before the drift',
+        ).toBe(true);
+
+        driftOpencodeAlias(root, manifest, 'reviewer', driftedAlias);
+
+        const check = runNpm(root, 'check-agent-skills');
+        expect(
+            check.code,
+            'check-agent-skills must exit non-zero when an OpenCode command alias disagrees with the manifest',
+        ).not.toBe(0);
+    });
 });
 
 describe('Empty Claude canonical dirs do not destroy Cursor bootstrap', () => {
@@ -676,6 +790,40 @@ describe('Empty Claude canonical dirs do not destroy Cursor bootstrap', () => {
         const commandMd = existsSync(commandDir) ? readdirSync(commandDir).filter((name) => name.endsWith('.md')) : [];
         expect(agentMd.length, '.claude/agents must contain at least one *.md').toBeGreaterThan(0);
         expect(commandMd.length, '.claude/commands must contain at least one *.md').toBeGreaterThan(0);
+    });
+
+    it('empty canonical agents on the live working tree fail the check', () => {
+        assertProgramExists('check');
+        const dir = path.join(repoRoot, '.claude/agents');
+        const snapshot = mdSnapshots(dir);
+        expect(Object.keys(snapshot).length, 'live .claude/agents must start with markdown').toBeGreaterThan(0);
+        try {
+            emptyMarkdownDir(dir);
+            const result = runNpm(repoRoot, 'check-agent-skills');
+            expect(
+                result.code,
+                'check-agent-skills must exit non-zero when the live working tree has no .claude/agents/*.md',
+            ).not.toBe(0);
+        } finally {
+            restoreMarkdownSnapshots(dir, snapshot);
+        }
+    });
+
+    it('empty canonical commands on the live working tree fail the check', () => {
+        assertProgramExists('check');
+        const dir = path.join(repoRoot, '.claude/commands');
+        const snapshot = mdSnapshots(dir);
+        expect(Object.keys(snapshot).length, 'live .claude/commands must start with markdown').toBeGreaterThan(0);
+        try {
+            emptyMarkdownDir(dir);
+            const result = runNpm(repoRoot, 'check-agent-skills');
+            expect(
+                result.code,
+                'check-agent-skills must exit non-zero when the live working tree has no .claude/commands/*.md',
+            ).not.toBe(0);
+        } finally {
+            restoreMarkdownSnapshots(dir, snapshot);
+        }
     });
 
     it('check-agent-skills compares the live mirrors', () => {

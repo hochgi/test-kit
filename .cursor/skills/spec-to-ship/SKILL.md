@@ -91,10 +91,11 @@ requested (the `RD-*` ticket) → ask. Record the rung in the spec.
 - **A phase that reports a problem honestly is doing its job.** Fix the finding;
   do not wave it through to keep momentum.
 
-Harness markdown under `.cursor/` is not format-checked or linted by
+Harness markdown under `.cursor/` and `.claude/` is not format-checked or linted by
 `npm run check` (that script is TypeScript-focused). Changes there still run the
-workspace gate in CI via the `.cursor/**` path-filter mapping. Do not invent a
-markdown/frontmatter linter in this bootstrap; a new gate is a later packet.
+workspace-wide `check` job in CI via the `.cursor/**` and `.claude/**`
+path-filter mappings. That job's `npm test` includes the suites that invoke
+`check-agent-skills`. Do not invent a markdown or frontmatter linter.
 
 ## When NOT to run the pipeline
 

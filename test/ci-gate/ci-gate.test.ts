@@ -26,6 +26,8 @@ const harnessMarkdownDirs = [
 
 const workspaceWideSamplePaths = [
     'package.json',
+    'package-lock.json',
+    '.prettierrc',
     'tsconfig.json',
     'tsconfig.base.json',
     '.eslintrc.json',
@@ -37,7 +39,10 @@ const workspaceWideSamplePaths = [
     '.claude/agents/spec-author.md',
     '.harness/models.json',
     '.opencode/opencode.json',
+    'test/ci-gate/ci-gate.test.ts',
 ] as const;
+
+const specToShipSkillPath = path.join(repoRoot, '.cursor', 'skills', 'spec-to-ship', 'SKILL.md');
 
 const publishedPackages = [
     'core',
@@ -280,6 +285,12 @@ function statesNoGitHooks(content: string): boolean {
     return /no git hooks/i.test(content);
 }
 
+function claimsLockfileOrPrettierRemainUnmapped(content: string): boolean {
+    const nearUnmapped = (token: string): boolean =>
+        new RegExp(`unmapped[\\s\\S]{0,240}${token}|${token}[\\s\\S]{0,240}unmapped`, 'i').test(content);
+    return nearUnmapped('package-lock\\.json') || nearUnmapped('\\.prettierrc');
+}
+
 describe('Root check script', () => {
     it('check script is defined', () => {
         const check = readRootScripts()['check'];
@@ -381,12 +392,30 @@ describe('Workspace-wide path changes run the root check in CI', () => {
                 `${samplePath} must match a mapping that sets build_workspace true`,
             ).toBeGreaterThan(0);
         }
-        const rootPackageMappings = mappingsSetting(mappings, 'package.json', 'build_workspace', 'true');
-        expect(rootPackageMappings.length, 'root package.json must have a build_workspace mapping').toBeGreaterThan(0);
-        for (const [regex] of rootPackageMappings) {
+        const rootOnlyNegatives = [
+            ['package.json', 'packages/core/package.json'],
+            ['package-lock.json', 'packages/core/package-lock.json'],
+            ['.prettierrc', 'packages/core/.prettierrc'],
+        ] as const;
+        for (const [rootPath, nestedPath] of rootOnlyNegatives) {
+            const rootMappings = mappingsSetting(mappings, rootPath, 'build_workspace', 'true');
+            expect(rootMappings.length, `root ${rootPath} must have a build_workspace mapping`).toBeGreaterThan(0);
+            for (const [regex] of rootMappings) {
+                expect(
+                    pathMatchesMapping(regex, nestedPath),
+                    `root ${rootPath} mapping ${regex} must not match ${nestedPath}`,
+                ).toBe(false);
+            }
+        }
+        const rootTestMappings = mappingsSetting(mappings, 'test/ci-gate/ci-gate.test.ts', 'build_workspace', 'true');
+        expect(
+            rootTestMappings.length,
+            'repository-root test/ path must have a build_workspace mapping',
+        ).toBeGreaterThan(0);
+        for (const [regex] of rootTestMappings) {
             expect(
-                pathMatchesMapping(regex, 'packages/core/package.json'),
-                `root package.json mapping ${regex} must not match packages/core/package.json`,
+                pathMatchesMapping(regex, 'packages/core/test/unit/duration.test.ts'),
+                `repository-root test/ mapping ${regex} must not match packages/core/test/unit/duration.test.ts`,
             ).toBe(false);
         }
     });
@@ -460,6 +489,38 @@ describe('Gate-describing harness prose names the real gates', () => {
                 'component-testing SKILL.md does not describe the repo gate, so npm run check is not required',
             ).toBe(content.includes('npm run check'));
         }
+    });
+
+    it('gate prose does not claim lockfile or prettier holes', () => {
+        const files = trackedMarkdownUnder(harnessMarkdownDirs);
+        const gateFiles = files.filter((file) => describesRepoWideGate(readUtf8(path.join(repoRoot, file))));
+        for (const file of gateFiles) {
+            const content = readUtf8(path.join(repoRoot, file));
+            expect(
+                claimsLockfileOrPrettierRemainUnmapped(content),
+                `${file} must not claim that package-lock.json or .prettierrc remain unmapped`,
+            ).toBe(false);
+        }
+    });
+
+    it('spec-to-ship does not defer a markdown linter as a later packet', () => {
+        expect(existsSync(specToShipSkillPath), '.cursor/skills/spec-to-ship/SKILL.md must exist').toBe(true);
+        const content = readUtf8(specToShipSkillPath);
+        expect(content.includes('a later packet'), 'spec-to-ship must not contain "a later packet"').toBe(false);
+        expect(
+            content.includes('not format-checked or linted by') && content.includes('npm run check'),
+            'spec-to-ship must state harness markdown is not format-checked or linted by npm run check',
+        ).toBe(true);
+        expect(content.includes('.cursor/**'), 'spec-to-ship must state that .cursor/** still run the check job').toBe(
+            true,
+        );
+        expect(content.includes('.claude/**'), 'spec-to-ship must state that .claude/** still run the check job').toBe(
+            true,
+        );
+        expect(
+            content.includes('check-agent-skills'),
+            'spec-to-ship must state that the workspace-wide check job tests invoke check-agent-skills',
+        ).toBe(true);
     });
 });
 

@@ -34,9 +34,8 @@ tests are the authority.**
 There are **no git hooks** — no husky, no lefthook (RD-24141 kept it that way
 on purpose). CircleCI path-filtering maps workspace-wide paths (root configs,
 `docs/**`, `.circleci/**`, `.cursor/**`) onto `build_workspace`, which runs
-`npm run check`. Per-package dirs still only *build* that package. Unmapped holes
-remain (`package-lock.json`, `.prettierrc`). The full gate is `npm run check`
-(RD-24141):
+`npm run check`. Per-package dirs still only *build* that package. The full gate
+is `npm run check` (RD-24141):
 
 ```bash
 npm run format:check   # prettier: packages/**/*.ts + examples/**/*.ts + test/**/*.ts + vitest.workspace.ts
