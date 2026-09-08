@@ -117,7 +117,19 @@ subject with leaf boundaries probe-faked. The lifecycle owner is a **Rig**,
 created by **createRig**. Close it with **`rig.close()`**.
 
 The type is `Rig`. The factory option key on probed mocks is still `harness`
-(a deliberate keep). Correct 2.x usage:
+(a deliberate keep). Optional `createRig` keys:
+
+```typescript
+import { createRig, milliseconds, seconds, viFakeClock } from '@vnatures/test-kit';
+
+const rig = createRig({
+    clock: viFakeClock(),
+    defaultTimeout: seconds(5),
+    safetyTimeout: milliseconds(30_000),
+});
+```
+
+Correct 2.x usage:
 
 ```typescript
 import { createRig, type Rig } from '@vnatures/test-kit';
@@ -173,8 +185,9 @@ Key conventions:
 
 ## Probe API Quick Reference
 
-`probe.on('methodName')` returns a typed selection. From there you program a
-rule (porcelain) or pull a call (plumbing).
+`MethodProbe` and `BullQueueProbe` have `.on(method)`. QueryProbe has no .on;
+it uses `.sql(...)` instead. Both inherit `filter()`. From a selection you
+program a rule (porcelain) or pull a call (plumbing).
 
 ### Porcelain (pre-programmed happy path)
 
@@ -227,12 +240,14 @@ timeout behavior.
 
 ### Negative and cardinality assertions
 
+`exactly` and `none` require `within`; `atLeast` may omit it.
+
 ```typescript
 import { milliseconds } from '@vnatures/test-kit';
 
 await probe.on('delete').expect.none({ within: milliseconds(100) });
 await probe.on('publish').expect.atLeast(2);
-await probe.on('publish').expect.exactly(3);
+await probe.on('publish').expect.exactly(3, { within: milliseconds(2_000) });
 ```
 
 ### Post-hoc assertions
@@ -240,6 +255,39 @@ await probe.on('publish').expect.exactly(3);
 ```typescript
 expect(probe.calls).toHaveLength(2);
 expect(probe.calls[0].method).toBe('download');
+```
+
+### QueryProbe.sql matchers
+
+A string matches by exact equality, a `RegExp` via `.test()`, and a function
+as a predicate on the SQL text.
+
+```typescript
+db.probe.sql('SELECT * FROM users');
+db.probe.sql(/INSERT INTO orders/);
+db.probe.sql((sql) => sql.startsWith('INSERT'));
+```
+
+### Drain, synchronous asserts, and reset
+
+```typescript
+probe.on('publish').expect.calledTimes(1);
+probe.on('publish').expect.called();
+probe.on('delete').expect.neverCalled();
+```
+
+```typescript
+probe.drain();
+probe.drainAndReject(new Error('dropped'));
+db.probe.drainAndForward();
+```
+
+```typescript
+const { rig, probe } = createMyRig();
+probe.clearRules();
+probe.clearCalls();
+probe.resetProbe();
+await rig.reset({ keepRules: true });
 ```
 
 ---
@@ -355,14 +403,17 @@ probe.on('download').always().answerWith((c) => {
 ### Cross-probe ordering
 
 ```typescript
-import { milliseconds } from '@vnatures/test-kit';
+import { milliseconds, observation } from '@vnatures/test-kit';
 
 const { rig, authProbe, usersProbe, paymentsProbe, eventsProbe } = createMyRig();
+
+eventsProbe.on('publish').always().answer(undefined);
 
 await rig.expect.sequence(
     [
         authProbe.on('verifyToken'),
         usersProbe.on('getUser'),
+        observation(eventsProbe.on('publish')),
         paymentsProbe.on('charge'),
     ],
     { within: milliseconds(2_000) },
@@ -382,13 +433,17 @@ See `packages/mock/test/integration/cross-probe-expectations.test.ts` and
 ## Fake Timer Interop
 
 - Call `vi.useFakeTimers()` in `beforeEach` for in-repo tests. The rig
-  auto-detects that (and, for consumers, Jest's fake timers). Drive the SUT
-  with `rig.clock.advance(duration)`.
+  auto-detects that (and, for consumers, Jest's fake timers). Drive in-repo
+  SUTs with `rig.clock.advance(duration)`.
 - `expect.intercept` / `expect.observe` deadlines run on real wall-clock
   time, so a forgotten `clock.advance` produces a clean timeout diagnostic
   instead of a hang.
-- Always use `rig.clock.advance` so microtask continuations flush between
-  timer ticks.
+- The two fake clocks are not interchangeable. `jestFakeClock().advance`
+  uses synchronous `advanceTimersByTime` plus one `Promise.resolve()` (a
+  single microtask tick). `viFakeClock().advance` prefers
+  `advanceTimersByTimeAsync`. Jest consumers whose SUT chains `await`s
+  between timers must `await jest.advanceTimersByTimeAsync(ms)` rather than
+  relying on `rig.clock.advance` to drain those continuations.
 
 ```typescript
 import { createRig, type Rig } from '@vnatures/test-kit';

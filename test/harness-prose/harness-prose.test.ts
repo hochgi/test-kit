@@ -3,6 +3,12 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+    fencedTypescriptBlocks,
+    typescriptFenceDeclaresRig,
+    typescriptFenceUsesRigIdentifier,
+    typescriptFencesUsingUndeclaredRig,
+} from './fenced-typescript-blocks.js';
 
 const repoRoot = path.join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 
@@ -252,30 +258,49 @@ function trackedMarkdownUnder(dirs: readonly string[]): string[] {
     return listed.split('\0').filter((file) => file !== '' && (file.endsWith('.md') || file.endsWith('.mdc')));
 }
 
-function fencedTypescriptBlocks(markdown: string): string[] {
-    const blocks: string[] = [];
-    const pattern = /^```(?:typescript|ts)[^\n]*\n([\s\S]*?)^```/gm;
-    let match: RegExpExecArray | null = pattern.exec(markdown);
-    while (match !== null) {
-        const body = match[1];
-        if (body !== undefined) {
-            blocks.push(body);
+const commonMarkFenceIndents = [1, 2, 3] as const;
+
+const componentTestingSkill = '.cursor/skills/component-testing/SKILL.md';
+
+function matchingCloseParenIndex(source: string, openParenIndex: number): number {
+    let depth = 0;
+    for (let i = openParenIndex; i < source.length; i += 1) {
+        const char = source[i];
+        if (char === '(') {
+            depth += 1;
+        } else if (char === ')') {
+            depth -= 1;
+            if (depth === 0) {
+                return i;
+            }
         }
-        match = pattern.exec(markdown);
     }
-    return blocks;
+    return source.length - 1;
 }
 
-function typescriptFenceDeclaresRig(block: string): boolean {
-    return (
-        /\b(?:const|let)\s+rig\b/.test(block) ||
-        /\b(?:const|let)\s*\{[^}]*\brig\b/.test(block) ||
-        /\b(?:const|let)\s*\[[^\]]*\brig\b/.test(block)
-    );
+function callsWithOpener(source: string, opener: string): string[] {
+    const calls: string[] = [];
+    let searchFrom = 0;
+    while (searchFrom < source.length) {
+        const start = source.indexOf(opener, searchFrom);
+        if (start === -1) {
+            break;
+        }
+        const openParen = start + opener.length - 1;
+        const close = matchingCloseParenIndex(source, openParen);
+        calls.push(source.slice(start, close + 1));
+        searchFrom = close + 1;
+    }
+    return calls;
 }
 
-function typescriptFenceUsesRigIdentifier(block: string): boolean {
-    return /\brig\b/.test(block);
+function fencedCalls(markdown: string, opener: string): string[] {
+    return fencedTypescriptBlocks(markdown).flatMap((block) => callsWithOpener(block, opener));
+}
+
+function indentedTypescriptMarkdown(indent: number, body: string): string {
+    const pad = ' '.repeat(indent);
+    return ['Prose; no column-zero typescript fence.', `${pad}\`\`\`typescript`, body, `${pad}\`\`\``, ''].join('\n');
 }
 
 describe('Canonical Claude agent files exist', () => {
@@ -415,7 +440,7 @@ describe('Support skills exist under the Cursor canonical tree', () => {
 
 describe("component-testing teaches this repo's current API in Vitest", () => {
     it('component-testing names createRig not createHarness', () => {
-        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+        const content = readExisting(componentTestingSkill);
         expect(content.includes('createRig'), 'component-testing must name createRig').toBe(true);
         expect(content.includes('createHarness'), 'component-testing must not name createHarness').toBe(false);
         expect(
@@ -425,40 +450,250 @@ describe("component-testing teaches this repo's current API in Vitest", () => {
     });
 
     it('component-testing keeps the harness option key', () => {
-        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+        const content = readExisting(componentTestingSkill);
         expect(
             /harness:\s*rig\b/.test(content),
             'component-testing must show a factory options example with harness: rig',
         ).toBe(true);
     });
 
-    it('component-testing uses Vitest fake timers', () => {
-        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+    it('component-testing uses Vitest fake timers in-repo and names Jest drain', () => {
+        const content = readExisting(componentTestingSkill);
         expect(content.includes('vi.useFakeTimers'), 'component-testing must contain vi.useFakeTimers').toBe(true);
         expect(
             content.includes('jest.advanceTimersByTimeAsync'),
-            'component-testing must not contain jest.advanceTimersByTimeAsync',
-        ).toBe(false);
+            'component-testing must contain jest.advanceTimersByTimeAsync',
+        ).toBe(true);
     });
 
     it('component-testing is not pinned to v1.0.0', () => {
-        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+        const content = readExisting(componentTestingSkill);
         expect(content.includes('v1.0.0'), 'component-testing must not contain v1.0.0').toBe(false);
     });
 
+    it('Jest and Vitest clocks are not presented as interchangeable', () => {
+        const content = readExisting(componentTestingSkill);
+        expect(content.includes('jestFakeClock'), 'must name jestFakeClock').toBe(true);
+        expect(content.includes('viFakeClock'), 'must name viFakeClock').toBe(true);
+        expect(
+            /advanceTimersByTime(?!Async)/.test(content),
+            'must state that jestFakeClock uses synchronous advanceTimersByTime',
+        ).toBe(true);
+        expect(
+            /jestFakeClock[\s\S]{0,400}Promise\.resolve/.test(content) ||
+                /Promise\.resolve[\s\S]{0,400}jestFakeClock/.test(content),
+            'must state that jestFakeClock uses Promise.resolve for one microtask tick',
+        ).toBe(true);
+        expect(
+            /viFakeClock[\s\S]{0,240}advanceTimersByTimeAsync/.test(content),
+            'must state that viFakeClock prefers advanceTimersByTimeAsync',
+        ).toBe(true);
+        expect(
+            content.includes('await jest.advanceTimersByTimeAsync'),
+            'must tell Jest consumers to use await jest.advanceTimersByTimeAsync',
+        ).toBe(true);
+    });
+
     it('component-testing TypeScript fences declare rig before using it', () => {
-        const content = readExisting('.cursor/skills/component-testing/SKILL.md');
+        const content = readExisting(componentTestingSkill);
         const usingRig = fencedTypescriptBlocks(content).filter(typescriptFenceUsesRigIdentifier);
         expect(
             usingRig.length,
             'component-testing must have at least one typescript fence that uses rig',
         ).toBeGreaterThan(0);
+        expect(
+            typescriptFencesUsingUndeclaredRig(content),
+            'each typescript/ts fence that uses identifier rig — including CommonMark-indented fences (0–3 leading spaces) — must declare const rig, let rig, or a destructuring binding that includes rig in that same block',
+        ).toEqual([]);
         for (const block of usingRig) {
             expect(
                 typescriptFenceDeclaresRig(block),
                 'each typescript/ts fence that uses identifier rig must declare const rig, let rig, or a destructuring binding that includes rig in that same block',
             ).toBe(true);
         }
+    });
+});
+
+describe('component-testing cardinality exactly and none require within', () => {
+    it('every exactly call supplies within', () => {
+        const content = readExisting(componentTestingSkill);
+        const exactlyCalls = fencedCalls(content, 'expect.exactly(');
+        const noneCalls = fencedCalls(content, 'expect.none(');
+        expect(exactlyCalls.length, 'must show at least one fenced expect.exactly(').toBeGreaterThan(0);
+        expect(noneCalls.length, 'must show at least one fenced expect.none(').toBeGreaterThan(0);
+        for (const call of exactlyCalls) {
+            expect(call.includes('within:'), `${call} must include a within: option in the same call`).toBe(true);
+        }
+        for (const call of noneCalls) {
+            expect(call.includes('within:'), `${call} must include a within: option in the same call`).toBe(true);
+        }
+        expect(
+            exactlyCalls.some((call) => /^expect\.exactly\(\s*3\s*,\s*\{[\s\S]*\bwithin:/.test(call)),
+            'at least one call must be of the shape expect.exactly(3, { within: … })',
+        ).toBe(true);
+    });
+
+    it('skill states the within asymmetry', () => {
+        const content = readExisting(componentTestingSkill);
+        expect(content.includes('atLeast'), 'must contain atLeast').toBe(true);
+        expect(content.includes('exactly'), 'must contain exactly').toBe(true);
+        expect(content.includes('none'), 'must contain none').toBe(true);
+        expect(content.includes('within'), 'must contain within').toBe(true);
+        expect(
+            /exactly[\s\S]{0,160}none[\s\S]{0,80}require[\s\S]{0,40}within/i.test(content) ||
+                /none[\s\S]{0,80}exactly[\s\S]{0,80}require[\s\S]{0,40}within/i.test(content),
+            'must state that exactly and none require within',
+        ).toBe(true);
+        expect(
+            /atLeast[\s\S]{0,80}(may omit|can omit|optional)/i.test(content),
+            'must state that atLeast may omit within',
+        ).toBe(true);
+    });
+});
+
+describe('component-testing teaches the missing 2.x probe surface', () => {
+    it('observation is demonstrated in sequence', () => {
+        const content = readExisting(componentTestingSkill);
+        const blocks = fencedTypescriptBlocks(content);
+        expect(
+            blocks.some((block) => block.includes('observation(') && block.includes('rig.expect.sequence')),
+            'at least one typescript/ts fence must contain observation( and rig.expect.sequence',
+        ).toBe(true);
+        expect(
+            /import\s*\{[^}]*\bobservation\b[^}]*\}\s*from\s*'@vnatures\/test-kit'/.test(content),
+            "the file must import observation from '@vnatures/test-kit'",
+        ).toBe(true);
+        expect(content.includes("from '@vnatures/test-kit'"), "must contain from '@vnatures/test-kit'").toBe(true);
+        expect(content.includes('observation'), 'must contain observation').toBe(true);
+    });
+
+    it('allOf is demonstrated', () => {
+        const content = readExisting(componentTestingSkill);
+        expect(
+            fencedTypescriptBlocks(content).some((block) => block.includes('rig.expect.allOf(')),
+            'at least one typescript/ts fence must contain rig.expect.allOf(',
+        ).toBe(true);
+    });
+
+    it('drain family is demonstrated', () => {
+        const content = readExisting(componentTestingSkill);
+        const fenced = fencedTypescriptBlocks(content).join('\n');
+        expect(fenced.includes('drain('), 'fenced typescript/ts blocks must jointly contain drain(').toBe(true);
+        expect(
+            fenced.includes('drainAndReject('),
+            'fenced typescript/ts blocks must jointly contain drainAndReject(',
+        ).toBe(true);
+        expect(
+            fenced.includes('drainAndForward('),
+            'fenced typescript/ts blocks must jointly contain drainAndForward(',
+        ).toBe(true);
+    });
+
+    it('synchronous assertions are demonstrated', () => {
+        const content = readExisting(componentTestingSkill);
+        const fenced = fencedTypescriptBlocks(content).join('\n');
+        expect(fenced.includes('expect.calledTimes('), 'fenced blocks must jointly contain expect.calledTimes(').toBe(
+            true,
+        );
+        expect(fenced.includes('expect.neverCalled('), 'fenced blocks must jointly contain expect.neverCalled(').toBe(
+            true,
+        );
+        expect(fenced.includes('expect.called('), 'fenced blocks must jointly contain expect.called(').toBe(true);
+    });
+
+    it('QueryProbe.sql matchers are taught and queries is absent', () => {
+        const content = readExisting(componentTestingSkill);
+        const fenced = fencedTypescriptBlocks(content).join('\n');
+        expect(fenced.includes('sql('), 'a fenced typescript/ts block must contain sql(').toBe(true);
+        expect(/sql\(\s*['"`]/.test(content), 'the file must show a string matcher for sql').toBe(true);
+        expect(/sql\(\s*\//.test(content), 'the file must show a RegExp matcher for sql').toBe(true);
+        expect(/sql\(\s*\(|sql\(\s*\w+\s*=>/.test(content), 'the file must show a function matcher for sql').toBe(true);
+        expect(/exact equal/i.test(content), 'prose must state that a string matches by exact equality').toBe(true);
+        expect(content.includes('.test()'), 'prose must state that a RegExp matches via .test()').toBe(true);
+        expect(/predicate/i.test(content), 'prose must state that a function is a predicate on the SQL text').toBe(
+            true,
+        );
+        expect(content.includes('probe.queries'), 'must not contain probe.queries').toBe(false);
+        expect(content.includes('QueryProbe.queries'), 'must not contain QueryProbe.queries').toBe(false);
+        expect(content.includes('db.probe.queries'), 'must not contain db.probe.queries').toBe(false);
+    });
+
+    it('probe admin and rig.reset keepRules are taught', () => {
+        const content = readExisting(componentTestingSkill);
+        expect(content.includes('clearRules('), 'must contain clearRules(').toBe(true);
+        expect(content.includes('clearCalls('), 'must contain clearCalls(').toBe(true);
+        expect(content.includes('resetProbe('), 'must contain resetProbe(').toBe(true);
+        expect(content.includes('rig.reset('), 'must contain rig.reset(').toBe(true);
+        expect(content.includes('keepRules'), 'must contain keepRules').toBe(true);
+    });
+
+    it('CreateRigOptions keys are named', () => {
+        const content = readExisting(componentTestingSkill);
+        const optionBlocks = fencedTypescriptBlocks(content).filter((block) => /createRig\s*\(\s*\{/.test(block));
+        expect(optionBlocks.length, 'a fenced createRig({ … }) must name the options').toBeGreaterThan(0);
+        const joined = optionBlocks.join('\n');
+        expect(/\bclock\s*:/.test(joined), 'createRig options must name clock').toBe(true);
+        expect(joined.includes('defaultTimeout'), 'createRig options must name defaultTimeout').toBe(true);
+        expect(joined.includes('safetyTimeout'), 'createRig options must name safetyTimeout').toBe(true);
+    });
+
+    it('on is not taught as universal', () => {
+        const content = readExisting(componentTestingSkill);
+        expect(content.includes('MethodProbe'), 'must contain MethodProbe').toBe(true);
+        expect(content.includes('BullQueueProbe'), 'must contain BullQueueProbe').toBe(true);
+        expect(content.includes('QueryProbe'), 'must contain QueryProbe').toBe(true);
+        expect(content.includes('.sql('), 'must contain .sql(').toBe(true);
+        expect(content.includes('filter()'), 'must contain filter()').toBe(true);
+        expect(
+            /QueryProbe[\s\S]{0,200}(has no \.on|does not have \.on|does not have `\.on`|no \.on)/i.test(content),
+            'must state that QueryProbe has no .on',
+        ).toBe(true);
+    });
+});
+
+describe('harness-prose TypeScript fence scan includes CommonMark indent', () => {
+    it('indented typescript fences are extracted', () => {
+        for (const spaces of commonMarkFenceIndents) {
+            const marker = `const extractedIndent${spaces} = true;`;
+            const blocks = fencedTypescriptBlocks(indentedTypescriptMarkdown(spaces, marker));
+            expect(
+                blocks.some((block) => block.includes(marker)),
+                `typescript fence indented by ${spaces} space(s) must be extracted`,
+            ).toBe(true);
+        }
+    });
+
+    it('an indented fence without a local rig declaration fails', () => {
+        for (const spaces of commonMarkFenceIndents) {
+            const markdown = indentedTypescriptMarkdown(spaces, 'await rig.clock.advance(milliseconds(1));');
+            expect(
+                typescriptFencesUsingUndeclaredRig(markdown).length,
+                `indent ${spaces}: the skill rig-declaration check must fail for an indented fence that uses rig without declaring it`,
+            ).toBeGreaterThan(0);
+        }
+    });
+
+    it('a line of backticks with trailing text is not a closing fence', () => {
+        const marker = 'const stillInBlock = true;';
+        const markdown = ['   ```typescript', 'const extracted = true;', ' ```not-a-close', marker, '   ```', ''].join(
+            '\n',
+        );
+        const blocks = fencedTypescriptBlocks(markdown);
+        expect(
+            blocks.some((block) => block.includes(marker) && block.includes('not-a-close')),
+            '```not-a-close must stay inside the extracted typescript block',
+        ).toBe(true);
+    });
+
+    it('aliased destructuring is not a local rig binding', () => {
+        const markdown = indentedTypescriptMarkdown(
+            2,
+            ['const { rig: renamed } = createMyRig();', 'await rig.clock.advance(milliseconds(1));'].join('\n'),
+        );
+        expect(
+            typescriptFencesUsingUndeclaredRig(markdown).length,
+            'const { rig: renamed } must not count as declaring identifier rig',
+        ).toBeGreaterThan(0);
     });
 });
 
