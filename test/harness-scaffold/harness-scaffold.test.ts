@@ -125,6 +125,8 @@ type FixtureOptions = {
     cursorCommands?: FileMap;
     claudeCommands?: FileMap;
     skillSymlink?: string;
+    fixture?: boolean;
+    corePackageJson?: boolean;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -246,18 +248,31 @@ function driftOpencodeAlias(
     rewriteOpencodeAgentModels(root, manifest);
 }
 
-function restoreMarkdownSnapshots(dir: string, snapshots: Record<string, string>): void {
-    for (const [name, contents] of Object.entries(snapshots)) {
-        writeFileSync(path.join(dir, name), contents);
-    }
-}
-
 function emptyMarkdownDir(dir: string): Record<string, string> {
     const snapshots = mdSnapshots(dir);
     for (const name of Object.keys(snapshots)) {
         unlinkSync(path.join(dir, name));
     }
     return snapshots;
+}
+
+function emptyMarkdownDirCalledWithLivePath(source: string, relativeDir: string): boolean {
+    const quoted = relativeDir.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+    const join = `path\\.join\\(\\s*repoRoot\\s*,\\s*['"]${quoted}['"]\\s*\\)`;
+    if (new RegExp(`emptyMarkdownDir\\(\\s*${join}`).test(source)) {
+        return true;
+    }
+    const assignRe = new RegExp(`(?:const|let|var)\\s+([\\w$]+)\\s*=\\s*${join}\\s*;?`, 'g');
+    let match: RegExpExecArray | null = assignRe.exec(source);
+    while (match !== null) {
+        const ident = match[1];
+        const from = match.index + match[0].length;
+        if (ident !== undefined && new RegExp(`emptyMarkdownDir\\(\\s*${ident}\\s*\\)`).test(source.slice(from))) {
+            return true;
+        }
+        match = assignRe.exec(source);
+    }
+    return false;
 }
 
 function jsonFile(value: unknown): string {
@@ -319,6 +334,34 @@ function runNpm(cwd: string, scriptName: string): CommandResult {
             env: process.env,
         }),
     );
+}
+
+function runCheckScript(scriptTree: string, cwd: string): CommandResult {
+    return spawnResult(
+        spawnSync('bash', [path.join(scriptTree, programRelative('check'))], {
+            cwd,
+            encoding: 'utf8',
+            env: process.env,
+        }),
+    );
+}
+
+function applyHarnessTreeMarkers(root: string, options: FixtureOptions): void {
+    if (options.fixture !== false) {
+        writeRelativeFile(root, '.harness/fixture', '');
+    }
+    if (options.corePackageJson === true) {
+        writeRelativeFile(root, 'packages/core/package.json', jsonFile({ name: '@vnatures/test-kit', private: true }));
+    }
+}
+
+function gitInitFixture(root: string): void {
+    const init = git(root, ['init', '-q']);
+    expect(init.code, `git init must succeed: ${init.stderr}`).toBe(0);
+    const add = git(root, ['add', '-A']);
+    expect(add.code, `git add must succeed: ${add.stderr}`).toBe(0);
+    const commit = git(root, ['commit', '-q', '--allow-empty', '-m', 'fixture']);
+    expect(commit.code, `git commit must succeed: ${commit.stderr}`).toBe(0);
 }
 
 function writeRelativeFile(root: string, relative: string, contents: string): void {
@@ -468,12 +511,8 @@ function createTempHarnessRepo(options: FixtureOptions = {}): string {
         }),
     );
 
-    const init = git(root, ['init', '-q']);
-    expect(init.code, `git init must succeed: ${init.stderr}`).toBe(0);
-    const add = git(root, ['add', '-A']);
-    expect(add.code, `git add must succeed: ${add.stderr}`).toBe(0);
-    const commit = git(root, ['commit', '-q', '--allow-empty', '-m', 'fixture']);
-    expect(commit.code, `git commit must succeed: ${commit.stderr}`).toBe(0);
+    applyHarnessTreeMarkers(root, options);
+    gitInitFixture(root);
 
     return root;
 }
@@ -792,44 +831,150 @@ describe('Empty Claude canonical dirs do not destroy Cursor bootstrap', () => {
         expect(commandMd.length, '.claude/commands must contain at least one *.md').toBeGreaterThan(0);
     });
 
-    it('empty canonical agents on the live working tree fail the check', () => {
+    it('empty canonical agents on a live-classified tree fail the check', () => {
+        assertProgramExists('sync');
         assertProgramExists('check');
-        const dir = path.join(repoRoot, '.claude/agents');
-        const snapshot = mdSnapshots(dir);
-        expect(Object.keys(snapshot).length, 'live .claude/agents must start with markdown').toBeGreaterThan(0);
-        try {
-            emptyMarkdownDir(dir);
-            const result = runNpm(repoRoot, 'check-agent-skills');
-            expect(
-                result.code,
-                'check-agent-skills must exit non-zero when the live working tree has no .claude/agents/*.md',
-            ).not.toBe(0);
-        } finally {
-            restoreMarkdownSnapshots(dir, snapshot);
-        }
+        const root = createTempHarnessRepo({
+            fixture: false,
+            claudeAgents: {},
+            claudeCommands: { 'spec-to-ship.md': claudeCommandWithModelSelectionBody },
+            cursorCommands: {},
+        });
+        const sync = runNpm(root, 'sync-agent-skills');
+        expect(sync.code, `sync-agent-skills must succeed: ${sync.stderr}`).toBe(0);
+        expect(Object.keys(mdSnapshots(path.join(root, '.claude/agents'))), '.claude/agents must have no *.md').toEqual(
+            [],
+        );
+        expect(
+            Object.keys(mdSnapshots(path.join(root, '.claude/commands'))).length,
+            '.claude/commands must contain at least one *.md',
+        ).toBeGreaterThan(0);
+
+        const result = runNpm(root, 'check-agent-skills');
+        expect(
+            result.code,
+            'check-agent-skills must exit non-zero when a live-classified tree has no .claude/agents/*.md',
+        ).not.toBe(0);
     });
 
-    it('empty canonical commands on the live working tree fail the check', () => {
+    it('empty canonical commands on a live-classified tree fail the check', () => {
+        assertProgramExists('sync');
         assertProgramExists('check');
-        const dir = path.join(repoRoot, '.claude/commands');
-        const snapshot = mdSnapshots(dir);
-        expect(Object.keys(snapshot).length, 'live .claude/commands must start with markdown').toBeGreaterThan(0);
-        try {
-            emptyMarkdownDir(dir);
-            const result = runNpm(repoRoot, 'check-agent-skills');
-            expect(
-                result.code,
-                'check-agent-skills must exit non-zero when the live working tree has no .claude/commands/*.md',
-            ).not.toBe(0);
-        } finally {
-            restoreMarkdownSnapshots(dir, snapshot);
-        }
+        const root = createTempHarnessRepo({
+            fixture: false,
+            claudeAgents: { 'spec-author.md': claudeAgentBody },
+            cursorAgents: {},
+            claudeCommands: {},
+        });
+        const sync = runNpm(root, 'sync-agent-skills');
+        expect(sync.code, `sync-agent-skills must succeed: ${sync.stderr}`).toBe(0);
+        expect(
+            Object.keys(mdSnapshots(path.join(root, '.claude/commands'))),
+            '.claude/commands must have no *.md',
+        ).toEqual([]);
+        expect(
+            Object.keys(mdSnapshots(path.join(root, '.claude/agents'))).length,
+            '.claude/agents must contain at least one *.md',
+        ).toBeGreaterThan(0);
+
+        const result = runNpm(root, 'check-agent-skills');
+        expect(
+            result.code,
+            'check-agent-skills must exit non-zero when a live-classified tree has no .claude/commands/*.md',
+        ).not.toBe(0);
     });
 
     it('check-agent-skills compares the live mirrors', () => {
         assertProgramExists('check');
         const result = runNpm(repoRoot, 'check-agent-skills');
         expect(result.code, `check-agent-skills must exit 0 on the live tree: ${result.stderr}`).toBe(0);
+    });
+});
+
+describe('Harness-scaffold tests do not empty live Claude canonical dirs', () => {
+    it('empty-canonical coverage does not unlink live agents markdown', () => {
+        const source = readUtf8(path.join(repoRoot, 'test/harness-scaffold/harness-scaffold.test.ts'));
+        expect(
+            emptyMarkdownDirCalledWithLivePath(source, '.claude/agents'),
+            "must not pass path.join(repoRoot, '.claude/agents') to emptyMarkdownDir",
+        ).toBe(false);
+    });
+
+    it('empty-canonical coverage does not unlink live commands markdown', () => {
+        const source = readUtf8(path.join(repoRoot, 'test/harness-scaffold/harness-scaffold.test.ts'));
+        expect(
+            emptyMarkdownDirCalledWithLivePath(source, '.claude/commands'),
+            "must not pass path.join(repoRoot, '.claude/commands') to emptyMarkdownDir",
+        ).toBe(false);
+    });
+});
+
+describe('Live vs fixture classification is an explicit marker on the tree under check', () => {
+    it('live working tree does not contain the fixture marker', () => {
+        expect(
+            existsSync(path.join(repoRoot, '.harness/fixture')),
+            'live working tree must not contain .harness/fixture',
+        ).toBe(false);
+    });
+
+    it('a fixture containing packages/core/package.json is still a fixture', () => {
+        assertProgramExists('check');
+        const root = createTempHarnessRepo({
+            corePackageJson: true,
+            claudeAgents: {},
+            claudeCommands: {},
+        });
+        expect(existsSync(path.join(root, '.harness/fixture')), 'tree must contain .harness/fixture').toBe(true);
+        expect(
+            existsSync(path.join(root, 'packages/core/package.json')),
+            'tree must contain packages/core/package.json',
+        ).toBe(true);
+        expect(Object.keys(mdSnapshots(path.join(root, '.claude/agents'))), '.claude/agents must have no *.md').toEqual(
+            [],
+        );
+        expect(
+            Object.keys(mdSnapshots(path.join(root, '.claude/commands'))),
+            '.claude/commands must have no *.md',
+        ).toEqual([]);
+
+        const result = runNpm(root, 'check-agent-skills');
+        expect(
+            result.code,
+            `check-agent-skills must exit 0 on a fixture that also has packages/core/package.json: ${result.stderr}`,
+        ).toBe(0);
+    });
+
+    it('a live-classified tree without packages/core/package.json is still live', () => {
+        assertProgramExists('check');
+        const root = createTempHarnessRepo({ fixture: false, claudeAgents: {} });
+        expect(existsSync(path.join(root, '.harness/fixture')), 'tree must not contain .harness/fixture').toBe(false);
+        expect(
+            existsSync(path.join(root, 'packages/core/package.json')),
+            'tree must not contain packages/core/package.json',
+        ).toBe(false);
+        emptyMarkdownDir(path.join(root, '.claude/agents'));
+
+        const result = runNpm(root, 'check-agent-skills');
+        expect(
+            result.code,
+            'check-agent-skills must exit non-zero on a live-classified tree that has no packages/core/package.json',
+        ).not.toBe(0);
+    });
+
+    it("check-agent-skills checks the invoked script's tree, not cwd's git root", () => {
+        assertProgramExists('check');
+        const fixture = createTempHarnessRepo({ claudeSkills: 'empty' });
+        const cursorSkills = listRelativeFiles(path.join(fixture, '.cursor/skills'));
+        const claudeSkills = listRelativeFiles(path.join(fixture, '.claude/skills'));
+        expect(claudeSkills, 'precondition: fixture .cursor/skills and .claude/skills must differ').not.toEqual(
+            cursorSkills,
+        );
+
+        const result = runCheckScript(fixture, repoRoot);
+        expect(
+            result.code,
+            "check-agent-skills must exit non-zero for the invoked fixture's drifted skills even when cwd is the live repository",
+        ).not.toBe(0);
     });
 });
 

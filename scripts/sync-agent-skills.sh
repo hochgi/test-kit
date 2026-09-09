@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/agent-sync-lib.sh
 . "$ROOT/scripts/agent-sync-lib.sh"
 assert_harness_manifest_present

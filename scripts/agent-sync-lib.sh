@@ -28,7 +28,8 @@ COMMANDS_OPENCODE_DIR=".opencode/commands"
 # column holds LiteLLM role aliases (litellm/<role>), repointed centrally when a
 # better or cheaper model appears — so following the frontier never touches a repo.
 # ---------------------------------------------------------------------------
-export HARNESS_MANIFEST="$(git rev-parse --show-toplevel)/.harness/models.json"
+# ROOT is the tree that owns the invoked script (not cwd's git toplevel).
+export HARNESS_MANIFEST="$ROOT/.harness/models.json"
 
 # Missing models.json must fail loudly and must NOT auto-copy the example.
 # Tests (and clones) look for both relative paths in stderr.
@@ -54,13 +55,10 @@ has_canonical_md() {
   return 1
 }
 
-# Harness fixtures copy scripts/ into a temp git repo without packages/core.
-# The live monorepo working tree always has that package; check-agent-skills
-# uses this to fail an empty canonical dir on the live tree while fixtures skip.
+# A tree is a fixture when $ROOT/.harness/fixture exists. Absence is
+# live-classified (fail-closed). packages/core/package.json does not classify.
 is_live_monorepo() {
-  local root
-  root="$(git rev-parse --show-toplevel)"
-  [ -f "$root/packages/core/package.json" ]
+  [ ! -f "$ROOT/.harness/fixture" ]
 }
 
 # harness_field <agent> <field> -> value from the manifest (empty + rc1 if absent).

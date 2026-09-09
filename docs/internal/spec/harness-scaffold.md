@@ -10,6 +10,9 @@ Agent, skill, command, and rule *prose* is not this capability. That is P06
 (RD-24147), which fills the canonical `.claude/agents` and `.claude/commands`
 trees this scaffold is built to mirror.
 
+Folded from the RD-24173 delta, preserved at
+`docs/internal/archive/2026-09-09-RD-24173-live-tree-harness-isolation/delta.md`.
+
 ## Requirements
 
 ### Requirement: Four harness surfaces exist
@@ -187,14 +190,15 @@ fixture or a partial clone. In that case `sync-agent-skills` SHALL NOT
 delete or replace existing `*.md` under `.cursor/agents` or
 `.cursor/commands`.
 
-On a fixture tree, `check-agent-skills` SHALL NOT fail solely because
-those Cursor trees contain files the empty Claude trees would not
-generate.
+On a fixture tree (one that contains `.harness/fixture`),
+`check-agent-skills` SHALL NOT fail solely because those Cursor trees
+contain files the empty Claude trees would not generate.
 
-On the live repository working tree, `check-agent-skills` SHALL exit
-non-zero when `.claude/agents` has no `*.md`, and SHALL exit non-zero
-when `.claude/commands` has no `*.md`. The live skip that treated an
-empty canonical dir like a fixture is closed.
+On a live-classified tree (one that does not contain `.harness/fixture`),
+`check-agent-skills` SHALL exit non-zero when `.claude/agents` has no
+`*.md`, and SHALL exit non-zero when `.claude/commands` has no `*.md`.
+The live skip that treated an empty canonical dir like a fixture is
+closed.
 
 The live repository's canonical Claude agent and command trees SHALL
 contain the files required by harness-prose, so on a consistent live
@@ -225,14 +229,78 @@ mirrors rather than skip that comparison.
 - **THEN** `.claude/agents` contains at least one `*.md` and
   `.claude/commands` contains at least one `*.md`
 
-#### Scenario: empty canonical agents on the live working tree fail the check
-- **WHEN** the live repository working tree's `.claude/agents` has no
-  `*.md` and `check-agent-skills` is run against that working tree
+#### Scenario: empty canonical agents on a live-classified tree fail the check
+- **WHEN** a live-classified tree's `.claude/agents` has no `*.md` and
+  `check-agent-skills` is run against that tree
 - **THEN** the process exits non-zero
 
-#### Scenario: empty canonical commands on the live working tree fail the check
-- **WHEN** the live repository working tree's `.claude/commands` has
-  no `*.md` and `check-agent-skills` is run against that working tree
+#### Scenario: empty canonical commands on a live-classified tree fail the check
+- **WHEN** a live-classified tree's `.claude/commands` has no `*.md` and
+  `check-agent-skills` is run against that tree
+- **THEN** the process exits non-zero
+
+### Requirement: Harness-scaffold tests do not empty live Claude canonical dirs
+`test/harness-scaffold/harness-scaffold.test.ts` SHALL NOT delete `*.md`
+under the live working tree's `.claude/agents` or `.claude/commands`.
+Empty-canonical failure of a live-classified tree SHALL be exercised on
+a disposable tree.
+
+Sibling Vitest projects (`test/harness-prose`, `test/ci-gate`,
+`test/docs-truth`) MAY list those live directories while harness-scaffold
+tests run. This packet SHALL NOT add `fileParallelism: false` or a
+`sequence` config to `vitest.workspace.ts`.
+
+#### Scenario: empty-canonical coverage does not unlink live agents markdown
+- **WHEN** `test/harness-scaffold/harness-scaffold.test.ts` is read
+- **THEN** it does not pass `path.join(repoRoot, '.claude/agents')` to
+  `emptyMarkdownDir`
+
+#### Scenario: empty-canonical coverage does not unlink live commands markdown
+- **WHEN** `test/harness-scaffold/harness-scaffold.test.ts` is read
+- **THEN** it does not pass `path.join(repoRoot, '.claude/commands')` to
+  `emptyMarkdownDir`
+
+### Requirement: Live vs fixture classification is an explicit marker on the tree under check
+`check-agent-skills` SHALL classify and check the tree that contains the
+invoked `scripts/check-agent-skills.sh`. It SHALL NOT treat
+`git rev-parse --show-toplevel` of the process working directory as that
+tree when the git root is a different directory.
+
+A tree SHALL be a **fixture** when it contains the file `.harness/fixture`.
+The live working tree SHALL NOT contain `.harness/fixture`. A tree
+without that file SHALL be **live-classified**.
+
+Presence of `packages/core/package.json` SHALL NOT by itself classify a
+tree as live. Absence of `packages/core/package.json` SHALL NOT by itself
+classify a tree as a fixture.
+
+On a fixture tree, `check-agent-skills` SHALL NOT fail solely because
+`.claude/agents` or `.claude/commands` have no `*.md`. On a
+live-classified tree it SHALL exit non-zero when either of those
+directories has no `*.md`.
+
+#### Scenario: live working tree does not contain the fixture marker
+- **WHEN** the live working tree is inspected at `.harness/fixture`
+- **THEN** that path does not exist
+
+#### Scenario: a fixture containing packages/core/package.json is still a fixture
+- **WHEN** a fixture tree contains `.harness/fixture` and
+  `packages/core/package.json`, its `.claude/agents` and
+  `.claude/commands` have no `*.md`, skills are in sync, the manifest is
+  valid, and `opencode.json` agrees with the manifest, and
+  `check-agent-skills` is run against that tree
+- **THEN** the process exits 0
+
+#### Scenario: a live-classified tree without packages/core/package.json is still live
+- **WHEN** a disposable live-classified tree has no
+  `packages/core/package.json`, its `.claude/agents` has no `*.md`, and
+  `check-agent-skills` is run against that tree
+- **THEN** the process exits non-zero
+
+#### Scenario: check-agent-skills checks the invoked script's tree, not cwd's git root
+- **WHEN** a fixture tree's `.cursor/skills` and `.claude/skills` differ
+  and that tree's `scripts/check-agent-skills.sh` is invoked with cwd set
+  to the live repository working tree
 - **THEN** the process exits non-zero
 
 
@@ -311,7 +379,7 @@ sequenceDiagram
     Check->>Check: regenerate cursor and opencode agents, diff
   else claude agents has no md on a fixture tree
     Check->>Check: skip agent wipe and skip agent-mirror drift
-  else claude agents has no md on the live working tree
+  else claude agents has no md on a live-classified tree
     Check-->>Dev: non-zero
   end
   Dev->>Sync: npm run sync-agent-skills
@@ -333,7 +401,10 @@ sequenceDiagram
 | `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree | Ticket + donor precedent |
 | `.github/skills` and `.agents/skills` are not created | Ticket called them droppable | Ticket |
 | No new agent/skill/command bodies | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`) |
-| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Sync still skips generation while canonical `*.md` count is zero. Superseded by P13 (RD-24164) for the check: fixtures still skip the drift comparison, but the live working tree fails it | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) |
+| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Sync still skips generation while canonical `*.md` count is zero. Superseded by P13 (RD-24164) for the check: fixtures still skip the drift comparison, but a live-classified tree fails it. RD-24173 then replaced the `packages/core/package.json` live probe with `.harness/fixture` and stopped wiping live `.claude` dirs | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) + RD-24173 |
+| Stop wiping live `.claude` dirs rather than serialize Vitest projects | The race is the wipe. Disposable live-classified trees cover empty-canonical failure. `vitest.workspace.ts` stays parallel | RD-24173 (ticket options) + source (`createTempHarnessRepo`) |
+| Explicit fixture marker `.harness/fixture`; absence is live (fail-closed) | Sparse live checkout without `packages/core/package.json` still fails empty canonical dirs; a fixture that contains that file is still a fixture | RD-24173 + source (`is_live_monorepo`) |
+| Classify and resolve the manifest from the tree that owns the invoked script, not cwd's git toplevel | A fixture invoked with cwd inside the live repo is judged as that fixture | RD-24173 |
 | Skills *are* mirrored Cursor → Claude even though P06 still owns skill *prose* | `.cursor/skills` is already canonical and populated; rsync is machinery, not new content | Source + ticket canonical direction |
 | `check-agent-skills` is an npm script; not added to the five-step `npm run check` chain | P00 pinned that chain. Harness-scaffold tests invoke the script during `npm test` | Source (`docs/internal/spec/ci-gate.md`) + ticket (script, not a hook) |
 | Map `.claude/`, `.harness/`, `.opencode/` onto `build_workspace` | P00 deferred `.claude/` mapping until P05 stood the trees up | Source (ci-gate decision table) + ticket (this PR touches harness paths) |
@@ -350,6 +421,8 @@ sequenceDiagram
 | `.github/skills`, `.agents/skills` | Those tools are not in the three-surface set |
 | `validate-skills.sh` (Anthropic Skills API lint in van-damme) | Ticket did not ask for a third script |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
+| `fileParallelism: false` / Vitest `sequence` for harness projects | Unnecessary once live dirs are not wiped; a later suite that mutates live harness files would reintroduce a race |
+| gitignore for `.harness/fixture` | Accidental creation on the live tree would classify it as a fixture until removed |
 
 ## Acceptance mapping
 
@@ -360,8 +433,12 @@ sequenceDiagram
 5. Root npm scripts `sync-agent-skills` and `check-agent-skills` exist; the check is read-only; no git hooks are added.
 6. After a passing check, `.claude/skills` is byte-identical to `.cursor/skills`; OpenCode `skills.paths` is `["./.cursor/skills"]`.
 7. When `.claude/agents` has `*.md`, sync+check round-trip the Cursor and OpenCode agent mirrors; a disagreeing Claude `model:` fails the check, and a manifest `agents.*.opencode` alias changed without regenerating `.opencode/commands/spec-to-ship.md` fails the check.
-8. When `.claude/agents` or `.claude/commands` have no `*.md`, sync leaves existing Cursor `*.md` in place; on a fixture tree check still exits 0 if skills/manifest/opencode are consistent, while on the live working tree empty canonical agents or commands fail the check.
+8. When `.claude/agents` or `.claude/commands` have no `*.md`, sync leaves existing Cursor `*.md` in place; on a fixture tree (`.harness/fixture` present) check still exits 0 if skills/manifest/opencode are consistent, while on a live-classified tree empty canonical agents or commands fail the check.
 9. `.opencode/opencode.json` exists; `model` / `agent.build.model` are `litellm/vn-coding`; `agent["spec-to-ship"].model` is `litellm/vn-spec`; drift fails the check.
 10. Non-boolean `readonly`, unexplained `claude`/`cursor` deviation, and a symlink under canonical skills each fail `check-agent-skills`.
 11. Path-filtering maps `.claude/**`, `.harness/**`, and `.opencode/**` (in addition to the P00 list) onto `build_workspace true`.
 12. The tests for these scenarios run under root `npm test` and are in the root `format:check` glob.
+13. `test/harness-scaffold/harness-scaffold.test.ts` does not pass the live working tree `.claude/agents` or `.claude/commands` to `emptyMarkdownDir`.
+14. A fixture with `.harness/fixture` and `packages/core/package.json` and empty Claude canonical dirs still passes `check-agent-skills`.
+15. A live-classified disposable tree without `packages/core/package.json` and with empty `.claude/agents` fails `check-agent-skills`.
+16. Invoking a fixture's `scripts/check-agent-skills.sh` with cwd in the live repo against drifted fixture skills exits non-zero.
