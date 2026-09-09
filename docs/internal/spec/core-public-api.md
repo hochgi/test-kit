@@ -185,6 +185,56 @@ sense lives everywhere else.
 - **THEN** it does not mention `component-testing` together with
   `createHarness`
 
+### Requirement: Do-not-touch classifier coalesces touches by path
+The do-not-touch classifier SHALL collapse multiple touches that share a
+path into one classification before it decides whether that path
+offends. A path SHALL be classified as an **addition** when any of those
+touches is an addition. A path SHALL be classified as a **non-addition**
+only when every touch for that path is a non-addition.
+
+Any-addition is what lets an append-only archive path that was added on
+the branch and then edited in the worktree pass the guard. The rule is a
+Boolean OR over that path's touches, not a true base-to-working-tree net
+state. A path whose touches are all non-additions — a modification, or a
+deletion of a path that already existed at the merge-base — SHALL still
+offend. A path that carries an addition among its touches passes even
+where the base-to-working-tree net is not an addition; the two cases
+where that diverges are recorded under Known gaps.
+
+This SHALL hold for the synthetic classifier the unit tests drive and
+for the live merge-base check that concatenates the committed
+`diff --name-status` list with the worktree `status --porcelain` list.
+
+#### Scenario: a committed archive addition with unstaged edits is still an addition
+- **WHEN** the classifier is given two touches for the same
+  `docs/internal/archive/` path, one an addition and one a non-addition
+- **THEN** that path does not appear in the offender list
+
+#### Scenario: repeated non-additions of an archive path still offend
+- **WHEN** the classifier is given two non-addition touches for the same
+  `docs/internal/archive/` path
+- **THEN** that path appears in the offender list
+
+### Requirement: Do-not-touch parsers keep NUL-delimited paths verbatim
+The `-z` parsers SHALL pass each git-provided path through unchanged,
+except that they SHALL drop empty fields (the trailing NUL on git `-z`
+output). They SHALL NOT trim whitespace from a path and SHALL NOT strip
+a quote character from either end of a path. NUL-delimited git output
+never quotes or escapes paths, so those transforms can only corrupt a
+legitimate filename.
+
+#### Scenario: a -z path with leading or trailing whitespace is kept
+- **WHEN** a porcelain `-z` record or a diff `-z` record carries a path
+  that begins or ends with a space
+- **THEN** the parsed touch's path equals that git-provided path,
+  including the space
+
+#### Scenario: a -z path with boundary quotes is kept
+- **WHEN** a porcelain `-z` record or a diff `-z` record carries a path
+  that begins and ends with a `"` character
+- **THEN** the parsed touch's path equals that git-provided path,
+  including both quotes
+
 ## Known gaps
 
 | Gap | Consequence |
@@ -193,3 +243,4 @@ sense lives everywhere else.
 | No mechanical guard against prose naming a `rig` parameter or key | The regression class that reached PR #50 review (six sites) can recur. A docs test would catch it. |
 | No mutation testing or CRAP (RD-24153) | Phase 5 can show the gate is green but not that green *means* anything: most test files resolve through `dist/`, so a mutant applied to `src` is never loaded. |
 | `packages/mysql/test/integration/mysql.test.ts` is Docker-gated, and `packages/mysql/tsconfig.json` excludes `test` | Without Docker that file is neither executed nor typechecked locally. Pre-existing. |
+| Any-addition coalescing is a Boolean OR, not a base-to-working-tree net state | A `docs/internal/archive/` path passes whenever one of its touches is an addition, so two cases slip through: a merge-base file deleted and recreated untracked (`D` plus `??`, and `??` counts as an addition), and a path added on the branch then deleted in the worktree (`A` plus ` D`). Telling "added on this branch" from "existed at the merge-base" needs a third git query. RD-24162's observed defect was a false gate failure, not either missed leak. |
