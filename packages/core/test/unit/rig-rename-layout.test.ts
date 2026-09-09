@@ -96,19 +96,18 @@ function isAppendOnly(file: string): boolean {
 
 type Touch = { readonly added: boolean; readonly file: string };
 
-function clean(file: string): string {
-    return file.trim().replace(/^"|"$/g, '');
-}
-
 /**
  * A rename is an addition at its destination and a deletion at its source, so
  * the two sides must not share one status — treating both as "R" is what made
  * an archive move look like a rewrite of the archive. A copy, by contrast,
  * leaves its source untouched: only the destination is new, so the source must
  * not be recorded as a touch at all.
+ *
+ * `-z` paths are already NUL-delimited, so they are stored verbatim. Empty
+ * fields (the trailing NUL) are dropped; whitespace and quotes are not.
  */
 function pushPaths(out: Touch[], status: string, paths: readonly string[]): void {
-    const files = paths.map(clean).filter((file) => file !== '');
+    const files = paths.filter((file) => file !== '');
     if (files.length === 0) return;
     if (status.startsWith('R')) {
         // Last path is the destination; anything before it is the source.
@@ -187,10 +186,23 @@ function touchedEntries(base: string): readonly Touch[] {
     return out;
 }
 
+/**
+ * Collapse multiple touches of the same path into one net classification.
+ * A path is an addition when any touch for it is an addition; it is a
+ * non-addition only when every touch is a non-addition.
+ */
+function coalesceByPath(touches: readonly Touch[]): readonly Touch[] {
+    const addedByPath = new Map<string, boolean>();
+    for (const { added, file } of touches) {
+        addedByPath.set(file, (addedByPath.get(file) ?? false) || added);
+    }
+    return [...addedByPath].map(([file, added]) => ({ added, file }));
+}
+
 /** Pure classifier so the status handling above is testable without git. */
 function offendingPathsFor(touches: readonly Touch[]): readonly string[] {
     const offenders = new Set<string>();
-    for (const { added, file } of touches) {
+    for (const { added, file } of coalesceByPath(touches)) {
         if (!isProtected(file)) continue;
         // An addition into an append-only zone is the archive step, not a leak.
         if (isAppendOnly(file) && added) continue;
@@ -259,6 +271,26 @@ describe('guard classification', () => {
         expect(offendingPathsFor(out)).toEqual([]);
     });
 
+    it('a committed archive addition with unstaged edits is still an addition', () => {
+        const file = 'docs/internal/archive/2027-01-01-P99-x/delta.md';
+        expect(
+            offendingPathsFor([
+                { added: true, file },
+                { added: false, file },
+            ]),
+        ).toEqual([]);
+    });
+
+    it('repeated non-additions of an archive path still offend', () => {
+        const file = 'docs/internal/archive/2027-01-01-P99-x/delta.md';
+        expect(
+            offendingPathsFor([
+                { added: false, file },
+                { added: false, file },
+            ]),
+        ).toEqual([file]);
+    });
+
     it('an untracked file is an addition', () => {
         const out: Touch[] = [];
         pushPaths(out, '??', ['docs/internal/archive/2027-01-01-P99-x/packet.md']);
@@ -314,6 +346,30 @@ describe('guard classification', () => {
             { added: true, file: '.claude/x -> y.md' },
             { added: false, file: 'docs/README.md' },
         ]);
+    });
+
+    it('a -z path with leading or trailing whitespace is kept via porcelain', () => {
+        const out: Touch[] = [];
+        pushStatusZ(out, '??  leading.md\0');
+        expect(out).toEqual([{ added: true, file: ' leading.md' }]);
+    });
+
+    it('a -z path with leading or trailing whitespace is kept via diff', () => {
+        const out: Touch[] = [];
+        pushDiffZ(out, 'A\0trailing.md \0');
+        expect(out).toEqual([{ added: true, file: 'trailing.md ' }]);
+    });
+
+    it('a -z path with boundary quotes is kept via porcelain', () => {
+        const out: Touch[] = [];
+        pushStatusZ(out, '?? "quoted.md"\0');
+        expect(out).toEqual([{ added: true, file: '"quoted.md"' }]);
+    });
+
+    it('a -z path with boundary quotes is kept via diff', () => {
+        const out: Touch[] = [];
+        pushDiffZ(out, 'A\0"quoted.md"\0');
+        expect(out).toEqual([{ added: true, file: '"quoted.md"' }]);
     });
 });
 
