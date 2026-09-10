@@ -41,6 +41,7 @@ async function bodyToString(body: unknown): Promise<string> {
     throw new Error('Unexpected Body shape');
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedS3Adapter', () => {
     let rig: Rig;
     let s3: ProbedS3Adapter;

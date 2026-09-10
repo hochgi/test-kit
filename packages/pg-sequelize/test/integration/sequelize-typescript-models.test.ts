@@ -51,6 +51,7 @@ class Order extends Model<InferAttributes<Order>, InferCreationAttributes<Order>
     declare quantity: number;
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedSequelizeAdapter — models option', () => {
     let rig: Rig;
 

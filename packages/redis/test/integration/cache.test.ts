@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@vnatures/test-kit-redis';
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedCacheAdapter', () => {
     let rig: Rig;
     let cache: ProbedCacheAdapter;

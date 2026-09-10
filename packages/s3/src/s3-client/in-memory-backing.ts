@@ -84,6 +84,7 @@ export class InMemoryS3Backing {
      * the supported set — the caller (factory.ts) decides whether that's
      * the loud-failure case or a passthrough.
      */
+    // eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch
     async dispatch(commandName: string, input: unknown): Promise<unknown> {
         const i = (input ?? {}) as Record<string, unknown>;
 
@@ -228,6 +229,7 @@ export class InMemoryS3Backing {
         return { Deleted: deleted };
     }
 
+    // eslint-disable-next-line complexity -- P10 / RD-24151; existing function over the published budget
     private handleList(
         commandName: 'ListObjectsCommand' | 'ListObjectsV2Command',
         input: Record<string, unknown>,

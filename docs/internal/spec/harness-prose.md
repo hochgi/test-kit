@@ -24,6 +24,9 @@ Folded from the P08 delta (RD-24149), preserved at
 Folded from the P11 delta (RD-24152), preserved at
 `docs/internal/archive/2026-09-10-P11-summon-review-panel/delta.md`.
 
+Folded from the P09 delta (RD-24150), preserved at
+`docs/internal/archive/2026-09-10-P09-blinker-ratchet/delta.md`.
+
 ## Requirements
 
 ### Requirement: Canonical Claude agent files exist
@@ -691,8 +694,9 @@ as a current gate of this repository.
 - `15-commands-over-hand-edits.mdc` — `alwaysApply: true` and no
   `globs:` key
 - `complexity-budget.mdc` — names the complexity ≤ 12, max-depth ≤ 4,
-  max-lines-per-function ≤ 80, max-params ≤ 5 budget, and SHALL NOT
-  claim a git hook enforces those numbers (this repository has none)
+  max-lines-per-function ≤ 80, max-params ≤ 5 budget. It SHALL state
+  that `npm run lint` enforces those numbers. It SHALL NOT claim a git
+  hook enforces those numbers (this repository has none)
 - `00-architecture-ratchet.mdc` — glob covering `packages/**/*.ts`
 - `01-architecture-bssn.mdc` — glob covering `packages/**/*.ts`
 
@@ -726,6 +730,10 @@ files "rules" (the published API already owns `Rule`).
   `max-lines-per-function` and `80`, and `max-params` and `5`, and it
   does not contain `lefthook`, `pre-push`, or `husky`
 
+#### Scenario: complexity-budget names lint as the enforcer
+- **WHEN** `complexity-budget.mdc` is read
+- **THEN** it contains `npm run lint`
+
 #### Scenario: dropped donor blinkers are absent
 - **WHEN** `.cursor/rules/` is listed
 - **THEN** it does not contain `component-testing.mdc` or
@@ -738,6 +746,25 @@ files "rules" (the published API already owns `Rule`).
 - **THEN** each such file contains `blinker` and does not contain the
   phrase `the rules in`
 
+### Requirement: engineering-principles agrees the lint ratchet is on
+`.cursor/skills/engineering-principles/SKILL.md` SHALL state that
+`npm run lint` enforces the complexity budget. It SHALL state that there
+are no git hooks. It SHALL NOT claim that `@typescript-eslint/no-explicit-any`
+is off. It SHALL NOT claim that this repository's ESLint does not
+enforce the complexity budget.
+
+Canonical path is `.cursor/skills/`. After editing it, `sync-agent-skills`
+must run so the Claude mirror matches (existing harness-scaffold check).
+
+#### Scenario: engineering-principles does not claim any is off in ESLint
+- **WHEN** `.cursor/skills/engineering-principles/SKILL.md` is read
+- **THEN** it does not contain `@typescript-eslint/no-explicit-any` is
+  off and does not contain `not an ESLint error`
+
+#### Scenario: engineering-principles names lint as enforcing the budget
+- **WHEN** `.cursor/skills/engineering-principles/SKILL.md` is read
+- **THEN** it contains `npm run lint` and contains `no git hooks`, and
+  it does not contain `does not currently enforce`
 
 ### Requirement: Per-agent files name their skills and do not import donor bugs
 `.claude/agents/spec-author.md` SHALL name `write-spec`.
@@ -1146,7 +1173,7 @@ sequenceDiagram
 | Rewrite `component-testing` for this repo: `createRig` / Vitest / no v1.0.0 pin; keep `harness:` option key | Three defects (consumer-perspective, Jest, removed API). Option key is a deliberate keep | Ticket + source (`core-public-api.md`, `createProbedMock({ harness })`) |
 | Delete the write-failing-tests "ignore this skill" warning once the rewrite is true; lifecycle close is `rig.close()` | Stopgap becomes a lie the moment the skill is current | Ticket |
 | `mutation-testing` is a thin missing-gate card, not a Stryker how-to | RD-24153 has not landed; tests resolve through `dist/` | Ticket + source (`spec-to-ship` skill, `verify-changes`) |
-| Port blinkers `12`, `13`, `15`, plus adapted ratchet, BSSN, and complexity-budget; re-anchor globs to `packages/**/*.ts` | Ticket named those three as nearly-as-is; coder allocation also names ratchet, BSSN, and the budget. This repo's ESLint does not enforce complexity, and there are no git hooks — the budget file must not claim either | Ticket + source (`.eslintrc.json` has no complexity plugin; `ci-gate.md`) |
+| Port blinkers `12`, `13`, `15`, plus adapted ratchet, BSSN, and complexity-budget; re-anchor globs to `packages/**/*.ts` | Ticket named those three as nearly-as-is; coder allocation also names ratchet, BSSN, and the budget. P06's ESLint did not enforce complexity, and there are no git hooks — the budget file must not claim a hook. P09 (RD-24150) then turned the budget numbers on in ESLint as a ratchet (`npm run lint`); the blinker still must not claim a git hook | Ticket + source (`.eslintrc.json`; `ci-gate.md`) + RD-24150 |
 | Call `.cursor/rules/` contents blinkers in agent/skill prose | `Rule` is a published API concept; RD-24143 spent a major version killing the collision | Ticket |
 | Do not port `10-http-boundaries`, hexagonal refactor, `component-testing.mdc`, Slack/post-deploy/help-docs, `extend-test-kit`, `add-module` | Service-shaped; dead in a library monorepo. P08 (RD-24149) then inverted `extend-test-kit` into the in-repo `add-adapter` skill rather than porting it; the donor directory names stay banned | Ticket + RD-24149 |
 | Do not add `check-agent-skills` to the five-step `npm run check` chain | P00 pinned that chain; scaffold tests (and these) already invoke the script under `npm test` | Source (`ci-gate.md`, `harness-scaffold.md` out of scope) |
@@ -1202,6 +1229,7 @@ sequenceDiagram
 | Bugbot comment body is exactly `@cursor review`, not `🤖: @cursor review` | Ticket's trigger string; `🤖:` stays the prefix for review replies | Ticket + source (`pr-review-style`) |
 | No GitHub Actions, no CODEOWNERS, no Baz repo config | Per-PR Copilot reviewer and `@cursor review` need zero CI | Ticket + source (no `.github/`) |
 | Track versatile-internal in `docs/internal/OSS.md`, no frontmatter mark | Ticket forbade a marking convention; `docs/internal/` is already the OSS-ignore tree | Ticket |
+| Two-document P09 fold | `ci-gate.md` owns `.eslintrc.json` / `npm run lint`; `harness-prose.md` owns `complexity-budget.mdc` and the engineering-principles lint-enforcer claim | User + current-truth ownership (RD-24150) |
 
 ## Out of scope (deferred)
 
@@ -1216,7 +1244,6 @@ sequenceDiagram
 | Installing Baz or changing org seat policy | Out of this repository |
 | GitHub Actions, CODEOWNERS, or Baz repo config | test-kit still has no `.github/` |
 | A skill-frontmatter `oss:` / `versatile-internal` mark | `docs/internal/OSS.md` is the list |
-| ESLint complexity plugin matching the budget numbers | The budget is a blinker convention; lint does not yet fail a 13-complexity function |
 | Renaming the `harness` option key, `origin: 'harness'`, or `errors.harnessClosed()` texts | Deliberate keeps from RD-24143 |
 | CircleCI path-filter lines for root `CONTEXT.md` / `AGENTS.md` / `CLAUDE.md` | A later PR that touches only those files can skip `build_workspace` |
 | Extending ci-gate's gate-prose scan to root `AGENTS.md` | Gate facts are asserted by AGENTS.md scenarios instead |
@@ -1245,7 +1272,7 @@ sequenceDiagram
 6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`, states the two clocks separately, tells Jest consumers to `await jest.advanceTimersByTimeAsync` when continuations must drain, and every `typescript`/`ts` fence that uses `rig` (including CommonMark-indented fences) declares `rig` in the same fence.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
 8. `mutation-testing` names RD-24153 and `dist/` and does not instruct running Stryker as a current gate.
-9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply, including `packages/` globs on the two architecture blinkers; dropped donor blinkers are absent; complexity-budget names 12 / 4 / 80 / 5 and does not claim ESLint or a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
+9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply, including `packages/` globs on the two architecture blinkers; dropped donor blinkers are absent; complexity-budget names 12 / 4 / 80 / 5 and `npm run lint` and does not claim a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
 10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names RD-24153 and no mutation testing.
 11. Empty-canonical skip still holds on fixtures; the live `.claude/agents` and `.claude/commands` trees each contain `*.md`.
 12. Gate-describing markdown under `.cursor/rules/` is in the ci-gate scan.
@@ -1277,3 +1304,4 @@ sequenceDiagram
 38. `.claude/commands/spec-to-ship.md` and `.cursor/skills/spec-to-ship/SKILL.md` contain `summon-review-panel`.
 39. `.cursor/skills/pr-review-style/SKILL.md` contains `summon-review-panel` and `@cursor review` and does not contain `Assembling the review panel`.
 40. `docs/internal/OSS.md` contains `summon-review-panel`, `litellm`, and `versatile-internal`.
+41. `engineering-principles` SKILL.md contains `npm run lint` and `no git hooks`, and contains none of `@typescript-eslint/no-explicit-any` is off, `not an ESLint error`, or `does not currently enforce`.

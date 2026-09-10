@@ -7,7 +7,8 @@
  * expect.intercept with forward/reject, probe.sql() filter.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { QueryTypes, Sequelize } from 'sequelize';
+import type { Sequelize } from 'sequelize';
+import { QueryTypes } from 'sequelize';
 import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedSequelizeAdapter, type ProbedSequelizeAdapter } from '@vnatures/test-kit-pg-sequelize';
 
@@ -46,6 +47,7 @@ async function bootstrap(sequelize: Sequelize): Promise<void> {
   `);
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedSequelizeAdapter', () => {
     let rig: Rig;
     let db: ProbedSequelizeAdapter;

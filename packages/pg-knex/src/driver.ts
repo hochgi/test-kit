@@ -49,7 +49,7 @@ export function createProbedPgliteKnex(
         // Knex Client typings omit `_query`; knex-pglite implements it. We
         // can't `super._query()` because TS doesn't know about it; look up
         // the parent prototype directly.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-underscore-dangle
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-underscore-dangle -- Knex Client typings omit `_query`; parent lookup is untyped
         async _query(connection: PGlite, obj: any): Promise<any> {
             type QueryHook = (c: PGlite, o: unknown) => Promise<unknown>;
             // eslint-disable-next-line @typescript-eslint/dot-notation

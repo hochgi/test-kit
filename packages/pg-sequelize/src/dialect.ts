@@ -1,8 +1,8 @@
-/* eslint-disable max-classes-per-file, @typescript-eslint/no-explicit-any */
+/* eslint-disable max-classes-per-file */
 import { EventEmitter } from 'node:events';
 import type { PGlite } from '@electric-sql/pglite';
 import { Client, Pool } from '@middle-management/pglite-pg-adapter';
-import { Sequelize, type Options as SequelizeOptions } from 'sequelize';
+import type { Options as SequelizeOptions, Sequelize } from 'sequelize';
 import type { ProbeRoot } from '@vnatures/test-kit';
 import type { QueryCall, QueryPendingCall } from '@vnatures/test-kit-sql';
 
@@ -75,6 +75,7 @@ export function buildMaintenanceDialectModule(pglite: PGlite): unknown {
             (this as unknown as { connection: EventEmitter }).connection = new EventEmitter();
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped connect signature
         connect(callback?: (err: Error | null) => void): any {
             const promise = super.connect();
             if (typeof callback === 'function') {
@@ -87,6 +88,7 @@ export function buildMaintenanceDialectModule(pglite: PGlite): unknown {
             return promise;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped end signature
         end(callback?: (err: Error | null) => void): any {
             const promise = super.end();
             if (typeof callback === 'function') {
@@ -112,6 +114,7 @@ export function buildMaintenanceDialectModule(pglite: PGlite): unknown {
 /**
  * Probed dialect — every query() goes through the probeRoot.
  */
+// eslint-disable-next-line max-lines-per-function -- existing function over the published budget; extract on next touch
 export function buildProbedDialectModule(
     pglite: PGlite,
     getRoot: () => ProbeRoot<QueryCall, QueryPendingCall>,
@@ -172,6 +175,7 @@ export function buildProbedDialectModule(
             (this as unknown as { connection: EventEmitter }).connection = new EventEmitter();
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped connect signature
         connect(callback?: (err: Error | null) => void): any {
             const promise = super.connect();
             if (typeof callback === 'function') {
@@ -184,6 +188,7 @@ export function buildProbedDialectModule(
             return promise;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped end signature
         end(callback?: (err: Error | null) => void): any {
             const promise = super.end();
             if (typeof callback === 'function') {
@@ -196,6 +201,7 @@ export function buildProbedDialectModule(
             return promise;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped query signature
         query(textOrConfig: any, valuesOrCallback?: any, callback?: any): any {
             return interceptQuery(
                 super.query.bind(this) as (...args: unknown[]) => unknown,
@@ -211,6 +217,7 @@ export function buildProbedDialectModule(
             super({ pglite, max: 1 });
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pg/Sequelize dialect type seam: untyped query signature
         query(textOrConfig: any, valuesOrCallback?: any, callback?: any): any {
             return interceptQuery(
                 super.query.bind(this) as (...args: unknown[]) => unknown,

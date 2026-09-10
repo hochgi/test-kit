@@ -23,6 +23,7 @@ export interface MethodPendingCall<
 
 /** All method names on T (sync and async). */
 export type MethodName<T> = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock
     [K in keyof T]: T[K] extends (...args: any[]) => any ? Extract<K, string> : never;
 }[keyof T];
 
@@ -31,14 +32,17 @@ export type MethodName<T> = {
  * for the `methods` parameter of createProbedMock.
  */
 export type AsyncMethodName<T> = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock
     [K in keyof T]: T[K] extends (...args: any[]) => Promise<unknown> ? Extract<K, string> : never;
 }[keyof T];
 
 /** Sync method names on T. Used in compile-time error diagnostics. */
 export type SyncMethodName<T> = Exclude<MethodName<T>, AsyncMethodName<T>>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock
 export type MethodArgs<T, K extends keyof T> = T[K] extends (...args: infer A) => any ? A : never;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock
 export type MethodResolvedReturn<T, K extends keyof T> = T[K] extends (...args: any[]) => infer R ? Awaited<R> : never;
 
 /**

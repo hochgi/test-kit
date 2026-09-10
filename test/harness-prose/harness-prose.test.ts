@@ -213,6 +213,7 @@ function frontmatterHasKey(frontmatter: string, key: string): boolean {
     return frontmatter.split('\n').some((line) => pattern.test(line));
 }
 
+// eslint-disable-next-line complexity -- existing test helper over the published budget; extract on next touch
 function frontmatterToolNames(frontmatter: string): string[] {
     const names: string[] = [];
     let inList = false;
@@ -935,6 +936,7 @@ describe('component-testing cardinality exactly and none require within', () => 
     });
 });
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('component-testing teaches the missing 2.x probe surface', () => {
     it('observation is demonstrated in sequence', () => {
         const content = readExisting(componentTestingSkill);
@@ -1178,6 +1180,38 @@ describe('Glob-scoped blinkers live under .cursor/rules', () => {
             expect(content.includes('blinker'), `${file} must contain blinker`).toBe(true);
             expect(content.includes('the rules in'), `${file} must not contain the phrase "the rules in"`).toBe(false);
         }
+    });
+});
+
+describe('engineering-principles agrees the lint ratchet is on', () => {
+    it('engineering-principles does not claim any is off in ESLint', () => {
+        const content = readExisting('.cursor/skills/engineering-principles/SKILL.md');
+        const withoutTicks = content.replaceAll('`', '');
+        expect(
+            withoutTicks.includes('@typescript-eslint/no-explicit-any is off'),
+            'engineering-principles must not claim @typescript-eslint/no-explicit-any is off',
+        ).toBe(false);
+        expect(
+            content.includes('not an ESLint error'),
+            'engineering-principles must not contain "not an ESLint error"',
+        ).toBe(false);
+    });
+
+    it('engineering-principles names lint as enforcing the budget', () => {
+        const content = readExisting('.cursor/skills/engineering-principles/SKILL.md');
+        expect(content.includes('npm run lint'), 'engineering-principles must contain npm run lint').toBe(true);
+        expect(content.includes('no git hooks'), 'engineering-principles must contain no git hooks').toBe(true);
+        expect(
+            content.includes('does not currently enforce'),
+            'engineering-principles must not contain "does not currently enforce"',
+        ).toBe(false);
+    });
+});
+
+describe('complexity-budget names lint as the enforcer', () => {
+    it('complexity-budget names lint as the enforcer', () => {
+        const content = readExisting('.cursor/rules/complexity-budget.mdc');
+        expect(content.includes('npm run lint'), 'complexity-budget must contain npm run lint').toBe(true);
     });
 });
 

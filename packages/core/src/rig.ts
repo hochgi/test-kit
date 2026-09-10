@@ -87,6 +87,7 @@ function isObservationStep(step: SequenceStep): step is Observation<unknown> {
     return typeof step === 'object' && step !== null && (step as Observation<unknown>).kind === 'observe';
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing function over the published budget; extract on next touch
 export function createRig(options?: CreateRigOptions): Rig {
     const clock = options?.clock ?? autoDetectClock();
     const defaultTimeout = options?.defaultTimeout ?? seconds(5);

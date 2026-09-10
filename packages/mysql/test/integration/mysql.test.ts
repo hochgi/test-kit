@@ -33,6 +33,7 @@ function dockerAvailable(): boolean {
 
 const hasDocker = dockerAvailable();
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe.skipIf(!hasDocker)('createProbedMysqlAdapter', () => {
     let rig: Rig;
     let mysql: ProbedMysqlAdapter;

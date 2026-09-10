@@ -33,6 +33,7 @@ async function bootstrap(db: Knex): Promise<void> {
   `);
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedKnexAdapter', () => {
     let rig: Rig;
     let db: ProbedKnexAdapter;

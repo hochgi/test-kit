@@ -23,6 +23,7 @@ import { createProbedPresignerAdapter, type ProbedPresignerAdapter } from '@vnat
 
 const dummyClient = new S3Client({ region: 'us-east-1' });
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedPresignerAdapter', () => {
     let rig: Rig;
     let presigner: ProbedPresignerAdapter;

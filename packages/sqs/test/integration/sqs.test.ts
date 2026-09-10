@@ -27,6 +27,7 @@ import { createProbedSqsAdapter, type ProbedSqsAdapter } from '@vnatures/test-ki
 
 const QUEUE_NAME = 'test-queue';
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedSqsAdapter', () => {
     let rig: Rig;
     let sqs: ProbedSqsAdapter;

@@ -66,6 +66,7 @@ export function maxRetriesPerRequestError(message = 'Reached the max retries per
     return err;
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing factory over the published budget; extract on next touch
 export function createProbedBullQueue<TData = unknown>(
     options: CreateProbedBullQueueOptions<TData>,
 ): ProbedBullQueue<TData> {

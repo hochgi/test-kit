@@ -14,6 +14,7 @@ import { createProbedS3Adapter, type ProbedS3Adapter } from '@vnatures/test-kit-
 
 const BUCKET = 'test-kit-s3-list-bucket';
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedS3Adapter — ListObjectsV2 pagination', () => {
     let rig: Rig;
     let s3: ProbedS3Adapter;

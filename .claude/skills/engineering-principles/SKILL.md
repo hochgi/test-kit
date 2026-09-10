@@ -2,7 +2,7 @@
 name: engineering-principles
 description: >-
   Concrete code-quality conventions for this library monorepo: narrow and deep
-  public surfaces, no `any` (convention, not an ESLint error), reuse before
+  public surfaces, no `any` (ESLint error via no-explicit-any), reuse before
   adding, treat existing code as context not precedent, adapter/probe vocabulary,
   BSSN. Use when touching packages/*/src, reviewing design choices, or deciding
   whether to add a new file vs extend an existing one.
@@ -26,11 +26,11 @@ Concretely, in any code you touch under `packages/*/src`:
 - **Prefer narrow, deep interfaces.** Do not widen a public API with
   pass-through or renamed variants of existing behaviour. The published surface
   *is* the product.
-- **No `any` (convention).** Prefer `unknown` with a narrowing guard. Do not
-  introduce `any`, `as any`, or `Record<string, any>`. This is a blinker
-  convention, not an ESLint error — `@typescript-eslint/no-explicit-any` is off
-  in this repo. If a library forces a cast, isolate it in one small adapter with
-  a one-line justification.
+- **No `any`.** Prefer `unknown` with a narrowing guard. Do not introduce
+  `any`, `as any`, or `Record<string, any>`. `any` is now an ESLint error
+  (`no-explicit-any`); existing type-seam `any`s have inline disables. If a
+  library forces a cast, isolate it in one small adapter with a one-line
+  justification.
 - **One clear contract per public method.** Prefer a new named method over a
   boolean flag that switches semantics — judgment call, weighed against DRY.
 - **Use `import type` for type-only imports.**
@@ -77,9 +77,9 @@ decides when the trade-off is worth it.
 
 ## Complexity budget (blinker convention)
 
-The structural budget lives in the blinkers under `.cursor/rules/`. This
-repository's ESLint does not currently enforce it, and there are **no git
-hooks**. Stay inside it anyway:
+The structural budget lives in the blinkers under `.cursor/rules/`.
+`npm run lint` enforces it as a ratchet (existing violations have inline
+disables). There are still **no git hooks**:
 
 | Budget                      | Limit |
 | --------------------------- | ----- |

@@ -4,6 +4,11 @@ What currently gates a change to this repository: CircleCI path-filtered
 per-package jobs, a workspace-wide `npm run check` workflow for named
 root/docs/CI and harness-surface paths, a lint+test workflow for `examples/grpc-client`, and
 main-only backup/audit. There are no git hooks (no husky, no lefthook).
+`npm run lint` enforces the complexity budget and type-seam rules as a
+ratchet (P09 / RD-24150).
+
+Folded from the P09 delta (RD-24150), preserved at
+`docs/internal/archive/2026-09-10-P09-blinker-ratchet/delta.md`.
 
 ## Requirements
 
@@ -193,6 +198,78 @@ SHALL NOT instruct inventing a markdown or frontmatter linter.
   `check` job whose tests invoke `check-agent-skills`
 
 
+### Requirement: Blinker ratchet rules are errors in the root ESLint config
+Root `.eslintrc.json` SHALL set these rules to `"error"` on the default
+(non-override) `rules` map. The seven **ratchet rules** are:
+
+- `complexity` with option `{ "max": 12 }`
+- `max-depth` with option `4`
+- `max-params` with option `5`
+- `max-lines-per-function` with option
+  `{ "max": 80, "skipBlankLines": true, "skipComments": true, "IIFEs": true }`
+- `@typescript-eslint/no-explicit-any`
+- `@typescript-eslint/consistent-type-imports`
+- `@typescript-eslint/ban-ts-comment` with option
+  `{ "ts-expect-error": "allow-with-description", "ts-ignore": "allow-with-description", "ts-nocheck": "allow-with-description", "ts-check": "allow-with-description" }`
+
+`.eslintrc.json` `overrides` SHALL NOT set any ratchet rule to `"off"`,
+`"warn"`, `0`, or `1`, and SHALL NOT replace a ratchet rule's options with
+a more lenient max.
+
+This packet SHALL NOT add a file-glob `overrides` entry whose purpose is
+to excuse an already-violating file from a ratchet rule.
+
+`consistent-type-imports` violations SHALL be resolved by type-only
+imports (`import type`), not by an `eslint-disable` of that rule.
+
+#### Scenario: complexity-budget ESLint rules are errors with pinned options
+- **WHEN** root `.eslintrc.json` `rules` is read
+- **THEN** `complexity` is error with `max` 12, `max-depth` is error with
+  4, `max-params` is error with 5, and `max-lines-per-function` is error
+  with `max` 80, `skipBlankLines` true, `skipComments` true, and `IIFEs`
+  true
+
+#### Scenario: type-seam ESLint rules are errors with sibling ban-ts-comment options
+- **WHEN** root `.eslintrc.json` `rules` is read
+- **THEN** `@typescript-eslint/no-explicit-any` and
+  `@typescript-eslint/consistent-type-imports` are error, and
+  `@typescript-eslint/ban-ts-comment` is error with
+  `ts-expect-error`, `ts-ignore`, `ts-nocheck`, and `ts-check` each set
+  to `allow-with-description`
+
+#### Scenario: eslintrc overrides do not weaken the ratchet rules
+- **WHEN** each entry in root `.eslintrc.json` `overrides` is read
+- **THEN** none of those entries sets a ratchet rule to off, warn, 0, or
+  1, and none replaces a ratchet rule's options with a more lenient max
+
+### Requirement: Existing ratchet violations use next-line disables with a justification
+A tracked TypeScript file under `packages/`, `examples/`, or
+repository-root `test/` SHALL NOT contain a file-level or block
+`eslint-disable` (a directive that is not `eslint-disable-next-line` and
+is not `eslint-disable-line`) that names a ratchet rule.
+
+Each `eslint-disable-next-line` or `eslint-disable-line` that names a
+ratchet rule SHALL include a `--` justification with at least one
+non-whitespace character after the dashes.
+
+`max-classes-per-file` is not a ratchet rule. An existing file-level
+disable of that rule alone MAY remain.
+
+#### Scenario: no file-level eslint-disable of a ratchet rule
+- **WHEN** tracked `*.ts` files under `packages/`, `examples/`, and
+  repository-root `test/` are scanned for `eslint-disable` directives
+- **THEN** no directive that is not `eslint-disable-next-line` and not
+  `eslint-disable-line` names `complexity`, `max-depth`, `max-params`,
+  `max-lines-per-function`, `@typescript-eslint/no-explicit-any`,
+  `@typescript-eslint/consistent-type-imports`, or
+  `@typescript-eslint/ban-ts-comment`
+
+#### Scenario: ratchet next-line disables carry a justification
+- **WHEN** those same files are scanned for `eslint-disable-next-line`
+  and `eslint-disable-line` directives that name a ratchet rule
+- **THEN** each such directive contains `--` followed by a non-empty
+  justification
+
 ### Requirement: New TypeScript for this capability is on the root test and format paths
 Tests that encode these scenarios SHALL run as part of the root `npm test`
 workspace, and SHALL be included in the root `format:check` glob.
@@ -225,6 +302,22 @@ sequenceDiagram
   end
 ```
 
+```mermaid
+sequenceDiagram
+  participant Agent as coding agent
+  participant Cfg as eslintrc.json
+  participant Src as packages and test TypeScript
+  participant Lint as npm run lint
+  Agent->>Cfg: ratchet rules on at error
+  Agent->>Src: next-line disable per existing violation
+  Agent->>Lint: npm run lint --max-warnings 0
+  alt new breach without a justified disable
+    Lint-->>Agent: non-zero
+  else in budget, or existing violation excused inline
+    Lint-->>Agent: exit 0
+  end
+```
+
 ## Decisions (rung recorded)
 
 | Decision | Outcome | Rung |
@@ -240,6 +333,13 @@ sequenceDiagram
 | `.cursor/` is mapped onto `build_workspace` | Harness-only PRs run `npm run check` | Source: `.circleci/config.yml` (added by RD-24147) |
 | `.claude/`, `.harness/`, `.opencode/` are mapped onto `build_workspace` | Harness-only PRs on any of the three surfaces run `npm run check` | Superseded by P05 (RD-24146): P00 deferred this until the trees existed |
 | No public API / version bump | Root `package.json` is private; no package `src/` change | Source |
+| `ban-ts-comment` options | Pin `@vnatures/eslint-config` (reports_service / vn-server): `allow-with-description` for `ts-expect-error`, `ts-ignore`, `ts-nocheck`, `ts-check`. `"ts-expect-error": true` is not used | Sibling (`@vnatures/eslint-config` 1.1.0) + re-measure (RD-24150) |
+| `max-lines-per-function` skip flags | `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }` as in cycle-processing's shared eslint-config | Sibling (`cycle-processing/packages/eslint-config`) + ticket + re-measure (RD-24150) |
+| Ratchet via next-line disables, not file-glob `overrides` | New violations in an already-excused file still fail lint unless a new visible disable is added | Ticket (RD-24150) |
+| Convert `pg-sequelize/src/dialect.ts` file-level `no-explicit-any` disable to next-line | File-level disable of a ratchet rule would let new `any`s slip in. `max-classes-per-file` on that same comment is not a ratchet rule and may stay file-level | Ticket (RD-24150) |
+| Autofix `consistent-type-imports` rather than disable | Ticket: all four `--fix-dry-run` confirmed | Ticket + re-measure (RD-24150) |
+| Do not extract `handleList` (complexity 26) | That extraction is P10 (RD-24151). This packet ratchets it with a next-line disable | Ticket (P10 is the outward blocker) |
+| Root `test/` is in the ratchet | `npm run lint` starts with `eslint test vitest.workspace.ts` | Source (`package.json` `scripts.lint`) + re-measure (RD-24150) |
 
 ## Out of scope (deferred)
 
@@ -248,6 +348,10 @@ sequenceDiagram
 | Adding husky/lefthook/`prepare` / setting `core.hooksPath` | Agents and humans can still push without running `check`; CircleCI plus `npm run check` remain the only gates |
 | Running grpc-client tests when `packages/core` changes | A core-only PR still does not execute the extender guard in CircleCI; root `check` does, when a workspace-wide path also changed |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
+| P10 decompose s3 `handleList` (RD-24151) | complexity 26 stays, behind a next-line disable, until that ticket extracts it to ≤ 12 |
+| Extracting the other complexity-13 functions (`recordCallImpl` × 2, `createProbedSequelizeAdapter`, repo-root test helpers) | They stay behind next-line disables until a later touch extracts them |
+| Turning on other currently-off rules (`no-empty-object-type`, `no-empty-function`, `no-namespace`, `no-empty-pattern`) | Those stays-off are not this packet's ratchet |
+| Replacing remaining `any` type-seam escapes with `unknown` | The 12-no-escape-hatches blinker still forbids *new* `any`; existing ones are justified inline |
 
 ## Acceptance mapping
 
@@ -264,3 +368,9 @@ sequenceDiagram
 11. Gate-describing harness markdown, if any, says `npm run check` and that there are no git hooks, and does not claim `package-lock.json` or `.prettierrc` remain unmapped.
 12. The tests for these scenarios run under root `npm test` and are in the root `format:check` glob.
 13. `.cursor/skills/spec-to-ship/SKILL.md` contains no `a later packet` about a markdown linter, states that harness markdown under `.cursor/` and `.claude/` is not format-checked or linted by `npm run check`, and states that those paths still run the workspace-wide `check` job whose `npm test` invokes `check-agent-skills`.
+14. Root `.eslintrc.json` `rules` has `complexity` error `{ max: 12 }`, `max-depth` error `4`, `max-params` error `5`, `max-lines-per-function` error `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }`.
+15. Root `.eslintrc.json` `rules` has `@typescript-eslint/no-explicit-any` error, `@typescript-eslint/consistent-type-imports` error, and `@typescript-eslint/ban-ts-comment` error with the four directives set to `allow-with-description`.
+16. No `.eslintrc.json` `overrides` entry turns a ratchet rule off/warn or loosens its max.
+17. No tracked `packages/` / `examples/` / repo-root `test/` `*.ts` file has a file-level or block `eslint-disable` of a ratchet rule.
+18. Every next-line or same-line disable of a ratchet rule in those files includes `--` plus a non-empty justification.
+19. `npm run lint` exits 0 with the ratchet on (`--max-warnings 0`). There are still no git hooks.

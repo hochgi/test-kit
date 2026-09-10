@@ -30,10 +30,26 @@
         "caughtErrorsIgnorePattern": "^_"
       }
     ],
-    "@typescript-eslint/no-explicit-any": "off",
+    "complexity": ["error", { "max": 12 }],
+    "max-depth": ["error", 4],
+    "max-params": ["error", 5],
+    "max-lines-per-function": [
+      "error",
+      { "max": 80, "skipBlankLines": true, "skipComments": true, "IIFEs": true }
+    ],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description",
+        "ts-ignore": "allow-with-description",
+        "ts-nocheck": "allow-with-description",
+        "ts-check": "allow-with-description"
+      }
+    ],
     "@typescript-eslint/no-empty-object-type": "off",
     "@typescript-eslint/no-empty-function": "off",
-    "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/no-namespace": "off",
     "no-empty-pattern": "off",
     "no-empty": ["error", { "allowEmptyCatch": true }]

@@ -560,3 +560,313 @@ describe('Per-package CircleCI workflows', () => {
         }
     });
 });
+
+const ratchetRuleNames = [
+    'complexity',
+    'max-depth',
+    'max-params',
+    'max-lines-per-function',
+    '@typescript-eslint/no-explicit-any',
+    '@typescript-eslint/consistent-type-imports',
+    '@typescript-eslint/ban-ts-comment',
+] as const;
+
+const ratchetRuleNameSet: ReadonlySet<string> = new Set(ratchetRuleNames);
+
+const pinnedMaxLinesOptions = {
+    max: 80,
+    skipBlankLines: true,
+    skipComments: true,
+    IIFEs: true,
+} as const;
+
+const pinnedBanTsCommentOptions = {
+    'ts-expect-error': 'allow-with-description',
+    'ts-ignore': 'allow-with-description',
+    'ts-nocheck': 'allow-with-description',
+    'ts-check': 'allow-with-description',
+} as const;
+
+type EslintDisableKind = 'file-or-block' | 'next-or-same-line';
+
+type EslintDisableDirective = {
+    kind: EslintDisableKind;
+    namedRules: string[];
+    hasJustification: boolean;
+};
+
+type RatchetDisableHit = {
+    file: string;
+    namedRules: string[];
+    hasJustification: boolean;
+};
+
+function readRootEslintConfig(): Record<string, unknown> {
+    const parsed: unknown = JSON.parse(readUtf8(path.join(repoRoot, '.eslintrc.json')));
+    if (!isRecord(parsed)) {
+        return {};
+    }
+    return parsed;
+}
+
+function readRootEslintRules(): Record<string, unknown> {
+    const rules = readRootEslintConfig()['rules'];
+    return isRecord(rules) ? rules : {};
+}
+
+function eslintSeverity(entry: unknown): unknown {
+    return Array.isArray(entry) ? entry[0] : entry;
+}
+
+function isEslintError(entry: unknown): boolean {
+    const severity = eslintSeverity(entry);
+    return severity === 'error' || severity === 2;
+}
+
+function isWeakenSeverity(entry: unknown): boolean {
+    const severity = eslintSeverity(entry);
+    return severity === 'off' || severity === 'warn' || severity === 0 || severity === 1;
+}
+
+function eslintRuleOptions(entry: unknown): unknown {
+    return Array.isArray(entry) && entry.length >= 2 ? entry[1] : undefined;
+}
+
+function numericMax(options: unknown): number | undefined {
+    if (typeof options === 'number') {
+        return options;
+    }
+    if (isRecord(options) && typeof options['max'] === 'number') {
+        return options['max'];
+    }
+    return undefined;
+}
+
+function maxExceeds(options: unknown, limit: number): boolean {
+    const max = numericMax(options);
+    return max !== undefined && max > limit;
+}
+
+function iifesCountAsFunctions(options: unknown): boolean {
+    return isRecord(options) && options['IIFEs'] === true;
+}
+
+function maxLinesOptionsAreMoreLenient(options: unknown): boolean {
+    if (maxExceeds(options, 80)) {
+        return true;
+    }
+    // ESLint defaults IIFEs to false (a long IIFE is not a function). Only an
+    // explicit IIFEs: true matches the pinned ratchet.
+    return !iifesCountAsFunctions(options);
+}
+
+function overrideWeakensRatchet(rule: string, entry: unknown): boolean {
+    if (isWeakenSeverity(entry)) {
+        return true;
+    }
+    const options = eslintRuleOptions(entry);
+    if (rule === 'complexity') {
+        return maxExceeds(options, 12);
+    }
+    if (rule === 'max-depth') {
+        return maxExceeds(options, 4);
+    }
+    if (rule === 'max-params') {
+        return maxExceeds(options, 5);
+    }
+    if (rule === 'max-lines-per-function') {
+        return maxLinesOptionsAreMoreLenient(options);
+    }
+    return false;
+}
+
+function eslintOverrideRuleMaps(config: Record<string, unknown>): Array<Record<string, unknown>> {
+    const overrides = config['overrides'];
+    if (!Array.isArray(overrides)) {
+        return [];
+    }
+    const maps: Array<Record<string, unknown>> = [];
+    for (const override of overrides) {
+        if (isRecord(override) && isRecord(override['rules'])) {
+            maps.push(override['rules']);
+        }
+    }
+    return maps;
+}
+
+function weakenedRatchetRulesIn(rules: Record<string, unknown>): string[] {
+    const weakened: string[] = [];
+    for (const rule of ratchetRuleNames) {
+        if (Object.hasOwn(rules, rule) && overrideWeakensRatchet(rule, rules[rule])) {
+            weakened.push(rule);
+        }
+    }
+    return weakened;
+}
+
+function trackedTypescriptUnder(dirs: readonly string[]): string[] {
+    const listed = execFileSync('git', ['ls-files', '-z', '--', ...dirs], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+    });
+    return listed.split('\0').filter((file) => file !== '' && file.endsWith('.ts'));
+}
+
+function disableKind(token: string): EslintDisableKind {
+    return token === 'eslint-disable' ? 'file-or-block' : 'next-or-same-line';
+}
+
+function namedRulesFromDisablePayload(payload: string): string[] {
+    const dash = payload.indexOf('--');
+    const rulesPart = dash === -1 ? payload : payload.slice(0, dash);
+    return rulesPart
+        .split(',')
+        .map((token) => token.trim())
+        .filter((token) => token !== '');
+}
+
+function hasNonEmptyJustification(payload: string): boolean {
+    const dash = payload.indexOf('--');
+    if (dash === -1) {
+        return false;
+    }
+    return payload.slice(dash + 2).trim() !== '';
+}
+
+function parseDisableLine(line: string): EslintDisableDirective | undefined {
+    const match = /(?:\/\/|\/\*)\s*(eslint-disable(?:-next-line|-line)?)\b(.*)$/.exec(line);
+    const token = match?.[1];
+    if (token === undefined) {
+        return undefined;
+    }
+    const payload = (match[2] ?? '').replace(/\*\/.*$/, '');
+    return {
+        kind: disableKind(token),
+        namedRules: namedRulesFromDisablePayload(payload),
+        hasJustification: hasNonEmptyJustification(payload),
+    };
+}
+
+function disableDirectivesIn(source: string): EslintDisableDirective[] {
+    const found: EslintDisableDirective[] = [];
+    for (const line of source.split('\n')) {
+        const parsed = parseDisableLine(line);
+        if (parsed !== undefined) {
+            found.push(parsed);
+        }
+    }
+    return found;
+}
+
+function ratchetRulesNamed(namedRules: string[]): string[] {
+    return namedRules.filter((rule) => ratchetRuleNameSet.has(rule));
+}
+
+function ratchetDisableHitsInFile(file: string, kind: EslintDisableKind): RatchetDisableHit[] {
+    const hits: RatchetDisableHit[] = [];
+    for (const directive of disableDirectivesIn(readUtf8(path.join(repoRoot, file)))) {
+        if (directive.kind !== kind) {
+            continue;
+        }
+        const named = ratchetRulesNamed(directive.namedRules);
+        if (named.length === 0) {
+            continue;
+        }
+        hits.push({ file, namedRules: named, hasJustification: directive.hasJustification });
+    }
+    return hits;
+}
+
+function ratchetDisableHits(kind: EslintDisableKind): RatchetDisableHit[] {
+    const hits: RatchetDisableHit[] = [];
+    for (const file of trackedTypescriptUnder(['packages', 'examples', 'test'])) {
+        hits.push(...ratchetDisableHitsInFile(file, kind));
+    }
+    return hits;
+}
+
+function formatDisableHit(hit: RatchetDisableHit): string {
+    return `${hit.file} names ${hit.namedRules.join(', ')}`;
+}
+
+describe('Blinker ratchet rules are errors in the root ESLint config', () => {
+    it('complexity-budget ESLint rules are errors with pinned options', () => {
+        const rules = readRootEslintRules();
+        expect(isEslintError(rules['complexity']), 'complexity must be error').toBe(true);
+        expect(eslintRuleOptions(rules['complexity']), 'complexity options must pin max 12').toEqual({ max: 12 });
+        expect(isEslintError(rules['max-depth']), 'max-depth must be error').toBe(true);
+        expect(eslintRuleOptions(rules['max-depth']), 'max-depth options must pin 4').toBe(4);
+        expect(isEslintError(rules['max-params']), 'max-params must be error').toBe(true);
+        expect(eslintRuleOptions(rules['max-params']), 'max-params options must pin 5').toBe(5);
+        expect(isEslintError(rules['max-lines-per-function']), 'max-lines-per-function must be error').toBe(true);
+        expect(
+            eslintRuleOptions(rules['max-lines-per-function']),
+            'max-lines-per-function options must pin max 80 with skipBlankLines, skipComments, and IIFEs',
+        ).toEqual({ ...pinnedMaxLinesOptions });
+    });
+
+    it('type-seam ESLint rules are errors with sibling ban-ts-comment options', () => {
+        const rules = readRootEslintRules();
+        expect(
+            isEslintError(rules['@typescript-eslint/no-explicit-any']),
+            '@typescript-eslint/no-explicit-any must be error',
+        ).toBe(true);
+        expect(
+            isEslintError(rules['@typescript-eslint/consistent-type-imports']),
+            '@typescript-eslint/consistent-type-imports must be error',
+        ).toBe(true);
+        expect(
+            isEslintError(rules['@typescript-eslint/ban-ts-comment']),
+            '@typescript-eslint/ban-ts-comment must be error',
+        ).toBe(true);
+        expect(
+            eslintRuleOptions(rules['@typescript-eslint/ban-ts-comment']),
+            'ban-ts-comment must allow the four directives with a description',
+        ).toEqual({ ...pinnedBanTsCommentOptions });
+    });
+
+    it('eslintrc overrides do not weaken the ratchet rules', () => {
+        const weakened: string[] = [];
+        for (const [index, rules] of eslintOverrideRuleMaps(readRootEslintConfig()).entries()) {
+            for (const rule of weakenedRatchetRulesIn(rules)) {
+                weakened.push(`overrides[${index}] ${rule}`);
+            }
+        }
+        expect(
+            weakened,
+            'no override may set a ratchet rule to off/warn or replace its options with a more lenient max',
+        ).toEqual([]);
+    });
+
+    it('max-lines skip flags: false is stricter; omitted IIFEs is more lenient', () => {
+        expect(
+            maxLinesOptionsAreMoreLenient({ max: 80, skipBlankLines: false, skipComments: false, IIFEs: true }),
+            'skipBlankLines/skipComments false count more lines',
+        ).toBe(false);
+        expect(
+            maxLinesOptionsAreMoreLenient({ max: 80, skipBlankLines: true, skipComments: true, IIFEs: false }),
+            'IIFEs false stops counting IIFEs as functions',
+        ).toBe(true);
+        expect(maxLinesOptionsAreMoreLenient({ max: 80 }), 'omitted IIFEs defaults to false').toBe(true);
+        expect(maxLinesOptionsAreMoreLenient(80), 'numeric form has no IIFEs: true').toBe(true);
+        expect(maxLinesOptionsAreMoreLenient({ ...pinnedMaxLinesOptions })).toBe(false);
+        expect(maxLinesOptionsAreMoreLenient({ ...pinnedMaxLinesOptions, max: 81 })).toBe(true);
+    });
+});
+
+describe('Existing ratchet violations use next-line disables with a justification', () => {
+    it('no file-level eslint-disable of a ratchet rule', () => {
+        const hits = ratchetDisableHits('file-or-block').map(formatDisableHit);
+        expect(hits, 'no file-level or block eslint-disable may name a ratchet rule').toEqual([]);
+    });
+
+    it('ratchet next-line disables carry a justification', () => {
+        const hits = ratchetDisableHits('next-or-same-line')
+            .filter((hit) => !hit.hasJustification)
+            .map(formatDisableHit);
+        expect(
+            hits,
+            'each eslint-disable-next-line or eslint-disable-line that names a ratchet rule must include -- plus a non-empty justification',
+        ).toEqual([]);
+    });
+});

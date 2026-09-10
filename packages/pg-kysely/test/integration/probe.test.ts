@@ -8,7 +8,8 @@
  * forward/reject, probe.sql() filter, drainAndForward, extensions.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { ColumnType, JSONColumnType, Kysely, sql } from 'kysely';
+import type { ColumnType, JSONColumnType, Kysely } from 'kysely';
+import { sql } from 'kysely';
 import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
 
@@ -74,6 +75,7 @@ async function bootstrap(db: Kysely<TestDatabase>): Promise<void> {
         .execute(db);
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedKyselyAdapter', () => {
     let rig: Rig;
     let db: ProbedKyselyAdapter<TestDatabase>;

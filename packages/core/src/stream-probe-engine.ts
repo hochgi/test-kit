@@ -175,6 +175,7 @@ function expectationHost<TCall, TPending extends StreamPendingCallBase<TCall>>(
 
 // ── recordCall + applyRule ──────────────────────────────────────────────────
 
+// eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch
 function recordCallImpl<TCall, TPending extends StreamPendingCallBase<TCall>>(
     state: StreamProbeState<TCall, TPending>,
     call: TCall,

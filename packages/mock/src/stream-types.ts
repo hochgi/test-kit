@@ -30,12 +30,15 @@ export interface StreamMethodPendingCall<
 
 /** Method names on T whose return type is `AsyncIterable<...>` (covers async generator methods). */
 export type StreamMethodName<T> = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock for async-iterable methods
     [K in keyof T]: T[K] extends (...args: any[]) => AsyncIterable<any> ? Extract<K, string> : never;
 }[keyof T];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock for async-iterable methods
 export type StreamMethodArgs<T, K extends keyof T> = T[K] extends (...args: infer A) => any ? A : never;
 
 /** The chunk type yielded by T[K], e.g. `ModelStreamEvent` for `stream(...): AsyncIterable<ModelStreamEvent>`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapped method variance on a generic mock for async-iterable methods
 export type StreamMethodChunk<T, K extends keyof T> = T[K] extends (...args: any[]) => AsyncIterable<infer C>
     ? C
     : never;

@@ -83,6 +83,7 @@ function setup(rig: Rig): {
     };
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('QueryProbe (synthetic driver)', () => {
     let rig: Rig;
     let probe: QueryProbe;

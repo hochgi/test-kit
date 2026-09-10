@@ -112,6 +112,7 @@ function expectationHost<TCall, TPending extends PendingCallBase<TCall>>(
 
 // ── recordCall + applyRule ──────────────────────────────────────────────────
 
+// eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch
 function recordCallImpl<TCall, TPending extends PendingCallBase<TCall>>(
     state: ProbeState<TCall, TPending>,
     call: TCall,
@@ -492,6 +493,7 @@ function makeProbeAdmin<TCall, TPending extends PendingCallBase<TCall>>(
 
 // ── Top-level factory ─────────────────────────────────────────────────────
 
+// eslint-disable-next-line max-lines-per-function -- existing function over the published budget; extract on next touch
 export function createProbeRoot<TCall, TPending extends PendingCallBase<TCall>>(
     config: ProbeRootConfig<TCall, TPending>,
 ): ProbeRoot<TCall, TPending> {

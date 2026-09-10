@@ -22,6 +22,7 @@ export interface CreateProbedCacheAdapterOptions {
 
 export type ProbedCacheAdapter = ProbedAdapterWithLifecycle<CacheAdapter, CacheProbe>;
 
+// eslint-disable-next-line max-lines-per-function -- existing factory over the published budget; extract on next touch
 export function createProbedCacheAdapter(options: CreateProbedCacheAdapterOptions): ProbedCacheAdapter {
     const redis = new IoRedisMock();
 

@@ -34,6 +34,7 @@ export type ProbedSequelizeAdapter = ProbedAdapterWithLifecycle<Sequelize, Query
     seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 };
 
+// eslint-disable-next-line complexity, max-lines-per-function -- existing factory over the published budget; extract on next touch
 export async function createProbedSequelizeAdapter(
     options: CreateProbedSequelizeAdapterOptions,
 ): Promise<ProbedSequelizeAdapter> {

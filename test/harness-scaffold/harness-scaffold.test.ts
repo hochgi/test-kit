@@ -441,6 +441,7 @@ function rationaleText(value: unknown): string {
     return '';
 }
 
+// eslint-disable-next-line complexity -- existing test helper over the published budget; extract on next touch
 function createTempHarnessRepo(options: FixtureOptions = {}): string {
     const root = mkdtempSync(path.join(tmpdir(), 'p05-harness-'));
     tempRoots.push(root);
@@ -686,6 +687,7 @@ describe('Skills fan out byte-identical from Cursor', () => {
     });
 });
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('Agents and commands generate from Claude when canonical files exist', () => {
     it('populated claude agents produce matching cursor and opencode mirrors', () => {
         assertProgramExists('sync');
@@ -776,6 +778,7 @@ describe('Agents and commands generate from Claude when canonical files exist', 
     });
 });
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('Empty Claude canonical dirs do not destroy Cursor bootstrap', () => {
     it('empty claude agents leave cursor agents in place', () => {
         assertProgramExists('sync');

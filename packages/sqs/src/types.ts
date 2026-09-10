@@ -24,6 +24,7 @@ export interface SqsPendingCall<TCommand = unknown, TResult = unknown> extends F
     readonly input: unknown;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- AWS SDK command constructor type seam
 export type SqsCommandConstructor = new (...args: any[]) => {
     readonly input: unknown;
 };

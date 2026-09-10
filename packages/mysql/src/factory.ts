@@ -15,6 +15,7 @@ interface MysqlQueryCall extends QueryCall {
     readonly protocol: 'execute' | 'query';
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing factory over the published budget; extract on next touch
 export async function createProbedMysqlAdapter(options: CreateProbedMysqlAdapterOptions): Promise<ProbedMysqlAdapter> {
     // ── Start the container ────────────────────────────────────────────
     const database = options.database ?? 'testdb';

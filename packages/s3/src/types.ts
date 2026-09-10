@@ -27,6 +27,7 @@ export interface S3PendingCall<TCommand = unknown, TResult = unknown> extends Fo
     readonly input: unknown;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- AWS SDK command constructor type seam
 export type S3CommandConstructor = new (...args: any[]) => {
     readonly input: unknown;
 };

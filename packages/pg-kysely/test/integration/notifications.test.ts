@@ -18,7 +18,8 @@
  * `pg_notify($1, $2)` (the function form), which accepts bind params.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { Kysely, sql } from 'kysely';
+import type { Kysely } from 'kysely';
+import { sql } from 'kysely';
 import { createRig, type Rig } from '@vnatures/test-kit';
 import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
 
@@ -35,6 +36,7 @@ async function bootstrap(db: Kysely<TestDatabase>): Promise<void> {
     `.execute(db);
 }
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedKyselyAdapter — notifications', () => {
     let rig: Rig;
     let db: ProbedKyselyAdapter<TestDatabase>;

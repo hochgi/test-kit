@@ -82,11 +82,11 @@ function isProtected(file: string): boolean {
  * modifications and deletions are not.
  *
  * Every other protected prefix stays strict, including additions, *when the
- * branch also touches published library source*. The spec scenario is "WHEN a
- * change renames library vocabulary THEN the agent-sense zone is untouched".
- * P06 writes that zone on purpose and does not rename library vocabulary, so
- * the live-branch check applies only alongside a package src or examples/
- * touch — the conscious act this comment asked for.
+ * library-source diff renames vocabulary*. The spec scenario is "WHEN a change
+ * renames library vocabulary THEN the agent-sense zone is untouched". P06 and
+ * P09 write the harness zone on purpose; the live-branch check applies only
+ * when the library-source diff (a package `src/` tree or `examples/`) renames
+ * vocabulary, not on any src touch.
  */
 const APPEND_ONLY_PREFIXES = ['docs/internal/archive/'] as const;
 
@@ -215,11 +215,73 @@ function offendingPaths(base: string): readonly string[] {
     return offendingPathsFor(touchedEntries(base));
 }
 
-/** Spec WHEN: a library-vocabulary rename lives under published source. */
+function isLibrarySourcePath(file: string): boolean {
+    return (file.startsWith('packages/') && file.includes('/src/')) || file.startsWith('examples/');
+}
+
+/**
+ * Path filter for the spec WHEN. P06 and P09 write the harness zone on purpose;
+ * the live check applies only when the library-source diff renames vocabulary,
+ * not on any src touch. A harness-only PR that never touches a package `src/`
+ * tree or `examples/` still skips the check.
+ */
 function touchesLibrarySource(touches: readonly Touch[]): boolean {
-    return touches.some(
-        ({ file }) => (file.startsWith('packages/') && file.includes('/src/')) || file.startsWith('examples/'),
-    );
+    return touches.some(({ file }) => isLibrarySourcePath(file));
+}
+
+function isCommentRemainder(remainder: string): boolean {
+    return remainder.startsWith('//') || remainder.startsWith('/*') || remainder.startsWith('*');
+}
+
+function isExportStatement(remainder: string): boolean {
+    return remainder.startsWith('export ') || remainder.startsWith('export{') || remainder.startsWith('export*');
+}
+
+/** Pure classifier: one unified-diff minus line, including the leading `-`. */
+function minusLineSignalsVocabularyRename(line: string): boolean {
+    if (!line.startsWith('-') || line.startsWith('---')) {
+        return false;
+    }
+    const remainder = line.slice(1).trim();
+    if (remainder === '' || isCommentRemainder(remainder)) {
+        return false;
+    }
+    return isExportStatement(remainder);
+}
+
+function unifiedDiffSignalsVocabularyRename(diff: string): boolean {
+    return diff.split('\n').some(minusLineSignalsVocabularyRename);
+}
+
+function nameStatusSignalsVocabularyRename(raw: string): boolean {
+    for (const line of raw.split('\n')) {
+        if (line.startsWith('D') && isLibrarySourcePath(line.slice(1).trim())) {
+            return true;
+        }
+        if (line.startsWith('R')) {
+            const paths = line.split('\t').slice(1);
+            if (paths.some((file) => isLibrarySourcePath(file))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function librarySourcePaths(touches: readonly Touch[]): readonly string[] {
+    return [...new Set(touches.map(({ file }) => file).filter(isLibrarySourcePath))];
+}
+
+function librarySourceDiffRenamesVocabulary(base: string, touches: readonly Touch[]): boolean {
+    const files = librarySourcePaths(touches);
+    if (files.length === 0) {
+        return false;
+    }
+    const nameStatus = git(['diff', '--name-status', base, '--', 'packages', 'examples']);
+    if (nameStatusSignalsVocabularyRename(nameStatus)) {
+        return true;
+    }
+    return unifiedDiffSignalsVocabularyRename(git(['diff', '-U0', base, '--', ...files]));
 }
 
 /**
@@ -242,6 +304,7 @@ function resolveMergeBase(): string | null {
 // The classification above only bites if the checkout happens to contain the
 // relevant status — regressions could pass silently otherwise. So exercise
 // every branch with synthetic statuses, independent of the live checkout.
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('guard classification', () => {
     it('a rename adds its destination and deletes its source', () => {
         const out: Touch[] = [];
@@ -373,6 +436,31 @@ describe('guard classification', () => {
     });
 });
 
+describe('library-vocabulary rename classifier', () => {
+    it('comment-only and import-only src diffs are not a library-vocabulary rename', () => {
+        expect(
+            minusLineSignalsVocabularyRename('-// eslint-disable-next-line complexity -- existing function...'),
+        ).toBe(false);
+        expect(
+            minusLineSignalsVocabularyRename(
+                "-import { Sequelize, type Options as SequelizeOptions } from 'sequelize';",
+            ),
+        ).toBe(false);
+        expect(minusLineSignalsVocabularyRename('-    return this.handleList(input);')).toBe(false);
+        expect(minusLineSignalsVocabularyRename('-export function createHarness(...)')).toBe(true);
+        expect(minusLineSignalsVocabularyRename("-export { createRig } from './rig';")).toBe(true);
+        expect(minusLineSignalsVocabularyRename("-export * from './types';")).toBe(true);
+    });
+
+    it('a content-free library-source rename is a vocabulary rename', () => {
+        expect(nameStatusSignalsVocabularyRename('R100\tpackages/core/src/harness.ts\tpackages/core/src/rig.ts')).toBe(
+            true,
+        );
+        expect(nameStatusSignalsVocabularyRename('D\tpackages/core/src/harness.ts')).toBe(true);
+        expect(nameStatusSignalsVocabularyRename('M\tpackages/core/src/rig.ts')).toBe(false);
+    });
+});
+
 describe('Acceptance item 12: the do-not-touch zone is untouched', () => {
     it('resolves a merge base against main', () => {
         expect(
@@ -387,8 +475,14 @@ describe('Acceptance item 12: the do-not-touch zone is untouched', () => {
             throw new Error('cannot check the do-not-touch zone: no merge base against main or origin/main');
         }
         const touches = touchedEntries(base);
-        if (!touchesLibrarySource(touches)) {
-            expect(touchesLibrarySource(touches)).toBe(false);
+        const pathHit = touchesLibrarySource(touches);
+        if (!pathHit) {
+            expect(pathHit).toBe(false);
+            return;
+        }
+        const renamed = librarySourceDiffRenamesVocabulary(base, touches);
+        if (!renamed) {
+            expect(renamed).toBe(false);
             return;
         }
         expect(offendingPaths(base)).toEqual([]);

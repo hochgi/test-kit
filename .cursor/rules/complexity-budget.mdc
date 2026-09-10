@@ -6,16 +6,16 @@ alwaysApply: true
 
 # Complexity budget (blinker convention)
 
-The budget is a blinker convention, not an ESLint rule. This repository's ESLint
-does not currently enforce it. There are **no git hooks**, so nothing will catch
-a breach for you. Stay inside it anyway:
+`npm run lint` enforces these numbers as a ratchet (existing violations have
+inline disables). There are still **no git hooks**, so a skipped lint will not
+be caught locally. Stay inside the budget anyway:
 
 - `complexity` (cyclomatic) ≤ 12
 - `max-depth` (block nesting) ≤ 4
 - `max-lines-per-function` ≤ 80
 - `max-params` ≤ 5
 
-New or edited code must comply. Do not disable a diagnostic to get a big
+New or edited code must comply. Do not disable a diagnostic to get a new big
 function past review — extract instead.
 
 ## When you touch code here

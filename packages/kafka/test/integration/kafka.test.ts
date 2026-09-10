@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createRig, type Rig } from '@vnatures/test-kit';
 import { brokerDownError, createProbedKafkaProducer, type ProbedKafkaProducer } from '@vnatures/test-kit-kafka';
 
+// eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedKafkaProducer', () => {
     let rig: Rig;
     let kafka: ProbedKafkaProducer;
@@ -29,6 +30,7 @@ describe('createProbedKafkaProducer', () => {
         await rig.close();
     });
 
+    // eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
     describe('send → topicLog', () => {
         it('topicLog sees exact bytes/ordering per key', async () => {
             await kafka.adapter.send({
