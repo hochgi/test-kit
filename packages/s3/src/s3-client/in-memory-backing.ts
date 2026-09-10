@@ -43,6 +43,42 @@ interface BucketIndex {
     readonly objects: Map<string, S3StoredObject>; // key (without bucket)
 }
 
+interface ListQuery {
+    readonly bucket: string;
+    readonly prefix: string;
+    readonly delimiter: string | undefined;
+    readonly maxKeys: number;
+    readonly startAfter: string;
+    readonly isV2: boolean;
+}
+
+interface ListPage {
+    readonly contentKeys: string[];
+    readonly commonPrefixes: string[];
+    readonly truncated: boolean;
+    readonly lastKey: string;
+}
+
+interface ListPageParams {
+    readonly keys: readonly string[];
+    readonly start: number;
+    readonly maxKeys: number;
+    readonly startAfter: string;
+}
+
+interface DelimitedPageParams extends ListPageParams {
+    readonly prefix: string;
+    readonly delimiter: string;
+}
+
+interface DelimitedRollup {
+    contentKeys: string[];
+    commonPrefixes: string[];
+    processed: number;
+    lastProcessedKey: string;
+    truncated: boolean;
+}
+
 export class InMemoryS3Backing {
     private readonly buckets = new Map<string, BucketIndex>();
 
@@ -229,116 +265,26 @@ export class InMemoryS3Backing {
         return { Deleted: deleted };
     }
 
-    // eslint-disable-next-line complexity -- P10 / RD-24151; existing function over the published budget
     private handleList(
         commandName: 'ListObjectsCommand' | 'ListObjectsV2Command',
         input: Record<string, unknown>,
     ): Record<string, unknown> {
-        const bucket = input.Bucket as string;
-        const prefix = (input.Prefix as string | undefined) ?? '';
-        const delimiter = input.Delimiter as string | undefined;
-        const idx = this.buckets.get(bucket);
-
-        // Collect keys matching the prefix, in UTF-8 byte lexicographic order
-        // (S3 sorts by UTF-8 bytes, not UTF-16 code units).
-        const allKeys: string[] = [];
-        if (idx) {
-            for (const key of idx.objects.keys()) {
-                if (key.startsWith(prefix)) allKeys.push(key);
-            }
-        }
-        allKeys.sort(compareKeysUtf8);
-
-        const isV2 = commandName === 'ListObjectsV2Command';
-        const maxKeysRaw = input.MaxKeys as number | undefined;
-        // Real S3 silently caps MaxKeys at 1000. Honouring larger values would
-        // let a paging bug (never following NextContinuationToken) pass in tests
-        // and drop objects past the first page in production. Non-finite values
-        // (NaN, Infinity) fall back to the default — Math.floor(NaN) would
-        // otherwise poison both the flat and delimiter branches differently.
-        const maxKeys =
-            maxKeysRaw === undefined || !Number.isFinite(maxKeysRaw)
-                ? 1000
-                : Math.min(1000, Math.max(0, Math.floor(maxKeysRaw)));
-
-        // Decode the continuation cursor. v2 uses ContinuationToken (opaque,
-        // base64-encoded); StartAfter is the fallback when no token is present
-        // (token takes precedence per AWS spec). v1 uses Marker (literal key).
-        const token = isV2 ? decodeCursor(input.ContinuationToken as string | undefined) : '';
-        const startAfter = isV2
-            ? token || ((input.StartAfter as string | undefined) ?? '')
-            : ((input.Marker as string | undefined) ?? '');
-
-        // Find the index of the first key strictly greater than the cursor
-        // (binary search, UTF-8 byte comparison to match the sort order).
-        let start = 0;
-        if (startAfter) {
-            let lo = 0;
-            let hi = allKeys.length;
-            while (lo < hi) {
-                const mid = (lo + hi) >>> 1;
-                if (compareKeysUtf8(allKeys[mid], startAfter) <= 0) lo = mid + 1;
-                else hi = mid;
-            }
-            start = lo;
-        }
-
-        // ── No delimiter: flat key listing ─────────────────────────────
-        if (!delimiter) {
-            const slice = allKeys.slice(start, start + maxKeys);
-            // Only mark truncated / emit a token when the page actually
-            // contained keys (MaxKeys=0 → empty page, not truncated).
-            const truncated = slice.length > 0 && start + slice.length < allKeys.length;
-            const lastKey = slice.length > 0 ? slice[slice.length - 1] : startAfter;
-
-            const contents = slice.map((key) => this.shapeContent(idx!, key));
-            return this.shapeListResponse(isV2, contents, [], truncated, lastKey);
-        }
-
-        // ── With delimiter: Contents + CommonPrefixes rollup ───────────
-        // Keys whose post-Prefix remainder contains the delimiter roll up
-        // into a de-duped CommonPrefixes entry (prefix + text up to and
-        // including the first delimiter). Both Contents entries and common
-        // prefixes count toward MaxKeys.
-        const contents: Array<Record<string, unknown>> = [];
-        const commonPrefixes: string[] = [];
-        let processed = 0;
-        let lastProcessedKey = startAfter;
-        let truncated = false;
-
-        for (let i = start; i < allKeys.length; i += 1) {
-            const key = allKeys[i];
-            const remainder = key.slice(prefix.length);
-            const delimIdx = remainder.indexOf(delimiter);
-
-            if (delimIdx >= 0) {
-                const commonPrefix = prefix + remainder.slice(0, delimIdx + delimiter.length);
-                // Since keys are sorted, common prefixes are contiguous —
-                // only count a NEW common prefix.
-                if (commonPrefixes.length === 0 || commonPrefixes[commonPrefixes.length - 1] !== commonPrefix) {
-                    if (processed >= maxKeys) {
-                        truncated = true;
-                        break;
-                    }
-                    commonPrefixes.push(commonPrefix);
-                    processed += 1;
-                }
-            } else {
-                if (processed >= maxKeys) {
-                    truncated = true;
-                    break;
-                }
-                contents.push(this.shapeContent(idx!, key));
-                processed += 1;
-            }
-            lastProcessedKey = key;
-        }
-
-        // Only emit a token when the page actually contained results.
-        if (processed === 0) truncated = false;
-        const lastKey = processed > 0 ? lastProcessedKey : startAfter;
-
-        return this.shapeListResponse(isV2, contents, commonPrefixes, truncated, lastKey);
+        const query = parseListQuery(commandName, input);
+        const idx = this.buckets.get(query.bucket);
+        const keys = matchingKeysInUtf8Order(idx, query.prefix);
+        const start = resumeIndexAfterCursor(keys, query.startAfter);
+        const page = query.delimiter
+            ? collectDelimitedPage({
+                  keys,
+                  start,
+                  prefix: query.prefix,
+                  delimiter: query.delimiter,
+                  maxKeys: query.maxKeys,
+                  startAfter: query.startAfter,
+              })
+            : collectFlatPage({ keys, start, maxKeys: query.maxKeys, startAfter: query.startAfter });
+        const contents = idx === undefined ? [] : page.contentKeys.map((key) => this.shapeContent(idx, key));
+        return this.shapeListResponse(query.isV2, contents, page.commonPrefixes, page.truncated, page.lastKey);
     }
 
     private shapeContent(idx: BucketIndex, key: string): Record<string, unknown> {
@@ -574,4 +520,160 @@ function decodeCursor(token: string | undefined): string {
     // anything else is malformed, so restart from the beginning.
     if (buf.toString('base64') !== token) return '';
     return buf.toString('utf-8');
+}
+
+function parseListQuery(
+    commandName: 'ListObjectsCommand' | 'ListObjectsV2Command',
+    input: Record<string, unknown>,
+): ListQuery {
+    const isV2 = commandName === 'ListObjectsV2Command';
+    return {
+        bucket: input.Bucket as string,
+        prefix: (input.Prefix as string | undefined) ?? '',
+        delimiter: input.Delimiter as string | undefined,
+        maxKeys: capMaxKeys(input.MaxKeys as number | undefined),
+        startAfter: resolveStartAfter(isV2, input),
+        isV2,
+    };
+}
+
+/**
+ * Real S3 silently caps MaxKeys at 1000. Honouring larger values would
+ * let a paging bug (never following NextContinuationToken) pass in tests
+ * and drop objects past the first page in production. Non-finite values
+ * (NaN, Infinity) fall back to the default — Math.floor(NaN) would
+ * otherwise poison both the flat and delimiter branches differently.
+ */
+function capMaxKeys(maxKeysRaw: number | undefined): number {
+    if (maxKeysRaw === undefined || !Number.isFinite(maxKeysRaw)) {
+        return 1000;
+    }
+    return Math.min(1000, Math.max(0, Math.floor(maxKeysRaw)));
+}
+
+/**
+ * Decode the continuation cursor. v2 uses ContinuationToken (opaque,
+ * base64-encoded); StartAfter is the fallback when no token is present
+ * (token takes precedence per AWS spec). v1 uses Marker (literal key).
+ */
+function resolveStartAfter(isV2: boolean, input: Record<string, unknown>): string {
+    if (!isV2) {
+        return (input.Marker as string | undefined) ?? '';
+    }
+    const token = decodeCursor(input.ContinuationToken as string | undefined);
+    return token || ((input.StartAfter as string | undefined) ?? '');
+}
+
+/** Prefix-matching keys in UTF-8 byte lexicographic order (S3's sort). */
+function matchingKeysInUtf8Order(idx: BucketIndex | undefined, prefix: string): string[] {
+    const allKeys: string[] = [];
+    if (idx === undefined) {
+        return allKeys;
+    }
+    for (const key of idx.objects.keys()) {
+        if (key.startsWith(prefix)) {
+            allKeys.push(key);
+        }
+    }
+    allKeys.sort(compareKeysUtf8);
+    return allKeys;
+}
+
+/**
+ * Index of the first key strictly greater than the cursor (binary search,
+ * UTF-8 byte comparison to match the sort order).
+ */
+function resumeIndexAfterCursor(keys: readonly string[], startAfter: string): number {
+    if (!startAfter) {
+        return 0;
+    }
+    let lo = 0;
+    let hi = keys.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (compareKeysUtf8(keys[mid], startAfter) <= 0) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    return lo;
+}
+
+function collectFlatPage(params: ListPageParams): ListPage {
+    const slice = params.keys.slice(params.start, params.start + params.maxKeys);
+    // Only mark truncated / emit a token when the page actually contained
+    // keys (MaxKeys=0 → empty page, not truncated).
+    const truncated = slice.length > 0 && params.start + slice.length < params.keys.length;
+    return {
+        contentKeys: slice,
+        commonPrefixes: [],
+        truncated,
+        lastKey: slice.length > 0 ? slice[slice.length - 1] : params.startAfter,
+    };
+}
+
+/**
+ * Contents + CommonPrefixes rollup. Keys whose post-Prefix remainder
+ * contains the delimiter roll up into a de-duped CommonPrefixes entry
+ * (prefix + text up to and including the first delimiter). Both Contents
+ * entries and common prefixes count toward MaxKeys.
+ */
+function collectDelimitedPage(params: DelimitedPageParams): ListPage {
+    const acc: DelimitedRollup = {
+        contentKeys: [],
+        commonPrefixes: [],
+        processed: 0,
+        lastProcessedKey: params.startAfter,
+        truncated: false,
+    };
+    for (let i = params.start; i < params.keys.length; i += 1) {
+        if (!addDelimitedKey(acc, params.keys[i], params)) {
+            break;
+        }
+    }
+    // Only emit a token when the page actually contained results.
+    if (acc.processed === 0) {
+        acc.truncated = false;
+    }
+    return {
+        contentKeys: acc.contentKeys,
+        commonPrefixes: acc.commonPrefixes,
+        truncated: acc.truncated,
+        lastKey: acc.processed > 0 ? acc.lastProcessedKey : params.startAfter,
+    };
+}
+
+function classifyListKey(
+    key: string,
+    prefix: string,
+    delimiter: string,
+): { kind: 'commonPrefix'; prefix: string } | { kind: 'content' } {
+    const remainder = key.slice(prefix.length);
+    const delimIdx = remainder.indexOf(delimiter);
+    if (delimIdx >= 0) {
+        return { kind: 'commonPrefix', prefix: prefix + remainder.slice(0, delimIdx + delimiter.length) };
+    }
+    return { kind: 'content' };
+}
+
+function addDelimitedKey(acc: DelimitedRollup, key: string, params: DelimitedPageParams): boolean {
+    const classified = classifyListKey(key, params.prefix, params.delimiter);
+    // Since keys are sorted, common prefixes are contiguous — only count a NEW common prefix.
+    if (classified.kind === 'commonPrefix' && acc.commonPrefixes[acc.commonPrefixes.length - 1] === classified.prefix) {
+        acc.lastProcessedKey = key;
+        return true;
+    }
+    if (acc.processed >= params.maxKeys) {
+        acc.truncated = true;
+        return false;
+    }
+    if (classified.kind === 'commonPrefix') {
+        acc.commonPrefixes.push(classified.prefix);
+    } else {
+        acc.contentKeys.push(key);
+    }
+    acc.processed += 1;
+    acc.lastProcessedKey = key;
+    return true;
 }

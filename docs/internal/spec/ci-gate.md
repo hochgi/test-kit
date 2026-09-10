@@ -5,10 +5,14 @@ per-package jobs, a workspace-wide `npm run check` workflow for named
 root/docs/CI and harness-surface paths, a lint+test workflow for `examples/grpc-client`, and
 main-only backup/audit. There are no git hooks (no husky, no lefthook).
 `npm run lint` enforces the complexity budget and type-seam rules as a
-ratchet (P09 / RD-24150).
+ratchet (P09 / RD-24150). P10 (RD-24151) extracted s3 `handleList` to
+complexity ≤ 12 and deleted the P09 next-line disable.
 
 Folded from the P09 delta (RD-24150), preserved at
 `docs/internal/archive/2026-09-10-P09-blinker-ratchet/delta.md`.
+P10 list-contract current truth is `docs/internal/spec/s3-backing.md`;
+its delta is at
+`docs/internal/archive/2026-09-10-P10-s3-handlelist-decomposition/delta.md`.
 
 ## Requirements
 
@@ -338,7 +342,7 @@ sequenceDiagram
 | Ratchet via next-line disables, not file-glob `overrides` | New violations in an already-excused file still fail lint unless a new visible disable is added | Ticket (RD-24150) |
 | Convert `pg-sequelize/src/dialect.ts` file-level `no-explicit-any` disable to next-line | File-level disable of a ratchet rule would let new `any`s slip in. `max-classes-per-file` on that same comment is not a ratchet rule and may stay file-level | Ticket (RD-24150) |
 | Autofix `consistent-type-imports` rather than disable | Ticket: all four `--fix-dry-run` confirmed | Ticket + re-measure (RD-24150) |
-| Do not extract `handleList` (complexity 26) | That extraction is P10 (RD-24151). This packet ratchets it with a next-line disable | Ticket (P10 is the outward blocker) |
+| Do not extract `handleList` (complexity 26) | Superseded by P10 (RD-24151): `handleList` is extracted to complexity ≤ 12 and the P09 next-line disable is gone | Ticket (P10) |
 | Root `test/` is in the ratchet | `npm run lint` starts with `eslint test vitest.workspace.ts` | Source (`package.json` `scripts.lint`) + re-measure (RD-24150) |
 
 ## Out of scope (deferred)
@@ -348,7 +352,7 @@ sequenceDiagram
 | Adding husky/lefthook/`prepare` / setting `core.hooksPath` | Agents and humans can still push without running `check`; CircleCI plus `npm run check` remain the only gates |
 | Running grpc-client tests when `packages/core` changes | A core-only PR still does not execute the extender guard in CircleCI; root `check` does, when a workspace-wide path also changed |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
-| P10 decompose s3 `handleList` (RD-24151) | complexity 26 stays, behind a next-line disable, until that ticket extracts it to ≤ 12 |
+| Extract `dispatch` in `packages/s3/src/s3-client/in-memory-backing.ts` (complexity 14) | It stays behind `eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch` until that method is edited |
 | Extracting the other complexity-13 functions (`recordCallImpl` × 2, `createProbedSequelizeAdapter`, repo-root test helpers) | They stay behind next-line disables until a later touch extracts them |
 | Turning on other currently-off rules (`no-empty-object-type`, `no-empty-function`, `no-namespace`, `no-empty-pattern`) | Those stays-off are not this packet's ratchet |
 | Replacing remaining `any` type-seam escapes with `unknown` | The 12-no-escape-hatches blinker still forbids *new* `any`; existing ones are justified inline |
