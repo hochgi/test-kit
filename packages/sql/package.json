@@ -1,6 +1,6 @@
 {
   "name": "@vnatures/test-kit-sql",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Probe-driven component testing — shared SQL probe surface",
   "license": "UNLICENSED",
   "repository": {
