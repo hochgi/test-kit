@@ -19,6 +19,13 @@ the agent that produced an artifact be the agent that signs it off.
 — the spec delta, the red suite, the diff, the review — is the durable interface
 to the next phase. Write for the next agent, which does not share your context.
 
+## Packet first for adapters
+
+A new domain package or an extension of an existing probe is shaped by
+`/add-adapter` **before** this pipeline starts. That command writes the packet
+and stops. This skill does not ask the add-adapter question set. Hand
+`/spec-to-ship` a packet path (or a ticket that is not adapter work).
+
 ## The five phases
 
 ```

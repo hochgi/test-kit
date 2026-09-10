@@ -31,6 +31,53 @@ const supportSkills = [
     'hotspot-expansion-review',
     'mutation-testing',
     'component-testing',
+    'add-adapter',
+] as const;
+
+const bannedAddAdapterSplitCommands = ['extend-probe.md', 'new-package.md', 'extend-test-kit.md'] as const;
+
+const addAdapterRequiredSkillTokens = ['npm', 'workspaces', 'packages/'] as const;
+
+const addAdapterStaleConsumerTokens = [
+    'pnpm workspaces',
+    'pnpm link',
+    'Missing (author these)',
+    '/Users/giladhoch/dev/test-kit',
+] as const;
+
+const addAdapterWalkthroughTokens = [
+    'Adding a New Domain Package',
+    'call shape',
+    'pending call',
+    'probe',
+    'adapter',
+    'ProbedResource',
+    'forward',
+    'factory',
+    'examples/grpc-client',
+] as const;
+
+const addAdapterQuestionTokens = [
+    'too thin',
+    'too fat',
+    'just right',
+    '{method, args}',
+    '{sql, parameters}',
+    '{commandName, command, input}',
+    'programmable mock',
+    'hybrid',
+    'PGlite',
+    'testcontainers',
+    '@testcontainers/mysql',
+    'ProbedResource',
+    'reset',
+    'close',
+    'probe.always().forward()',
+    'park',
+    'strictly optional',
+    'SqlDriver',
+    'createProbed',
+    '@vnatures/test-kit-',
 ] as const;
 
 const phaseSkills = [
@@ -368,6 +415,63 @@ describe('Canonical spec-to-ship command exists', () => {
     });
 });
 
+describe('Canonical add-adapter command exists', () => {
+    it('add-adapter command is canonical under Claude', () => {
+        const dir = path.join(repoRoot, '.claude/commands');
+        expect(existsSync(dir), '.claude/commands must exist').toBe(true);
+        const names = markdownNames('.claude/commands');
+        expect(names, '.claude/commands must contain add-adapter.md').toContain('add-adapter.md');
+        for (const banned of bannedAddAdapterSplitCommands) {
+            expect(names, `.claude/commands must not contain ${banned}`).not.toContain(banned);
+        }
+    });
+
+    it('command reads the skill and branches first', () => {
+        const content = readExisting('.claude/commands/add-adapter.md');
+        expect(content.includes('add-adapter'), 'must contain add-adapter as the skill to read').toBe(true);
+        expect(content.includes('AskUserQuestion'), 'must contain AskUserQuestion').toBe(true);
+        expect(content.includes('packages/<domain>/'), 'must ask whether the work is a new packages/<domain>/').toBe(
+            true,
+        );
+        expect(/extend/i.test(content) && /probe/i.test(content), 'must ask about extending an existing probe').toBe(
+            true,
+        );
+    });
+
+    it('command writes a packet and does not run spec-to-ship', () => {
+        const content = readExisting('.claude/commands/add-adapter.md');
+        expect(
+            content.includes('docs/internal/packets/'),
+            'must tell the orchestrator to write under docs/internal/packets/',
+        ).toBe(true);
+        expect(content.includes('Depends on:'), 'must contain Depends on:').toBe(true);
+        expect(content.includes('PNN'), 'must write a packet whose name matches PNN-*.md').toBe(true);
+        expect(
+            content.includes('docs/internal/spec/deltas/'),
+            'must not tell the orchestrator to write under docs/internal/spec/deltas/',
+        ).toBe(false);
+        expect(
+            /do not run \/?spec-to-ship/i.test(content) ||
+                /not (?:run|chain) \/?spec-to-ship/i.test(content) ||
+                /next (?:step|is)[\s\S]{0,80}\/?spec-to-ship/i.test(content) ||
+                /stop[\s\S]{0,200}\/?spec-to-ship/i.test(content),
+            'must not tell the orchestrator to run /spec-to-ship as part of this command',
+        ).toBe(true);
+    });
+
+    it('novel work falls back to grilling', () => {
+        const content = readExisting('.claude/commands/add-adapter.md');
+        expect(/grilling/i.test(content), 'must name grilling as the fallback').toBe(true);
+        expect(
+            /without writing a packet/i.test(content) ||
+                /not write a packet/i.test(content) ||
+                /do not write[\s\S]{0,40}packet/i.test(content),
+            'must stop without writing a packet when the work is not a new domain package and not an extension of an existing probe',
+        ).toBe(true);
+        expect(/stop/i.test(content), 'must say to stop on novel work').toBe(true);
+    });
+});
+
 describe('Generated agent mirrors carry readonly from the manifest', () => {
     it('Cursor readonly flags match the manifest', () => {
         const flags = agentOrder.map((name) => {
@@ -397,14 +501,45 @@ describe('Generated agent mirrors carry readonly from the manifest', () => {
         for (const name of agentOrder) {
             expect(agentMd, `.opencode/agents must contain ${name}.md`).toContain(`${name}.md`);
         }
-        expect(markdownNames('.opencode/commands'), '.opencode/commands must contain spec-to-ship.md').toContain(
-            'spec-to-ship.md',
+        const commandMd = markdownNames('.opencode/commands');
+        expect(commandMd, '.opencode/commands must contain spec-to-ship.md').toContain('spec-to-ship.md');
+        expect(commandMd, '.opencode/commands must contain add-adapter.md').toContain('add-adapter.md');
+    });
+});
+
+describe('Generated command mirrors include add-adapter', () => {
+    it('Cursor and OpenCode command mirrors include add-adapter', () => {
+        expect(markdownNames('.cursor/commands'), '.cursor/commands must contain add-adapter.md').toContain(
+            'add-adapter.md',
+        );
+        expect(markdownNames('.opencode/commands'), '.opencode/commands must contain add-adapter.md').toContain(
+            'add-adapter.md',
+        );
+    });
+
+    it('no sixth OpenCode add-adapter agent', () => {
+        expect(markdownNames('.opencode/agents'), '.opencode/agents must not contain add-adapter.md').not.toContain(
+            'add-adapter.md',
+        );
+    });
+});
+
+describe('spec-to-ship names add-adapter as the adapter packet-shaping step', () => {
+    it('spec-to-ship command names add-adapter', () => {
+        const content = readExisting('.claude/commands/spec-to-ship.md');
+        expect(content.includes('add-adapter'), '.claude/commands/spec-to-ship.md must contain add-adapter').toBe(true);
+    });
+
+    it('spec-to-ship skill names add-adapter', () => {
+        const content = readExisting('.cursor/skills/spec-to-ship/SKILL.md');
+        expect(content.includes('add-adapter'), '.cursor/skills/spec-to-ship/SKILL.md must contain add-adapter').toBe(
+            true,
         );
     });
 });
 
 describe('Support skills exist under the Cursor canonical tree', () => {
-    it('six support skills are present', () => {
+    it('seven support skills are present', () => {
         for (const name of supportSkills) {
             const relative = `.cursor/skills/${name}/SKILL.md`;
             expect(existsSync(path.join(repoRoot, relative)), `${relative} must exist`).toBe(true);
@@ -435,6 +570,54 @@ describe('Support skills exist under the Cursor canonical tree', () => {
                 expect(content.includes(token), `${relative} must not contain ${token}`).toBe(false);
             }
         }
+    });
+});
+
+describe('add-adapter skill is the in-repo extender contract', () => {
+    it('add-adapter skill exists under the Cursor canonical tree', () => {
+        const relative = '.cursor/skills/add-adapter/SKILL.md';
+        expect(existsSync(path.join(repoRoot, relative)), `${relative} must exist`).toBe(true);
+    });
+
+    it('skill is not the stale consumer copy', () => {
+        const content = readExisting('.cursor/skills/add-adapter/SKILL.md');
+        for (const token of addAdapterRequiredSkillTokens) {
+            expect(content.includes(token), `add-adapter skill must contain ${token}`).toBe(true);
+        }
+        for (const token of addAdapterStaleConsumerTokens) {
+            expect(content.includes(token), `add-adapter skill must not contain ${token}`).toBe(false);
+        }
+    });
+
+    it('skill teaches the seven-step walkthrough and contract guard', () => {
+        const content = readExisting('.cursor/skills/add-adapter/SKILL.md');
+        for (const token of addAdapterWalkthroughTokens) {
+            expect(content.includes(token), `add-adapter skill must contain ${token}`).toBe(true);
+        }
+    });
+
+    it('skill names the known question set', () => {
+        const content = readExisting('.cursor/skills/add-adapter/SKILL.md');
+        for (const token of addAdapterQuestionTokens) {
+            expect(content.includes(token), `add-adapter skill must contain ${token}`).toBe(true);
+        }
+        expect(
+            content.includes('function-boundary') || content.includes('function boundary'),
+            'add-adapter skill must contain function-boundary or function boundary',
+        ).toBe(true);
+    });
+
+    it('skill packet skeleton owns scope not behaviour', () => {
+        const content = readExisting('.cursor/skills/add-adapter/SKILL.md');
+        expect(content.includes('docs/internal/packets/'), 'must contain docs/internal/packets/').toBe(true);
+        expect(content.includes('Depends on:'), 'must contain Depends on:').toBe(true);
+        expect(content.includes('Goldilocks'), 'must contain Goldilocks').toBe(true);
+        expect(content.includes('40'), 'must contain 40').toBe(true);
+        expect(
+            (/packet[\s\S]{0,160}scope/i.test(content) || /scope[\s\S]{0,80}packet/i.test(content)) &&
+                (/spec[\s\S]{0,160}behaviou?r/i.test(content) || /behaviou?r[\s\S]{0,80}spec/i.test(content)),
+            'must state that the packet owns scope and the spec owns behaviour',
+        ).toBe(true);
     });
 });
 

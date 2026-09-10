@@ -377,6 +377,11 @@ describe('AGENTS.md is the tool-agnostic agent entrypoint', () => {
         ).toBe(true);
     });
 
+    it('AGENTS.md names add-adapter as packet shaping', () => {
+        const content = readExisting('AGENTS.md');
+        expect(content.includes('add-adapter'), 'AGENTS.md must contain add-adapter').toBe(true);
+    });
+
     it('AGENTS.md defers model ids to the manifest', () => {
         const content = readExisting('AGENTS.md');
         expect(content.includes('.harness/models.json'), 'AGENTS.md must contain .harness/models.json').toBe(true);
@@ -414,6 +419,11 @@ describe('CLAUDE.md is a thin Claude Code overlay', () => {
         const content = readExisting('CLAUDE.md');
         expectContains(content, claudeInventoryPaths, 'CLAUDE.md');
         expect(/canonical/i.test(content), 'CLAUDE.md must include a canonical-source table').toBe(true);
+    });
+
+    it('CLAUDE.md inventories spec-to-ship and add-adapter commands', () => {
+        const content = readExisting('CLAUDE.md');
+        expectContains(content, ['spec-to-ship', 'add-adapter'], 'CLAUDE.md');
     });
 
     it('CLAUDE.md does not teach the library domain or pin models', () => {

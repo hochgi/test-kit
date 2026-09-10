@@ -9,7 +9,7 @@ Thin overlay on the tool-agnostic entrypoint. Domain vocabulary and day-one repo
 Inventory of trees this tool loads:
 
 - `.claude/agents` — phase agents: spec-author, test-author, coder, reviewer, verifier
-- `.claude/commands` — `spec-to-ship`
+- `.claude/commands` — `spec-to-ship`, `add-adapter`
 - `.claude/skills` — skill mirrors for Claude Code
 
 ## Canonical sources

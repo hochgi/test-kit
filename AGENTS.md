@@ -40,6 +40,8 @@ There are no git hooks: no husky, no lefthook. Nothing local will catch a skippe
 
 ## Workflow
 
+Shape an adapter or probe packet with `/add-adapter` before `/spec-to-ship`. `/add-adapter` writes the packet and stops; it does not run the five phases.
+
 Non-trivial changes run `/spec-to-ship`: spec-author, test-author, coder, reviewer, verifier, then open a PR and address review threads.
 
 Stop when every review thread is addressed. Do not merge while a PR is open.
