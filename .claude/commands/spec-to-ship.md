@@ -7,8 +7,8 @@ argument-hint: <RD-NNNNN, or a path to a packet / spec input>
 
 Drive a packet all the way to a shippable PR. Phase 1 runs in the **main thread**;
 phases 2–5 are delegated to their dedicated subagents via the **Agent** tool.
-After the five phases, open a PR, let the review bots run, and iterate until
-every thread is addressed.
+After the five phases, open a PR, run `summon-review-panel` to summon review
+bots, and iterate until every thread is addressed.
 **Do not merge, fold, or archive until the PR is merged onto `main`.** Archive is
 a follow-up on updated `main`, owned by this orchestrator after merge — not by
 the verifier, and not by the PR loop.
@@ -133,7 +133,9 @@ phase 3, audits every suppression added on the patch, and sweeps for regressions
 ## PR loop
 
 1. Open the PR against `main` on remote `vn`.
-2. Let the review bots run, fix actionable findings, push, reply to each thread.
+2. Run `summon-review-panel` to summon review bots. After a later push, run
+   `summon-review-panel` again. Fix actionable findings, push, reply to each
+   thread.
 3. Decline with reasoning when a finding is a false positive or out of scope.
 4. Repeat until every thread is addressed.
 5. **Stop.** Do not squash-merge, fold the delta, or move files into

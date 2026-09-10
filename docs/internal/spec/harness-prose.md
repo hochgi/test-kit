@@ -18,6 +18,12 @@ Folded from the P07 delta (RD-24148), preserved at
 Folded from the RD-24169 delta, preserved at
 `docs/internal/archive/2026-09-08-RD-24169-component-testing-2x-api/delta.md`.
 
+Folded from the P08 delta (RD-24149), preserved at
+`docs/internal/archive/2026-09-10-P08-add-adapter-steering/delta.md`.
+
+Folded from the P11 delta (RD-24152), preserved at
+`docs/internal/archive/2026-09-10-P11-summon-review-panel/delta.md`.
+
 ## Requirements
 
 ### Requirement: Canonical Claude agent files exist
@@ -63,6 +69,75 @@ a merge onto `main` or an archive of the spec delta while the PR is open.
   addressed, and it does not instruct merging onto `main` or moving files
   into `docs/internal/archive/` while the PR is open
 
+### Requirement: Canonical add-adapter command exists
+`.claude/commands/` SHALL contain `add-adapter.md`. That file is the
+single phase-0 command for both "new `packages/<domain>/`" and "extend
+an existing probe's surface". `.claude/commands/` SHALL NOT contain a
+second command file that splits those branches (`extend-probe.md`,
+`new-package.md`, or `extend-test-kit.md`).
+
+The command SHALL tell the orchestrator to read the `add-adapter` skill
+before asking questions. Its first question SHALL be the branch: new
+`packages/<domain>/` versus extend an existing probe's surface.
+
+The command SHALL ask the human the decision questions (via
+`AskUserQuestion` in the canonical Claude file). It SHALL look up facts
+itself (`packages/` coverage, `SqlDriver`, existing factory names,
+whether `testcontainers` is already a dependency) and SHALL NOT ask the
+human for those facts.
+
+The command SHALL write one file under `docs/internal/packets/` whose
+name matches `PNN-*.md` and whose body includes a `Depends on:` header.
+It SHALL NOT write a spec delta under `docs/internal/spec/`. It SHALL
+NOT run `/spec-to-ship`. After writing the packet it SHALL stop and name
+`/spec-to-ship` with that packet path as the next step.
+
+When the work is neither a new domain package nor an extension of an
+existing probe, the command SHALL stop without writing a packet and SHALL
+leave grilling as the fallback.
+
+The command runs in the main thread. It SHALL NOT add a sixth pipeline
+agent.
+
+#### Scenario: add-adapter command is canonical under Claude
+- **WHEN** `.claude/commands/` is listed
+- **THEN** it contains `add-adapter.md` and does not contain
+  `extend-probe.md`, `new-package.md`, or `extend-test-kit.md`
+
+#### Scenario: command reads the skill and branches first
+- **WHEN** `.claude/commands/add-adapter.md` is read
+- **THEN** it contains `add-adapter` as the skill to read, contains
+  `AskUserQuestion`, and asks whether the work is a new
+  `packages/<domain>/` or an extension of an existing probe
+
+#### Scenario: command writes a packet and does not run spec-to-ship
+- **WHEN** `.claude/commands/add-adapter.md` is read
+- **THEN** it tells the orchestrator to write under
+  `docs/internal/packets/`, contains `Depends on:`, does not tell it to
+  write under `docs/internal/spec/deltas/`, and does not tell it to run
+  `/spec-to-ship` as part of this command
+
+#### Scenario: novel work falls back to grilling
+- **WHEN** `.claude/commands/add-adapter.md` is read
+- **THEN** it says to stop without writing a packet when the work is
+  not a new domain package and not an extension of an existing probe,
+  and it names grilling as the fallback
+
+### Requirement: spec-to-ship names add-adapter as the adapter packet-shaping step
+`.claude/commands/spec-to-ship.md` and
+`.cursor/skills/spec-to-ship/SKILL.md` SHALL name `/add-adapter` as the
+step that shapes an adapter or probe packet before the five phases.
+They SHALL NOT fold the add-adapter question set into `/spec-to-ship`
+itself.
+
+#### Scenario: spec-to-ship command names add-adapter
+- **WHEN** `.claude/commands/spec-to-ship.md` is read
+- **THEN** it contains `add-adapter`
+
+#### Scenario: spec-to-ship skill names add-adapter
+- **WHEN** `.cursor/skills/spec-to-ship/SKILL.md` is read
+- **THEN** it contains `add-adapter`
+
 ### Requirement: Generated agent mirrors carry readonly from the manifest
 After a successful `sync-agent-skills`, `.cursor/agents/reviewer.md` and
 `.cursor/agents/verifier.md` SHALL have YAML `readonly: true`;
@@ -71,7 +146,8 @@ After a successful `sync-agent-skills`, `.cursor/agents/reviewer.md` and
 reviewer and verifier mirrors SHALL deny the edit permission.
 
 `.opencode/agents/` SHALL contain the same five agent markdown filenames,
-and `.opencode/commands/` SHALL contain `spec-to-ship.md`.
+and `.opencode/commands/` SHALL contain `spec-to-ship.md` and
+`add-adapter.md`.
 
 #### Scenario: Cursor readonly flags match the manifest
 - **WHEN** the five `.cursor/agents/<name>.md` files are parsed after a
@@ -87,13 +163,32 @@ and `.opencode/commands/` SHALL contain `spec-to-ship.md`.
 - **WHEN** `.opencode/agents/` and `.opencode/commands/` are listed after a
   consistent sync
 - **THEN** the agents directory contains the five phase markdown files and
-  the commands directory contains `spec-to-ship.md`
+  the commands directory contains `spec-to-ship.md` and `add-adapter.md`
+
+### Requirement: Generated command mirrors include add-adapter
+After a successful `sync-agent-skills`, `.cursor/commands/` and
+`.opencode/commands/` SHALL each contain `add-adapter.md`.
+
+There SHALL NOT be a `.opencode/agents/add-adapter.md` or a sixth
+pipeline agent. The generated OpenCode command MAY keep the existing
+translator `agent: spec-to-ship` binding (the primary orchestrator,
+which already allows `question`).
+
+#### Scenario: Cursor and OpenCode command mirrors include add-adapter
+- **WHEN** `.cursor/commands/` and `.opencode/commands/` are listed after
+  a consistent sync
+- **THEN** each directory contains `add-adapter.md`
+
+#### Scenario: no sixth OpenCode add-adapter agent
+- **WHEN** `.opencode/agents/` is listed
+- **THEN** it does not contain `add-adapter.md`
 
 ### Requirement: Support skills exist under the Cursor canonical tree
 `.cursor/skills/` SHALL contain a `SKILL.md` in each of these
 directories: `engineering-principles`, `regression-dog`,
-`pr-review-style`, `hotspot-expansion-review`, `mutation-testing`, and
-`component-testing`, and in each of these phase-skill directories:
+`pr-review-style`, `hotspot-expansion-review`, `mutation-testing`,
+`component-testing`, `add-adapter`, and `summon-review-panel`, and in
+each of these phase-skill directories:
 `spec-to-ship`, `write-spec`, `write-failing-tests`, `code-to-green`,
 `review-changes`, `verify-changes`.
 
@@ -106,11 +201,12 @@ Donor service names SHALL NOT leak into the ported skills: none of
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
 `@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
 
-#### Scenario: six support skills are present
+#### Scenario: eight support skills are present
 - **WHEN** `.cursor/skills/` is listed
 - **THEN** it contains directories named `engineering-principles`,
   `regression-dog`, `pr-review-style`, `hotspot-expansion-review`,
-  `mutation-testing`, and `component-testing`, each with a `SKILL.md`
+  `mutation-testing`, `component-testing`, `add-adapter`, and
+  `summon-review-panel`, each with a `SKILL.md`
 
 #### Scenario: six phase skills are present
 - **WHEN** `.cursor/skills/` is listed
@@ -130,6 +226,242 @@ Donor service names SHALL NOT leak into the ported skills: none of
 - **THEN** none of them contains `@cycle-processing/contracts`,
   `pnpm verify`, or `lefthook`
 
+### Requirement: add-adapter skill is the in-repo extender contract
+`.cursor/skills/add-adapter/SKILL.md` SHALL exist. It is the in-repo
+authoring guide that cycle-processing's `extend-test-kit` lacked: the
+seven-step walkthrough from `docs/architecture.md` ("Adding a New Domain
+Package: Walkthrough") plus `examples/grpc-client` as the extender
+contract guard.
+
+The skill SHALL tell the agent to inventory current coverage from
+`packages/` rather than from a hardcoded missing list. It SHALL contain
+`npm` and `workspaces`. It SHALL NOT contain `pnpm workspaces`,
+`pnpm link`, `Missing (author these)`, or
+`/Users/giladhoch/dev/test-kit`.
+
+The skill SHALL name these decision topics so the command can ask them
+without rediscovering the tree:
+
+- Goldilocks boundary as too thin / too fat / just right, and that the
+  Goldilocks ruling and its justification live in the **packet**
+- call shapes `{method, args}`, `{sql, parameters}`, and
+  `{commandName, command, input}`
+- adapter categories programmable mock, backed, hybrid, and function
+  boundary
+- backing choices, including that PGlite is Postgres-only, and that
+  `testcontainers` and `@testcontainers/mysql` are already dependencies
+- `ProbedResource` `reset` / `close` when the adapter owns resources
+- default-forward (`probe.always().forward()`) versus park
+- filter sugars as strictly optional (Design Rule 13)
+- SQL family via the `SqlDriver` seam in `packages/sql`, versus
+  standalone
+- factory naming `createProbed` and package naming
+  `@vnatures/test-kit-`
+
+The skill SHALL include a packet skeleton for `docs/internal/packets/PNN-*.md`
+that contains `Depends on:`, a Goldilocks ruling, adapter category,
+backing, what is explicitly out, and a size estimate against a ~40-test
+split.
+
+The skill SHALL state that its output is a packet (scope and shape), not
+a spec (behaviour).
+
+#### Scenario: add-adapter skill exists under the Cursor canonical tree
+- **WHEN** `.cursor/skills/add-adapter/` is listed
+- **THEN** it contains `SKILL.md`
+
+#### Scenario: skill is not the stale consumer copy
+- **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
+- **THEN** it contains `npm` and `workspaces` and `packages/`, and it
+  does not contain `pnpm workspaces`, `pnpm link`,
+  `Missing (author these)`, or `/Users/giladhoch/dev/test-kit`
+
+#### Scenario: skill teaches the seven-step walkthrough and contract guard
+- **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
+- **THEN** it contains `Adding a New Domain Package`, names call shape,
+  pending call, probe, adapter, `ProbedResource`, `forward`, and
+  factory, and contains `examples/grpc-client`
+
+#### Scenario: skill names the known question set
+- **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
+- **THEN** it contains `too thin`, `too fat`, `just right`,
+  `{method, args}`, `{sql, parameters}`, `{commandName, command, input}`,
+  `programmable mock`, `hybrid`, `function-boundary` or
+  `function boundary`, `PGlite`, `testcontainers`,
+  `@testcontainers/mysql`, `ProbedResource`, `reset`, `close`,
+  `probe.always().forward()`, `park`, `strictly optional`,
+  `SqlDriver`, `createProbed`, and `@vnatures/test-kit-`
+
+#### Scenario: skill packet skeleton owns scope not behaviour
+- **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
+- **THEN** it contains `docs/internal/packets/`, `Depends on:`,
+  `Goldilocks`, `40`, and states that the packet owns scope and the spec
+  owns behaviour
+
+### Requirement: summon-review-panel skill summons the policy/capability intersection
+`.cursor/skills/summon-review-panel/SKILL.md` SHALL exist. It is the
+skill that summons the review panel on an open PR.
+
+**Policy** is what this repository wants reviewed. It is committed at
+`.harness/review-panel.json`. **Capability** is what the current
+account can actually reach. Capability SHALL NOT be committed.
+
+The skill SHALL summon the intersection: each bot in the policy that the
+current account can invoke. For each policy bot it cannot invoke, it
+SHALL state a gap that names the bot and that capability is missing
+(no seat, unreachable). It SHALL NOT treat an unticked or omitted bot as
+the same signal as a missing seat.
+
+Known bot ids SHALL be exactly `copilot`, `bugbot`, and `baz`.
+
+The skill SHALL summon those ids as:
+
+- `copilot` — add `copilot` as a reviewer on the PR
+- `bugbot` — comment `@cursor review` on the PR (that trigger string is
+  the comment body; it SHALL NOT require the `🤖:` prefix used for
+  review replies)
+- `baz` — org-automatic if present; the skill SHALL NOT add Baz config,
+  `CODEOWNERS`, or anything under `.github/`
+
+The skill SHALL state that this does **not** contradict `no GitHub
+Actions`: Copilot-as-reviewer and `@cursor review` are per-PR actions
+needing zero CI.
+
+Findings SHALL hand off to `pr-review-style`. The skill SHALL NOT
+instruct triaging, applying, or rejecting review comments. It SHALL be
+invokable after a later push without running triage.
+
+There SHALL NOT be a `.claude/commands/summon-review-panel.md`. This
+packet SHALL NOT add a sixth pipeline agent.
+
+#### Scenario: summon-review-panel skill exists under the Cursor canonical tree
+- **WHEN** `.cursor/skills/summon-review-panel/` is listed
+- **THEN** it contains `SKILL.md`
+
+#### Scenario: skill separates policy from capability
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `policy`, `capability`, and
+  `.harness/review-panel.json`
+
+#### Scenario: skill summons copilot as a reviewer and comments @cursor review
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `copilot` as a reviewer and contains
+  `@cursor review`
+
+#### Scenario: skill names baz and does not add GitHub Actions or Baz config
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `baz`, contains `no GitHub Actions`, and does
+  not contain `.github/workflows`
+
+#### Scenario: skill hands findings to pr-review-style
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `pr-review-style` and does not contain
+  `Each finding is either actionable or noise`
+
+#### Scenario: skill can be re-run without triage
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it states that summoning can run again after a push without
+  running triage
+
+#### Scenario: no summon-review-panel command
+- **WHEN** `.claude/commands/` is listed
+- **THEN** it does not contain `summon-review-panel.md`
+
+### Requirement: first-run records policy; later runs re-prompt only on failure
+When `.harness/review-panel.json` is absent, the skill SHALL ask via
+`AskUserQuestion` multi-select which of the known bot ids this
+repository wants, write that answer as the `wanted` array in
+`.harness/review-panel.json`, and SHALL NOT ask again on a later run
+while that file exists.
+
+After recording (or when the file already exists), the skill SHALL
+summon the intersection.
+
+When a summon fails, or a declared bot has gone unreachable, the skill
+SHALL re-prompt via `AskUserQuestion` for this run. It SHALL NOT edit
+`.harness/review-panel.json` to drop that bot: that would conflate
+policy with capability. Changing `wanted` is an explicit committed edit.
+
+#### Scenario: skill bootstraps missing policy via AskUserQuestion
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `AskUserQuestion`, `multi-select`, and
+  `review-panel.json`
+
+#### Scenario: later runs use recorded policy without asking
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it states that a later run does not ask while
+  `review-panel.json` exists
+
+#### Scenario: skill states a capability gap without editing policy
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `policy wants` and `seat`, and it does not
+  instruct removing a bot from `wanted` because a summon failed
+
+#### Scenario: skill re-prompts when a summon fails or a bot is unreachable
+- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
+- **THEN** it contains `AskUserQuestion` and `unreachable`
+
+### Requirement: review-panel.json is committed policy without capability
+The tracked file `.harness/review-panel.json` SHALL exist alongside
+`.harness/models.json`. It SHALL be a JSON object with a `wanted` array
+of bot id strings. Every entry SHALL be one of `copilot`, `bugbot`,
+`baz`. This repository's committed `wanted` SHALL include `copilot`
+and `bugbot`.
+
+The object SHALL NOT contain a `capability` or `seats` key.
+
+A `//` documentation key MAY exist. If present, it SHALL mention
+`policy`.
+
+#### Scenario: review-panel.json exists alongside models.json
+- **WHEN** `.harness/` is listed
+- **THEN** it contains `review-panel.json` and `models.json`
+
+#### Scenario: review-panel.json wanted lists copilot and bugbot and no capability key
+- **WHEN** `.harness/review-panel.json` is parsed
+- **THEN** `wanted` is an array that includes `copilot` and `bugbot`,
+  every entry is one of `copilot`, `bugbot`, or `baz`, and the object
+  has no `capability` or `seats` key
+
+### Requirement: spec-to-ship PR loop names summon-review-panel
+`.claude/commands/spec-to-ship.md` and
+`.cursor/skills/spec-to-ship/SKILL.md` SHALL name `summon-review-panel`
+as the way to summon review bots after a PR is opened and after a later
+push. They SHALL NOT inline the Copilot-reviewer or `@cursor review`
+recipe in the PR loop.
+
+#### Scenario: spec-to-ship command names summon-review-panel
+- **WHEN** `.claude/commands/spec-to-ship.md` is read
+- **THEN** it contains `summon-review-panel`
+
+#### Scenario: spec-to-ship skill names summon-review-panel
+- **WHEN** `.cursor/skills/spec-to-ship/SKILL.md` is read
+- **THEN** it contains `summon-review-panel`
+
+### Requirement: pr-review-style defers summoning to summon-review-panel
+`.cursor/skills/pr-review-style/SKILL.md` SHALL name
+`summon-review-panel` as the skill that assembles the panel. It SHALL
+NOT contain the heading `Assembling the review panel`. Triage of
+findings that have already landed stays in `pr-review-style`. GitHub-facing
+comments SHALL use the `🤖:` prefix except the Bugbot trigger that
+`summon-review-panel` posts (`@cursor review` as the whole body).
+
+#### Scenario: pr-review-style names summon-review-panel and does not assemble the panel
+- **WHEN** `.cursor/skills/pr-review-style/SKILL.md` is read
+- **THEN** it contains `summon-review-panel` and `@cursor review` and does
+  not contain `Assembling the review panel`
+
+### Requirement: OSS.md tracks versatile-internal harness pieces
+`docs/internal/OSS.md` SHALL exist. It SHALL name
+`summon-review-panel` and `.harness/review-panel.json` as
+`versatile-internal`. It SHALL name the LiteLLM role aliases in
+`.harness/models.json` (`litellm/vn-`) as `versatile-internal`. It SHALL
+NOT introduce a skill-frontmatter marking convention.
+
+#### Scenario: OSS.md tracks summon-review-panel as versatile-internal
+- **WHEN** `docs/internal/OSS.md` is read
+- **THEN** it contains `summon-review-panel`, `litellm`, and
+  `versatile-internal`
 
 ### Requirement: component-testing teaches this repo's current API in Vitest
 `.cursor/skills/component-testing/SKILL.md` SHALL be written for this
@@ -575,9 +907,10 @@ It SHALL state these git conventions: remote `vn` (there is no
 `RD-NNNNN_slug`, Conventional Commits with a package scope.
 
 It SHALL name `/spec-to-ship` and the five phases `spec-author`,
-`test-author`, `coder`, `reviewer`, `verifier`. It SHALL NOT instruct
-merging onto `main` or moving files into `docs/internal/archive/` while
-a PR is open.
+`test-author`, `coder`, `reviewer`, `verifier`. It SHALL name
+`/add-adapter` as the command that shapes an adapter or probe packet
+before `/spec-to-ship`. It SHALL NOT instruct merging onto `main` or
+moving files into `docs/internal/archive/` while a PR is open.
 
 It SHALL name `.harness/models.json` as the source of per-phase model
 targeting. It SHALL NOT contain `cursor-grok-4.6-xhigh`,
@@ -620,6 +953,10 @@ as the current S3 backing. It SHALL NOT contain `no Docker needed`.
   onto `main` or moving files into `docs/internal/archive/` while a PR
   is open
 
+#### Scenario: AGENTS.md names add-adapter as packet shaping
+- **WHEN** `AGENTS.md` is read
+- **THEN** it contains `add-adapter`
+
 #### Scenario: AGENTS.md defers model ids to the manifest
 - **WHEN** `AGENTS.md` is read
 - **THEN** it contains `.harness/models.json` and does not contain
@@ -637,7 +974,8 @@ as the current S3 backing. It SHALL NOT contain `no Docker needed`.
 ### Requirement: CLAUDE.md is a thin Claude Code overlay
 Repository-root `CLAUDE.md` SHALL exist. It SHALL open with `@AGENTS.md`.
 It SHALL inventory Claude Code assets at `.claude/agents/`,
-`.claude/commands/`, and `.claude/skills/`. It SHALL include a
+`.claude/commands/`, and `.claude/skills/`. It SHALL name the command
+files `spec-to-ship` and `add-adapter`. It SHALL include a
 canonical-source table that states:
 
 - skills are canonical in `.cursor/skills`
@@ -662,6 +1000,10 @@ or `always()`. It SHALL NOT contain `cursor-grok-4.6-xhigh`,
 - **WHEN** `CLAUDE.md` is read
 - **THEN** it contains `.claude/agents`, `.claude/commands`,
   `.claude/skills`, `.cursor/skills`, and `.harness/models.json`
+
+#### Scenario: CLAUDE.md inventories spec-to-ship and add-adapter commands
+- **WHEN** `CLAUDE.md` is read
+- **THEN** it contains `spec-to-ship` and `add-adapter`
 
 #### Scenario: CLAUDE.md does not teach the library domain or pin models
 - **WHEN** `CLAUDE.md` is read
@@ -742,6 +1084,55 @@ sequenceDiagram
   Agent->>Types: compile against Expectations.exactly
 ```
 
+```mermaid
+sequenceDiagram
+  participant Human
+  participant Cmd as add-adapter command
+  participant Skill as add-adapter skill
+  participant Packets as docs/internal/packets
+  participant Ship as spec-to-ship
+  Human->>Cmd: /add-adapter
+  Cmd->>Skill: read known question set
+  Cmd->>Cmd: inventory packages/ for coverage
+  alt novel work
+    Cmd->>Human: stop#59; grill instead
+  else new package or extend probe
+    Cmd->>Human: AskUserQuestion branch then remaining decisions
+    Human->>Cmd: answers
+    Cmd->>Packets: write PNN-name.md with Depends on
+    Cmd->>Human: stop#59; next is /spec-to-ship on that packet
+    Human->>Ship: /spec-to-ship docs/internal/packets/PNN-name.md
+  end
+```
+
+```mermaid
+sequenceDiagram
+  participant Orch as spec-to-ship
+  participant Skill as summon-review-panel
+  participant Policy as review-panel.json
+  participant Human
+  participant GH as GitHub PR
+  participant Style as pr-review-style
+  Orch->>Skill: PR opened or later push
+  alt policy file missing
+    Skill->>Human: AskUserQuestion multi-select
+    Human->>Skill: wanted bot ids
+    Skill->>Policy: write wanted
+  else policy file exists
+    Skill->>Policy: read wanted
+  end
+  loop each wanted bot
+    alt capable
+      Skill->>GH: add copilot / comment @cursor review / note baz
+    else missing seat or unreachable
+      Skill->>Human: state gap#59; AskUserQuestion for this run
+      Note over Policy: do not drop the bot from wanted
+    end
+  end
+  Skill->>Orch: intersection summoned#59; gaps named
+  Orch->>Style: triage findings that landed
+```
+
 ## Decisions (rung recorded)
 
 | Decision | Outcome | Rung |
@@ -757,7 +1148,7 @@ sequenceDiagram
 | `mutation-testing` is a thin missing-gate card, not a Stryker how-to | RD-24153 has not landed; tests resolve through `dist/` | Ticket + source (`spec-to-ship` skill, `verify-changes`) |
 | Port blinkers `12`, `13`, `15`, plus adapted ratchet, BSSN, and complexity-budget; re-anchor globs to `packages/**/*.ts` | Ticket named those three as nearly-as-is; coder allocation also names ratchet, BSSN, and the budget. This repo's ESLint does not enforce complexity, and there are no git hooks — the budget file must not claim either | Ticket + source (`.eslintrc.json` has no complexity plugin; `ci-gate.md`) |
 | Call `.cursor/rules/` contents blinkers in agent/skill prose | `Rule` is a published API concept; RD-24143 spent a major version killing the collision | Ticket |
-| Do not port `10-http-boundaries`, hexagonal refactor, `component-testing.mdc`, Slack/post-deploy/help-docs, `extend-test-kit`, `add-module` | Service-shaped; dead in a library monorepo | Ticket |
+| Do not port `10-http-boundaries`, hexagonal refactor, `component-testing.mdc`, Slack/post-deploy/help-docs, `extend-test-kit`, `add-module` | Service-shaped; dead in a library monorepo. P08 (RD-24149) then inverted `extend-test-kit` into the in-repo `add-adapter` skill rather than porting it; the donor directory names stay banned | Ticket + RD-24149 |
 | Do not add `check-agent-skills` to the five-step `npm run check` chain | P00 pinned that chain; scaffold tests (and these) already invoke the script under `npm test` | Source (`ci-gate.md`, `harness-scaffold.md` out of scope) |
 | Extend ci-gate's gate-prose scan to `.cursor/rules/` | New blinkers can describe the gate; leaving them unscanned would hide a `lefthook` copy-paste | Ticket ("new skill prose must comply") + source (ci-gate test lists dirs) |
 | Close the core-public-api known-gap row about `createHarness` in component-testing | This packet owns that rewrite | Source (`core-public-api.md` known gaps) + ticket |
@@ -787,6 +1178,30 @@ sequenceDiagram
 | Do not compile markdown fences with `tsc` | Ticket said compiling "may" subsume the indent gate. Fragments are not a program. String scan for `exactly`/`within` plus declaration-presence is the BSSN gate | Ticket ("may") + source (existing harness-prose gate) |
 | Canonical path remains `.cursor/skills/component-testing/SKILL.md` | Skills fan out Cursor → Claude; do not hand-edit `.claude/skills` | Source (`harness-scaffold.md`) |
 | Do not rewrite `docs/concepts.md` Clock wording in this packet | Ticket scoped the skill. concepts.md still prefers `rig.clock.advance` as uniform across runners — a documented discrepancy, not this packet's surface | Ticket (Done when) |
+| One command covering new package and extend-existing, not two | Two commands would be two phase-0 surfaces to keep in sync; the branch is the first question instead | Ticket |
+| Command and skill named `add-adapter`, not `extend-test-kit` | The donor names stay banned; this is the inverted in-repo guide, pointed inward | Ticket + source (donor-skill ban above) |
+| Output is a packet under `docs/internal/packets/`, not a spec delta | Packet owns scope and shape (Goldilocks ruling and its justification); the spec still owns behaviour | Ticket |
+| Command stops after writing the packet; does not chain `/spec-to-ship` | The human runs `/spec-to-ship` on the packet path, so phase 0 stays a human checkpoint | Ticket |
+| Grilling stays the fallback; the grilling skill is not ported | Novel work that is neither branch stops without a packet | Ticket |
+| Facts come from `packages/`; no hardcoded missing-adapter list | Avoids the donor rot that listed SQS/Kafka/MySQL as missing while all three ship | Source (`packages/{sqs,kafka,mysql}`) + ticket |
+| Sugars cite Design Rule 13 / "strictly optional", not "Design Rule 4" | The ticket numbered the Filter prose as Rule 4; current `docs/concepts.md` Rule 4 is call shapes and Rule 13 is sugars | Source (`docs/concepts.md`) |
+| SQL seam is `SqlDriver` in `packages/sql` (`types.ts`), not `packages/sql/src/driver.ts` | That path does not exist | Source (`packages/sql/src/types.ts`) |
+| Factory pattern is `createProbed…` as siblings actually export | Donor said `createProbedMySql*Adapter`; the tree says `createProbedMysqlAdapter`, `createProbedKafkaProducer` | Source (`packages/*/src/factory.ts`) |
+| No sixth pipeline agent; the OpenCode `add-adapter` command keeps `agent: spec-to-ship` | The primary orchestrator already has `question: allow`; the translator hardcodes that agent field | Source (`.opencode/opencode.json`, `translate_opencode_command`) |
+| `/spec-to-ship` names `/add-adapter` but does not absorb its questions | Fills the drawn step 0 without collapsing the phases into one command | Ticket |
+| Cycle-processing's `extend-test-kit` copy is not edited from this repo | Different repo, different allowlists; P07 also stayed in-repo | Source (this repo) + sibling (P07) |
+| Policy vs capability are different files/signals; a checkbox conflates them | Policy is committed `wanted`; capability is runtime; gaps are stated, not stored | Ticket (RD-24152) |
+| `.harness/review-panel.json` with a `wanted` array of known ids | Sits next to `models.json`; no `capability` / `seats` keys | Ticket + source (`.harness/models.json`) |
+| Known ids are `copilot`, `bugbot`, `baz` | Matches the ticket and the inline panel `pr-review-style` already named | Ticket + source (`pr-review-style`) |
+| This repo's committed `wanted` is `copilot` and `bugbot`, not `baz` | Baz org-wide install could not be confirmed (`admin:org` missing); this repo has no `.github/`, no Baz config, no CODEOWNERS | Ticket (open facts) + source (no `.github/`) |
+| First run asks, writes `wanted`, then summons; later runs skip the ask | "Stops asking" is not "stops summoning" | Ticket |
+| Re-prompt on fail/unreachable; do not edit `wanted` to match capability | That edit would recreate the checkbox | Ticket |
+| Skill only — no `/summon-review-panel` command, no sixth agent | Packet is a skill; re-summon by re-reading it; fan-out is existing Cursor→Claude rsync | Ticket (title) + source (`harness-scaffold.md`) |
+| spec-to-ship PR loop names the skill instead of "let the bots run" | Makes summoning part of the harness | Ticket |
+| `pr-review-style` drops `Assembling the review panel` and names this skill | Summoning and triage stay separate | Ticket |
+| Bugbot comment body is exactly `@cursor review`, not `🤖: @cursor review` | Ticket's trigger string; `🤖:` stays the prefix for review replies | Ticket + source (`pr-review-style`) |
+| No GitHub Actions, no CODEOWNERS, no Baz repo config | Per-PR Copilot reviewer and `@cursor review` need zero CI | Ticket + source (no `.github/`) |
+| Track versatile-internal in `docs/internal/OSS.md`, no frontmatter mark | Ticket forbade a marking convention; `docs/internal/` is already the OSS-ignore tree | Ticket |
 
 ## Out of scope (deferred)
 
@@ -795,14 +1210,25 @@ sequenceDiagram
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything; the mutation-testing skill is a stated missing gate, not a runner |
 | Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via tests inside `npm test` |
 | husky / lefthook / `prepare` / `core.hooksPath` | Still no git hooks |
-| Phase-0 steering command + add-adapter skill (P08, RD-24149) | `extend-test-kit` / `add-module` stay unported |
-| summon-review-panel (P11, RD-24152) | PR-review-style names the panel idea without that skill |
+| Confirming Baz org-wide install on `vnatures`, or Copilot PR-review seats on private repos | Capability stays a runtime gap statement; this repo's committed `wanted` omits `baz` until someone adds it |
+| A `/summon-review-panel` slash command | Re-summon by invoking the skill; no Cursor/Claude/OpenCode command mirror |
+| An unattended PR-watching review orchestrator | Ticket: that agent has nobody to ask; this skill's recorded policy is the file it will need |
+| Installing Baz or changing org seat policy | Out of this repository |
+| GitHub Actions, CODEOWNERS, or Baz repo config | test-kit still has no `.github/` |
+| A skill-frontmatter `oss:` / `versatile-internal` mark | `docs/internal/OSS.md` is the list |
 | ESLint complexity plugin matching the budget numbers | The budget is a blinker convention; lint does not yet fail a 13-complexity function |
 | Renaming the `harness` option key, `origin: 'harness'`, or `errors.harnessClosed()` texts | Deliberate keeps from RD-24143 |
 | CircleCI path-filter lines for root `CONTEXT.md` / `AGENTS.md` / `CLAUDE.md` | A later PR that touches only those files can skip `build_workspace` |
 | Extending ci-gate's gate-prose scan to root `AGENTS.md` | Gate facts are asserted by AGENTS.md scenarios instead |
 | Adding `CONTEXT.md` to the docs-truth library-docs corpus | Phantom-API scans still skip the glossary |
 | Adding Porcelain / Plumbing / Goldilocks headings to `docs/concepts.md` | `write-spec` still cites those terms as if they lived there |
+| Updating cycle-processing's `extend-test-kit` skill | That copy stays stale (pnpm, hardcoded checkout path, SQS/Kafka/MySQL listed as missing) until a follow-up in that repo |
+| Porting a grilling skill into this repo | Novel work still falls back to grilling, and there is no in-repo grilling skill to fall back to |
+| A second phase-0 command if one branch grows past a third of the questions | `/add-adapter` carries both branches until that happens |
+| Changing `translate_opencode_command` to set `agent:` from the command stem | OpenCode `/add-adapter` keeps `agent: spec-to-ship` |
+| Adding `add-adapter` to the `.opencode/opencode.json` `agent` map | No sixth OpenCode agent |
+| Teaching a consumer how to `npm link` a work-in-progress adapter | Packet shaping stops short of publishing |
+| Rewriting `docs/architecture.md` line citations, or adding `packages/sql/src/driver.ts` | The skill points at the walkthrough heading and at `SqlDriver` in `packages/sql` instead of line numbers |
 | Markdown / frontmatter linter | `npm run check` stays the five TypeScript-focused scripts |
 | Compiling skill TypeScript fences with `tsc` | An `exactly` arity error is caught by the string scan, not by the compiler. Fragments can still be ill-typed in other ways |
 | Rewriting `docs/concepts.md` Clock / `rig.clock.advance` guidance | Published concepts still present `rig.clock.advance` as the uniform driver; Jest consumers who read concepts.md (not the skill) can still hit the one-microtask drain |
@@ -815,7 +1241,7 @@ sequenceDiagram
 2. `.claude/commands/spec-to-ship.md` exists, contains `**Model selection.**`, and does not merge or archive on an open PR.
 3. After sync, Cursor agent `readonly` is false/false/false/true/true; OpenCode reviewer and verifier deny edit; OpenCode agents and commands trees are populated.
 4. Editing a generated `.cursor/agents` file makes `check-agent-skills` exit non-zero.
-5. `.cursor/skills/` has the six support skills plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
+5. `.cursor/skills/` has the eight support skills (including `add-adapter` and `summon-review-panel`) plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
 6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`, states the two clocks separately, tells Jest consumers to `await jest.advanceTimersByTimeAsync` when continuations must drain, and every `typescript`/`ts` fence that uses `rig` (including CommonMark-indented fences) declares `rig` in the same fence.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
 8. `mutation-testing` names RD-24153 and `dist/` and does not instruct running Stryker as a current gate.
@@ -835,3 +1261,19 @@ sequenceDiagram
 22. The skill names `clearRules`, `clearCalls`, `resetProbe`, `rig.reset` with `keepRules`, and `createRig` options `clock`, `defaultTimeout`, `safetyTimeout`.
 23. The skill states that `MethodProbe` and `BullQueueProbe` have `.on(method)`, `QueryProbe` does not, and both inherit `filter()`.
 24. The harness-prose TypeScript fence extractor includes fences indented 0–3 spaces; an indented fence that uses `rig` without declaring it fails the declaration check.
+25. `.claude/commands/add-adapter.md` exists; `.claude/commands/` has no `extend-probe.md`, `new-package.md`, or `extend-test-kit.md`.
+26. That command names the `add-adapter` skill, contains `AskUserQuestion`, and branches on new `packages/<domain>/` vs extending an existing probe.
+27. That command writes under `docs/internal/packets/` with `Depends on:`, does not write a spec delta, and does not run `/spec-to-ship`.
+28. That command stops without a packet on novel work and names grilling as the fallback.
+29. `.cursor/skills/add-adapter/SKILL.md` exists, contains `npm` / `workspaces` / `packages/`, and contains none of `pnpm workspaces`, `pnpm link`, `Missing (author these)`, or a hardcoded checkout path.
+30. That skill names the architecture walkthrough heading, the seven-step topics, `examples/grpc-client`, and the known question set (Goldilocks trio, three call shapes, four categories, PGlite, testcontainers, `ProbedResource` lifecycle, default-forward vs park, strictly optional sugars, `SqlDriver`, `createProbed`, `@vnatures/test-kit-`).
+31. That skill's packet skeleton includes `docs/internal/packets/`, `Depends on:`, Goldilocks, and `40`, and states packet-owns-scope / spec-owns-behaviour.
+32. After sync, `.cursor/commands/add-adapter.md` and `.opencode/commands/add-adapter.md` exist; `.opencode/agents/add-adapter.md` does not.
+33. `.claude/commands/spec-to-ship.md`, `.cursor/skills/spec-to-ship/SKILL.md`, `AGENTS.md`, and `CLAUDE.md` each name `add-adapter`.
+34. `.cursor/skills/summon-review-panel/SKILL.md` exists; names policy vs capability and `.harness/review-panel.json`; adds `copilot` as a reviewer and comments `@cursor review`; names `baz` and `no GitHub Actions` and does not contain `.github/workflows`; names `pr-review-style` and does not contain the triage sentence `Each finding is either actionable or noise`; states re-summon after a push without triage.
+35. `.claude/commands/` has no `summon-review-panel.md`.
+36. The skill contains `AskUserQuestion`, `multi-select`, and `review-panel.json`, and states that a later run does not ask while the file exists; it contains `policy wants` and `seat`, does not drop a bot from `wanted` on summon failure, and re-prompts on `unreachable`.
+37. `.harness/review-panel.json` exists; `wanted` includes `copilot` and `bugbot`; every entry is a known id; no `capability` or `seats` key.
+38. `.claude/commands/spec-to-ship.md` and `.cursor/skills/spec-to-ship/SKILL.md` contain `summon-review-panel`.
+39. `.cursor/skills/pr-review-style/SKILL.md` contains `summon-review-panel` and `@cursor review` and does not contain `Assembling the review panel`.
+40. `docs/internal/OSS.md` contains `summon-review-panel`, `litellm`, and `versatile-internal`.

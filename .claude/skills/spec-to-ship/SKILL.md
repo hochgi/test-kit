@@ -49,7 +49,7 @@ PHASE 5 — VERIFY        verifier       delegated, READ-ONLY
   independent re-run of the whole gate + suppression audit
   skill: verify-changes
         │
-   PR → bots → fix → threads clean → STOP
+   PR → summon-review-panel → fix → threads clean → STOP
         human squash-merges onto main
         then FOLD THE DELTA → ARCHIVE (follow-up PR on updated main)
 ```
@@ -77,9 +77,10 @@ stated one.
 
 ## Autonomy: no human gates
 
-Run 1 → 2 → 3 → 4 → 5, fix findings, open the PR, iterate review. Do not merge
-or archive until the PR is on `main`. Do not stop to ask whether to proceed
-between phases and do not present finished work for approval.
+Run 1 → 2 → 3 → 4 → 5, fix findings, open the PR, run `summon-review-panel`,
+iterate review. Do not merge or archive until the PR is on `main`. Do not stop
+to ask whether to proceed between phases and do not present finished work for
+approval.
 
 **Resolve yourself, silently:** anything that does not change observable
 behaviour — naming, decomposition, internal types, test structure, file layout.
@@ -103,6 +104,14 @@ Harness markdown under `.cursor/` and `.claude/` is not format-checked or linted
 workspace-wide `check` job in CI via the `.cursor/**` and `.claude/**`
 path-filter mappings. That job's `npm test` includes the suites that invoke
 `check-agent-skills`. Do not invent a markdown or frontmatter linter.
+
+## PR loop
+
+After the five phases, open a PR against `main` on remote `vn`, then run
+`summon-review-panel` to summon review bots. After a later push, run
+`summon-review-panel` again. Do not inline the summoning recipe here.
+Triage findings with `pr-review-style`. Iterate until every thread is
+addressed, then **stop**. Do not merge or archive while the PR is open.
 
 ## When NOT to run the pipeline
 

@@ -10,7 +10,12 @@ description: >-
 # PR review style
 
 This is a single library repository (`@vnatures/test-kit` and its workspace
-packages). Remote is **`vn`**. Prefix every GitHub-facing comment with `🤖: `.
+packages). Remote is **`vn`**. Prefix every GitHub-facing comment with `🤖: `,
+except the Bugbot trigger posted by `summon-review-panel` — that comment
+body is exactly `@cursor review` with no prefix.
+
+`summon-review-panel` is the skill that assembles and summons the panel.
+This skill triages findings that have already landed.
 
 ## Defaults
 
@@ -23,17 +28,6 @@ packages). Remote is **`vn`**. Prefix every GitHub-facing comment with `🤖: `.
 - **Don't silently expand scope.** When something looks out of scope, ask the
   owner whether they prefer a fix in the current PR or a follow-up task — don't
   quietly slip it in.
-
-## Assembling the review panel (when you OPEN a PR)
-
-Don't wait for reviewers to find the PR on their own. Other agents — running on
-different models with different system prompts — catch what a single agent is
-blind to. When you open a PR, gather the panel:
-
-- **Copilot** — add `copilot` as a reviewer on the PR.
-- **Bugbot (Cursor)** — comment `@cursor review` on the PR.
-
-Then triage every comment that lands (below).
 
 ## Replying to bot reviewers
 
@@ -64,7 +58,8 @@ A good review comment includes:
 (1) and (3) without (2) feels prescriptive. (2) without (3) feels handwavy. All
 three together is a good comment.
 
-GitHub-facing text starts with `🤖: `.
+GitHub-facing text starts with `🤖: `. The `@cursor review` trigger is
+the exception; `summon-review-panel` owns that comment.
 
 ## Anti-patterns
 
