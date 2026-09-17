@@ -670,21 +670,34 @@ ignore `component-testing`. Lifecycle close in that skill SHALL be
 - **WHEN** `.cursor/skills/write-failing-tests/SKILL.md` is read
 - **THEN** it contains `rig.close()` and does not contain `harness.close()`
 
-### Requirement: mutation-testing skill is thin until RD-24153
-`.cursor/skills/mutation-testing/SKILL.md` SHALL state that mutation
-testing and CRAP have not landed (RD-24153) and that tests resolve through
-`dist/`, so a mutant applied to `src` is never loaded. It SHALL NOT
-instruct the agent to run `test:mutation`, `pnpm crap`, or `stryker run`
-as a current gate of this repository.
+### Requirement: mutation-testing skill is the Stryker how-to
+`.cursor/skills/mutation-testing/SKILL.md` SHALL tell the agent how to
+run this repository's mutation and CRAP gates: `test:mutation`,
+`test:mutation:changed`, `crap`, `crap:changed`, and that Stryker uses
+`vitest.mutation.config.ts` so mutants in `src` are loaded. It SHALL
+state that `npm test` still resolves through `dist/`. It SHALL state
+that a zero-mutant report is a failure. It SHALL name
+[stryker-js#6192](https://github.com/stryker-mutator/stryker-js/issues/6192)
+and tell phase 5 to hand-apply survivors before treating them as missing
+tests. It SHALL name [stryker-js#6183](https://github.com/stryker-mutator/stryker-js/issues/6183)
+and tell the agent to treat a zero-mutant success as that failure mode.
+It SHALL NOT mention `@cycle-processing/contracts`, `pnpm verify`,
+`lefthook`, or `pnpm crap`. Canonical path remains `.cursor/skills/`;
+`sync-agent-skills` must run after the edit.
 
-#### Scenario: mutation-testing names the missing gate
+#### Scenario: mutation-testing instructs the current Stryker how-to
 - **WHEN** `.cursor/skills/mutation-testing/SKILL.md` is read
-- **THEN** it contains `RD-24153` and `dist`
+- **THEN** it contains `test:mutation`, `crap:changed`,
+  `vitest.mutation.config.ts`, and `dist`
 
-#### Scenario: mutation-testing does not run Stryker today
+#### Scenario: mutation-testing names the two upstream risks
 - **WHEN** `.cursor/skills/mutation-testing/SKILL.md` is read
-- **THEN** it does not contain `test:mutation`, `pnpm crap`, or
-  `stryker run`
+- **THEN** it contains `6192` and `6183`
+
+#### Scenario: mutation-testing does not import donor service machinery
+- **WHEN** `.cursor/skills/mutation-testing/SKILL.md` is read
+- **THEN** it does not contain `pnpm crap`, `pnpm verify`, `lefthook`,
+  or `@cycle-processing/contracts`
 
 ### Requirement: Glob-scoped blinkers live under .cursor/rules
 `.cursor/rules/` SHALL contain these Cursor `.mdc` files:
@@ -775,8 +788,13 @@ instruct running `test:mutation`, `stryker run`, or `pnpm crap`.
 `pr-review-style`, and SHALL NOT instruct running `test:mutation`,
 `stryker run`, or `pnpm crap`.
 `.claude/agents/verifier.md` SHALL name `verify-changes` and `RD-24153`,
-and SHALL state that this repository has no mutation testing and no CRAP
-report.
+and SHALL NOT contain the phrase `no mutation testing`. It SHALL tell
+the verifier to run the mutation and CRAP scripts named in
+`verify-changes`. `.cursor/skills/verify-changes/SKILL.md` SHALL tell
+the verifier to run `npm run test:mutation:changed` and
+`npm run crap:changed` in addition to `npm run check`. It SHALL NOT
+state that this repository has no mutation testing. It SHALL state that
+a zero-mutant Stryker success is a defect.
 
 #### Scenario: each agent names the skill it drives
 - **WHEN** the five `.claude/agents/<name>.md` files are read
@@ -784,7 +802,7 @@ report.
   `write-failing-tests`, coder contains `code-to-green`, reviewer contains
   `review-changes`, and verifier contains `verify-changes`
 
-#### Scenario: coder and reviewer do not run coverage-quality gates
+#### Scenario: coder and reviewer still do not run coverage-quality gates
 - **WHEN** `.claude/agents/coder.md` and `.claude/agents/reviewer.md` are
   read
 - **THEN** neither file contains `test:mutation`, `stryker run`, or
@@ -794,9 +812,15 @@ report.
 - **WHEN** `.claude/agents/reviewer.md` is read
 - **THEN** it contains `pr-review-style`
 
-#### Scenario: verifier states the missing gate
+#### Scenario: verifier agent names RD-24153 and does not claim the gate is missing
 - **WHEN** `.claude/agents/verifier.md` is read
-- **THEN** it contains `RD-24153` and the phrase `no mutation testing`
+- **THEN** it contains `verify-changes` and `RD-24153`, and does not
+  contain the phrase `no mutation testing`
+
+#### Scenario: verify-changes runs the coverage-quality scripts
+- **WHEN** `.cursor/skills/verify-changes/SKILL.md` is read
+- **THEN** it contains `test:mutation:changed` and `crap:changed`, and
+  does not contain the phrase `no mutation testing`
 
 ### Requirement: CONTEXT.md is a glossary of canonical terms
 Repository-root `CONTEXT.md` SHALL exist. It SHALL be a glossary and
@@ -1043,7 +1067,7 @@ Tests that encode these scenarios SHALL run as part of the root `npm test`
 workspace, and SHALL be included in the root `format:check` glob.
 
 #### Scenario: harness-prose tests are in the Vitest workspace
-- **WHEN** `vitest.workspace.ts` is read
+- **WHEN** `vitest.config.ts` is read
 - **THEN** it includes a project that picks up the tests for this
   capability
 
@@ -1172,7 +1196,7 @@ sequenceDiagram
 | Command still stops on an open PR — no squash-merge, no archive | This repo's merge is a human action via `vn`; donors ff-merge | Ticket comments + source (bootstrap `.cursor/commands/spec-to-ship.md`) |
 | Rewrite `component-testing` for this repo: `createRig` / Vitest / no v1.0.0 pin; keep `harness:` option key | Three defects (consumer-perspective, Jest, removed API). Option key is a deliberate keep | Ticket + source (`core-public-api.md`, `createProbedMock({ harness })`) |
 | Delete the write-failing-tests "ignore this skill" warning once the rewrite is true; lifecycle close is `rig.close()` | Stopgap becomes a lie the moment the skill is current | Ticket |
-| `mutation-testing` is a thin missing-gate card, not a Stryker how-to | RD-24153 has not landed; tests resolve through `dist/` | Ticket + source (`spec-to-ship` skill, `verify-changes`) |
+| `mutation-testing` is the Stryker how-to for this repository | RD-24153 landed: `vitest.mutation.config.ts` aliases `@vnatures/*` to `src`, `npm test` still uses `dist/` | Spike measurement + ticket |
 | Port blinkers `12`, `13`, `15`, plus adapted ratchet, BSSN, and complexity-budget; re-anchor globs to `packages/**/*.ts` | Ticket named those three as nearly-as-is; coder allocation also names ratchet, BSSN, and the budget. P06's ESLint did not enforce complexity, and there are no git hooks — the budget file must not claim a hook. P09 (RD-24150) then turned the budget numbers on in ESLint as a ratchet (`npm run lint`); the blinker still must not claim a git hook | Ticket + source (`.eslintrc.json`; `ci-gate.md`) + RD-24150 |
 | Call `.cursor/rules/` contents blinkers in agent/skill prose | `Rule` is a published API concept; RD-24143 spent a major version killing the collision | Ticket |
 | Do not port `10-http-boundaries`, hexagonal refactor, `component-testing.mdc`, Slack/post-deploy/help-docs, `extend-test-kit`, `add-module` | Service-shaped; dead in a library monorepo. P08 (RD-24149) then inverted `extend-test-kit` into the in-repo `add-adapter` skill rather than porting it; the donor directory names stay banned | Ticket + RD-24149 |
@@ -1235,7 +1259,6 @@ sequenceDiagram
 
 | Item | Consequence of deferring |
 | --- | --- |
-| Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything; the mutation-testing skill is a stated missing gate, not a runner |
 | Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via tests inside `npm test` |
 | husky / lefthook / `prepare` / `core.hooksPath` | Still no git hooks |
 | Confirming Baz org-wide install on `vnatures`, or Copilot PR-review seats on private repos | Capability stays a runtime gap statement; this repo's committed `wanted` omits `baz` until someone adds it |
@@ -1271,9 +1294,9 @@ sequenceDiagram
 5. `.cursor/skills/` has the eight support skills (including `add-adapter` and `summon-review-panel`) plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
 6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`, states the two clocks separately, tells Jest consumers to `await jest.advanceTimersByTimeAsync` when continuations must drain, and every `typescript`/`ts` fence that uses `rig` (including CommonMark-indented fences) declares `rig` in the same fence.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
-8. `mutation-testing` names RD-24153 and `dist/` and does not instruct running Stryker as a current gate.
+8. `mutation-testing` is the Stryker how-to: `test:mutation`, `crap:changed`, `vitest.mutation.config.ts`, `dist`, `6192`, `6183`; not donor `pnpm crap` machinery.
 9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply, including `packages/` globs on the two architecture blinkers; dropped donor blinkers are absent; complexity-budget names 12 / 4 / 80 / 5 and `npm run lint` and does not claim a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
-10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names RD-24153 and no mutation testing.
+10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names `verify-changes` and RD-24153 and runs the mutation/CRAP scripts.
 11. Empty-canonical skip still holds on fixtures; the live `.claude/agents` and `.claude/commands` trees each contain `*.md`.
 12. Gate-describing markdown under `.cursor/rules/` is in the ci-gate scan.
 13. The component-testing known-gap row is gone from `core-public-api.md`.

@@ -127,7 +127,6 @@ sequenceDiagram
 | Extract `dispatch` (complexity 14) in the same file | It stays behind `eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch` until that method is edited |
 | Dedicated ListObjects v1 pagination integration tests | v1 remains covered only by sharing `handleList` with the v2 lock suite |
 | Extracting other complexity-13 functions (`recordCallImpl` × 2, `createProbedSequelizeAdapter`, repo-root test helpers) | They stay behind their P09 next-line disables |
-| Mutation testing / CRAP (RD-24153) | Phase 5 can show the gate is green but not that green *means* anything |
 
 ## Acceptance mapping
 

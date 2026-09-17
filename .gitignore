@@ -7,3 +7,8 @@ node_modules
 .v1-backup/
 .claude/settings.local.json
 .claude/worktrees/
+.stryker-tmp
+reports/mutation
+coverage
+stryker.log
+.stryker-package

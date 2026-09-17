@@ -3,8 +3,8 @@ name: code-to-green
 description: >-
   Implement production code until the failing Vitest suite is green and the whole
   gate is clean. Use as phase 3 of spec-to-ship, or when asked to "make the tests
-  pass" or "grind to green". Does not measure coverage quality — mutation
-  testing and CRAP are deferred to RD-24153.
+  pass" or "grind to green". Does not measure coverage quality — that is
+  phase 5 (RD-24153).
 ---
 
 # code-to-green — implement until green
@@ -38,11 +38,11 @@ on purpose). CircleCI path-filtering maps workspace-wide paths (root configs,
 is `npm run check` (RD-24141):
 
 ```bash
-npm run format:check   # prettier: packages/**/*.ts + examples/**/*.ts + test/**/*.ts + vitest.workspace.ts
-npm run lint           # eslint --max-warnings 0, test/ + vitest.workspace.ts + each workspace
+npm run format:check   # prettier: packages/**/*.ts + examples/**/*.ts + test/**/*.ts + vitest.config.ts + vitest.mutation.config.ts
+npm run lint           # eslint --max-warnings 0, test/ + vitest.config.ts + vitest.mutation.config.ts + each workspace
 npm run typecheck      # tsc --build across 14 project references (ci-gate is Vitest-only)
 npm run build          # Vite lib mode + vite-plugin-dts, all workspaces
-npm test               # vitest run, every project in vitest.workspace.ts
+npm test               # vitest run, every project in vitest.config.ts
 ```
 
 Run `build` before a root `test`, always. The suite resolves into `dist/`.

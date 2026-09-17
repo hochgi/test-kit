@@ -46,7 +46,7 @@ PHASE 4 — REVIEW        reviewer       delegated, READ-ONLY
   skill: review-changes
         │  must-fixes → coder / test-author / spec-author
 PHASE 5 — VERIFY        verifier       delegated, READ-ONLY
-  independent re-run of the whole gate + suppression audit
+  independent re-run of the whole gate + suppression audit + mutation/CRAP
   skill: verify-changes
         │
    PR → summon-review-panel → fix → threads clean → STOP
@@ -62,18 +62,14 @@ and 5 have no such goal and cannot write production code, so they judge honestly
 That is the whole of "nobody grades their own homework", and it is the one part of
 this pipeline that must not be collapsed to save a step.
 
-## Phase 5 is thin here, and must say so
+## Phase 5 runs coverage quality (RD-24153)
 
-test-kit has **no mutation testing and no CRAP report.** That is RD-24153, and it
-is blocked on something real: 33 of 34 test files import by package name and
-resolve into `dist/`, so a mutant applied to `src` is never loaded — a naive
-Stryker install would report a ~0% score composed entirely of resolution
-artifacts, and CRAP would break the same way.
-
-So phase 5 verifies that green is *real* (independent re-run, suppression audit,
-regression sweep). It cannot yet verify that green *means anything*. The verifier
-states that limitation in every handoff. An unstated missing gate is worse than a
-stated one.
+Phase 5 verifies that green is *real* (independent re-run, suppression audit,
+regression sweep) and that green *means something*: it runs
+`npm run test:mutation:changed` and `npm run crap:changed` in addition to
+`npm run check`. Those scripts are not a step of `check`. A zero-mutant
+Stryker success is a defect. Coder and reviewer still do not run those
+scripts. See `verify-changes` and `mutation-testing`.
 
 ## Autonomy: no human gates
 

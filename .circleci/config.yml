@@ -32,7 +32,10 @@ workflows:
             tsconfig\.json build_workspace true
             tsconfig\.base\.json build_workspace true
             \.eslintrc\.json build_workspace true
-            vitest\.workspace\.ts build_workspace true
+            vitest\.config\.ts build_workspace true
+            vitest\.mutation\.config\.ts build_workspace true
+            stryker\.config\.mjs build_workspace true
+            scripts/.* build_workspace true
             docs/.* build_workspace true
             \.circleci/.* build_workspace true
             \.cursor/.* build_workspace true

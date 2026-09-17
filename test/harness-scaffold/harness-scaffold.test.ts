@@ -1053,10 +1053,13 @@ describe('Manifest validation is fail-closed', () => {
 
 describe('New TypeScript for this capability is on the root test and format paths', () => {
     it('harness-scaffold tests are in the Vitest workspace', () => {
-        const workspace = readUtf8(path.join(repoRoot, 'vitest.workspace.ts'));
+        const configPath = path.join(repoRoot, 'vitest.config.ts');
+        expect(existsSync(configPath), 'vitest.config.ts must exist').toBe(true);
+        const config = readUtf8(configPath);
+        expect(config.includes('test.projects'), 'vitest.config.ts must contain test.projects').toBe(true);
         expect(
-            workspace.includes('test/harness-scaffold'),
-            'vitest.workspace.ts must include a project that picks up test/harness-scaffold',
+            config.includes('test/harness-scaffold'),
+            'vitest.config.ts test.projects must include a project that picks up test/harness-scaffold',
         ).toBe(true);
     });
 

@@ -1099,18 +1099,91 @@ describe('write-failing-tests no longer warns agents off component-testing', () 
     });
 });
 
-describe('mutation-testing skill is thin until RD-24153', () => {
-    it('mutation-testing names the missing gate', () => {
+describe('Verifier runs mutation and CRAP', () => {
+    it('verify-changes runs the coverage-quality scripts', () => {
+        const content = readExisting('.cursor/skills/verify-changes/SKILL.md');
+        expect(content.includes('test:mutation:changed'), 'verify-changes must contain test:mutation:changed').toBe(
+            true,
+        );
+        expect(content.includes('crap:changed'), 'verify-changes must contain crap:changed').toBe(true);
+        expect(content.includes('no mutation testing'), 'verify-changes must not contain "no mutation testing"').toBe(
+            false,
+        );
+    });
+
+    it('spec-to-ship no longer states the missing gate', () => {
+        const content = readExisting('.cursor/skills/spec-to-ship/SKILL.md');
+        expect(content.includes('no mutation testing'), 'spec-to-ship must not contain "no mutation testing"').toBe(
+            false,
+        );
+        expect(content.includes('no CRAP report'), 'spec-to-ship must not contain "no CRAP report"').toBe(false);
+    });
+});
+
+describe('Spec files no longer defer RD-24153 as a missing gate', () => {
+    it('deferral rows titled Mutation testing / CRAP are gone', () => {
+        const deferred = [
+            'docs/internal/spec/ci-gate.md',
+            'docs/internal/spec/docs-truth.md',
+            'docs/internal/spec/harness-scaffold.md',
+            'docs/internal/spec/s3-backing.md',
+            'docs/internal/spec/harness-prose.md',
+        ] as const;
+        for (const relative of deferred) {
+            const content = readExisting(relative);
+            expect(
+                content.includes('| Mutation testing / CRAP (RD-24153)'),
+                `${relative} must not defer Mutation testing / CRAP (RD-24153)`,
+            ).toBe(false);
+        }
+        const coreApi = readExisting('docs/internal/spec/core-public-api.md');
+        expect(
+            coreApi.includes('| No mutation testing or CRAP (RD-24153)'),
+            'core-public-api.md Known gaps must not contain No mutation testing or CRAP (RD-24153)',
+        ).toBe(false);
+    });
+
+    it('harness-prose acceptance and decision record that RD-24153 landed', () => {
+        const content = readExisting('docs/internal/spec/harness-prose.md');
+        expect(
+            content.includes('does not instruct running Stryker as a current gate'),
+            'acceptance item 8 must be rewritten off the missing-gate card',
+        ).toBe(false);
+        expect(
+            content.includes('verifier names RD-24153 and no mutation testing'),
+            'acceptance item 10 must not still claim verifier states no mutation testing',
+        ).toBe(false);
+        expect(
+            content.includes('`mutation-testing` is a thin missing-gate card, not a Stryker how-to'),
+            'the missing-gate decision row must be updated',
+        ).toBe(false);
+        expect(content.includes('has not landed'), 'the decision row must record that RD-24153 landed').toBe(false);
+    });
+});
+
+describe('mutation-testing skill is the Stryker how-to', () => {
+    it('mutation-testing instructs the current Stryker how-to', () => {
         const content = readExisting('.cursor/skills/mutation-testing/SKILL.md');
-        expect(content.includes('RD-24153'), 'mutation-testing must contain RD-24153').toBe(true);
+        expect(content.includes('test:mutation'), 'mutation-testing must contain test:mutation').toBe(true);
+        expect(content.includes('crap:changed'), 'mutation-testing must contain crap:changed').toBe(true);
+        expect(
+            content.includes('vitest.mutation.config.ts'),
+            'mutation-testing must contain vitest.mutation.config.ts',
+        ).toBe(true);
         expect(content.includes('dist'), 'mutation-testing must contain dist').toBe(true);
     });
 
-    it('mutation-testing does not run Stryker today', () => {
+    it('mutation-testing names the two upstream risks', () => {
         const content = readExisting('.cursor/skills/mutation-testing/SKILL.md');
-        expect(content.includes('test:mutation'), 'mutation-testing must not contain test:mutation').toBe(false);
-        expect(content.includes('pnpm crap'), 'mutation-testing must not contain pnpm crap').toBe(false);
-        expect(content.includes('stryker run'), 'mutation-testing must not contain stryker run').toBe(false);
+        expect(content.includes('6192'), 'mutation-testing must contain 6192').toBe(true);
+        expect(content.includes('6183'), 'mutation-testing must contain 6183').toBe(true);
+    });
+
+    it('mutation-testing does not import donor service machinery', () => {
+        const content = readExisting('.cursor/skills/mutation-testing/SKILL.md');
+        for (const token of ['pnpm crap', 'pnpm verify', 'lefthook', '@cycle-processing/contracts'] as const) {
+            expect(content.includes(token), `mutation-testing must not contain ${token}`).toBe(false);
+        }
     });
 });
 
@@ -1224,13 +1297,17 @@ describe('Per-agent files name their skills and do not import donor bugs', () =>
         }
     });
 
-    it('coder and reviewer do not run coverage-quality gates', () => {
+    it('coder and reviewer still do not run coverage-quality gates', () => {
         for (const name of ['coder', 'reviewer'] as const) {
             const relative = `.claude/agents/${name}.md`;
             const content = readExisting(relative);
             for (const token of coverageQualityGates) {
                 expect(content.includes(token), `${relative} must not contain ${token}`).toBe(false);
             }
+        }
+        const codeToGreen = readExisting('.cursor/skills/code-to-green/SKILL.md');
+        for (const token of coverageQualityGates) {
+            expect(codeToGreen.includes(token), `code-to-green must not contain ${token}`).toBe(false);
         }
     });
 
@@ -1239,19 +1316,25 @@ describe('Per-agent files name their skills and do not import donor bugs', () =>
         expect(content.includes('pr-review-style'), 'reviewer.md must contain pr-review-style').toBe(true);
     });
 
-    it('verifier states the missing gate', () => {
+    it('verifier agent names RD-24153 and does not claim the gate is missing', () => {
         const content = readExisting('.claude/agents/verifier.md');
+        expect(content.includes('verify-changes'), 'verifier.md must contain verify-changes').toBe(true);
         expect(content.includes('RD-24153'), 'verifier.md must contain RD-24153').toBe(true);
-        expect(content.includes('no mutation testing'), 'verifier.md must contain "no mutation testing"').toBe(true);
+        expect(content.includes('no mutation testing'), 'verifier.md must not contain "no mutation testing"').toBe(
+            false,
+        );
     });
 });
 
 describe('New TypeScript for this capability is on the root test and format paths', () => {
     it('harness-prose tests are in the Vitest workspace', () => {
-        const workspace = readUtf8(path.join(repoRoot, 'vitest.workspace.ts'));
+        const configPath = path.join(repoRoot, 'vitest.config.ts');
+        expect(existsSync(configPath), 'vitest.config.ts must exist').toBe(true);
+        const config = readUtf8(configPath);
+        expect(config.includes('test.projects'), 'vitest.config.ts must contain test.projects').toBe(true);
         expect(
-            workspace.includes('test/harness-prose'),
-            'vitest.workspace.ts must include a project that picks up test/harness-prose',
+            config.includes('test/harness-prose'),
+            'vitest.config.ts test.projects must include a project that picks up test/harness-prose',
         ).toBe(true);
     });
 

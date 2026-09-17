@@ -6,7 +6,7 @@ are canonical in `.cursor/skills`; agents and commands are canonical in
 `.claude/`. There are no git hooks — sync and check are npm scripts, and this
 capability's own tests run them under `npm test`.
 
-Agent, skill, command, and rule *prose* is not this capability. That is P06
+Agent, skill, command, and rule _prose_ is not this capability. That is P06
 (RD-24147), which fills the canonical `.claude/agents` and `.claude/commands`
 trees this scaffold is built to mirror.
 
@@ -16,6 +16,7 @@ Folded from the RD-24173 delta, preserved at
 ## Requirements
 
 ### Requirement: Four harness surfaces exist
+
 The repository SHALL contain these directories:
 
 - `.harness/`
@@ -26,23 +27,28 @@ The repository SHALL contain these directories:
 `.github/skills/` and `.agents/skills/` SHALL NOT be added as harness surfaces.
 
 #### Scenario: required directories exist
+
 - **WHEN** the repository tree is inspected at those paths
 - **THEN** each listed path is a directory
 
 #### Scenario: dropped Copilot and agents-dot surfaces are absent
+
 - **WHEN** the repository is inspected at `.github/skills` and `.agents/skills`
 - **THEN** neither path exists
 
 ### Requirement: Internal docs three-way layout
+
 `docs/internal/` SHALL contain `packets/`, `spec/`, and `archive/` as sibling
 directories. `spec/` holds current-truth capability files, not per-packet
 history.
 
 #### Scenario: packets spec and archive exist
+
 - **WHEN** `docs/internal/` is listed
 - **THEN** it contains directories named `packets`, `spec`, and `archive`
 
 ### Requirement: Model manifest is the single source of per-phase targeting
+
 The tracked file `.harness/models.json` SHALL be the only committed file that
 names vendor model ids or LiteLLM role aliases for the five pipeline phases.
 It SHALL contain an `agents` object with keys `spec-author`, `test-author`,
@@ -56,13 +62,13 @@ SHALL be LiteLLM role aliases starting with `litellm/vn-`. `reviewer` and
 
 The three columns SHALL match the donor table:
 
-| agent | claude | cursor | opencode |
-| --- | --- | --- | --- |
-| spec-author | opus | cursor-grok-4.6-xhigh | litellm/vn-spec |
-| test-author | claude-opus-4-8 | cursor-grok-4.6-xhigh | litellm/vn-test |
-| coder | opus | cursor-grok-4.6-xhigh | litellm/vn-coding |
-| reviewer | opus | cursor-grok-4.6-xhigh | litellm/vn-review |
-| verifier | opus | cursor-grok-4.6-xhigh | litellm/vn-verify |
+| agent       | claude          | cursor                | opencode          |
+| ----------- | --------------- | --------------------- | ----------------- |
+| spec-author | opus            | cursor-grok-4.6-xhigh | litellm/vn-spec   |
+| test-author | claude-opus-4-8 | cursor-grok-4.6-xhigh | litellm/vn-test   |
+| coder       | opus            | cursor-grok-4.6-xhigh | litellm/vn-coding |
+| reviewer    | opus            | cursor-grok-4.6-xhigh | litellm/vn-review |
+| verifier    | opus            | cursor-grok-4.6-xhigh | litellm/vn-verify |
 
 `orchestrator.opencode` SHALL be `litellm/vn-spec`.
 
@@ -72,18 +78,21 @@ text states that Opus 4.8 keeps test scope tight and that newer tiers invent
 adjacent scenarios. No other `rationale` key SHALL be present.
 
 #### Scenario: five agents have the donor three columns
+
 - **WHEN** `.harness/models.json` is parsed
 - **THEN** each of the five agents has the claude, cursor, and opencode values
   in the table above, `orchestrator.opencode` is `litellm/vn-spec`, phases are
   1–5 in agent order, and `readonly` is false, false, false, true, true
 
 #### Scenario: test-author claude pin is explained
+
 - **WHEN** `.harness/models.json` is parsed
 - **THEN** `agents["test-author"].claude` is `claude-opus-4-8` and
   `rationale["test-author.claude"]` is a non-empty string or array of strings
   that mentions `opus` / `4.8` and scope, and `rationale` has no other keys
 
 ### Requirement: Example manifest lets a clone restore models.json
+
 The tracked file `.harness/models.example.json` SHALL exist. Its `agents`,
 `orchestrator`, and `rationale` values SHALL equal those in
 `.harness/models.json`, so copying the example onto `models.json` is enough
@@ -95,33 +104,39 @@ non-zero and write to stderr that the file is missing and that
 It SHALL NOT create `models.json` itself.
 
 #### Scenario: example matches the live manifest
+
 - **WHEN** both `.harness/models.json` and `.harness/models.example.json` are
   parsed
 - **THEN** their `agents`, `orchestrator`, and `rationale` values are deep-equal
 
 #### Scenario: missing models.json fails loudly
+
 - **WHEN** `check-agent-skills` is run against a tree that has
   `models.example.json` but no `models.json`
 - **THEN** the process exits non-zero, stderr names `.harness/models.example.json`
   and `.harness/models.json`, and `models.json` is still absent afterwards
 
 ### Requirement: Sync and check are npm scripts, not git hooks
+
 Root `package.json` SHALL expose `sync-agent-skills` and `check-agent-skills`
 as npm scripts that invoke the repository's sync and drift-check programs.
 This packet SHALL NOT add husky, lefthook, a `prepare` script, or
 `core.hooksPath`. `check-agent-skills` SHALL NOT modify tracked files.
 
 #### Scenario: both scripts are defined
+
 - **WHEN** the root `package.json` `scripts` map is read
 - **THEN** it contains `sync-agent-skills` and `check-agent-skills` whose
   commands invoke paths under `scripts/`
 
 #### Scenario: check-agent-skills is read-only
+
 - **WHEN** `npm run check-agent-skills` is run on a consistent tree
 - **THEN** it exits 0 and `git status --porcelain` reports no changes to
   tracked files
 
 ### Requirement: Skills fan out byte-identical from Cursor
+
 `.cursor/skills` is canonical. After a successful `sync-agent-skills`,
 `.claude/skills` SHALL be byte-identical to `.cursor/skills` (aside from
 `.DS_Store`). `check-agent-skills` SHALL exit non-zero when those two trees
@@ -129,15 +144,18 @@ differ. OpenCode SHALL read `.cursor/skills` in place rather than keep a
 third copy.
 
 #### Scenario: claude skills match cursor skills after check passes
+
 - **WHEN** `check-agent-skills` exits 0
 - **THEN** `.claude/skills` and `.cursor/skills` contain the same relative
   paths and the same file bytes
 
 #### Scenario: OpenCode skills path is the Cursor canonical dir
+
 - **WHEN** `.opencode/opencode.json` is parsed
 - **THEN** `skills.paths` is exactly `["./.cursor/skills"]`
 
 ### Requirement: Agents and commands generate from Claude when canonical files exist
+
 `.claude/agents` is canonical for agents. `.claude/commands` is
 canonical for commands. When those directories contain `*.md` files,
 `sync-agent-skills` SHALL write `.cursor/agents` and `.opencode/agents`
@@ -162,29 +180,33 @@ SHALL exit non-zero when the tracked OpenCode command omits or
 contradicts any of those live values.
 
 #### Scenario: populated claude agents produce matching cursor and opencode mirrors
+
 - **WHEN** `.claude/agents` contains at least one `*.md` and
   `sync-agent-skills` then `check-agent-skills` are run
 - **THEN** `check-agent-skills` exits 0
 
 #### Scenario: claude agent model disagrees with the manifest
+
 - **WHEN** a canonical `.claude/agents/<name>.md` pins a `model` other
   than `agents[name].claude` in `.harness/models.json`
 - **THEN** `check-agent-skills` exits non-zero
 
 #### Scenario: perturbed Cursor agent mirror fails the check
+
 - **WHEN** a tree has populated canonical Claude agents, a consistent
   sync has been run, then one generated `.cursor/agents/*.md` file is
   edited so its bytes differ, and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
 #### Scenario: OpenCode command aliases that disagree with the manifest fail the check
+
 - **WHEN** a tree's `.harness/models.json` has at least one
   `agents[name].opencode` value that does not appear in the tracked
   `.opencode/commands/spec-to-ship.md`, and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
-
 ### Requirement: Empty Claude canonical dirs do not destroy Cursor bootstrap
+
 `.claude/agents` and `.claude/commands` MAY contain no `*.md` in a
 fixture or a partial clone. In that case `sync-agent-skills` SHALL NOT
 delete or replace existing `*.md` under `.cursor/agents` or
@@ -206,40 +228,47 @@ tree `check-agent-skills` SHALL compare generated agent and command
 mirrors rather than skip that comparison.
 
 #### Scenario: empty claude agents leave cursor agents in place
+
 - **WHEN** `.claude/agents` has no `*.md` and `.cursor/agents` already
   has `*.md` and `sync-agent-skills` is run
 - **THEN** every `*.md` that was in `.cursor/agents` beforehand is
   still present with the same bytes
 
 #### Scenario: empty claude commands leave cursor commands in place
+
 - **WHEN** `.claude/commands` has no `*.md` and `.cursor/commands`
   already has `*.md` and `sync-agent-skills` is run
 - **THEN** every `*.md` that was in `.cursor/commands` beforehand is
   still present with the same bytes
 
 #### Scenario: check passes with empty claude agents and commands
+
 - **WHEN** a fixture tree's `.claude/agents` and `.claude/commands`
   have no `*.md`, skills are in sync, the manifest is valid, and
   `opencode.json` agrees with the manifest
 - **THEN** `npm run check-agent-skills` exits 0
 
 #### Scenario: live canonical Claude trees are populated
+
 - **WHEN** the repository's `.claude/agents` and `.claude/commands`
   are listed
 - **THEN** `.claude/agents` contains at least one `*.md` and
   `.claude/commands` contains at least one `*.md`
 
 #### Scenario: empty canonical agents on a live-classified tree fail the check
+
 - **WHEN** a live-classified tree's `.claude/agents` has no `*.md` and
   `check-agent-skills` is run against that tree
 - **THEN** the process exits non-zero
 
 #### Scenario: empty canonical commands on a live-classified tree fail the check
+
 - **WHEN** a live-classified tree's `.claude/commands` has no `*.md` and
   `check-agent-skills` is run against that tree
 - **THEN** the process exits non-zero
 
 ### Requirement: Harness-scaffold tests do not empty live Claude canonical dirs
+
 `test/harness-scaffold/harness-scaffold.test.ts` SHALL NOT delete `*.md`
 under the live working tree's `.claude/agents` or `.claude/commands`.
 Empty-canonical failure of a live-classified tree SHALL be exercised on
@@ -248,19 +277,22 @@ a disposable tree.
 Sibling Vitest projects (`test/harness-prose`, `test/ci-gate`,
 `test/docs-truth`) MAY list those live directories while harness-scaffold
 tests run. This packet SHALL NOT add `fileParallelism: false` or a
-`sequence` config to `vitest.workspace.ts`.
+`sequence` config to `vitest.config.ts`.
 
 #### Scenario: empty-canonical coverage does not unlink live agents markdown
+
 - **WHEN** `test/harness-scaffold/harness-scaffold.test.ts` is read
 - **THEN** it does not pass `path.join(repoRoot, '.claude/agents')` to
   `emptyMarkdownDir`
 
 #### Scenario: empty-canonical coverage does not unlink live commands markdown
+
 - **WHEN** `test/harness-scaffold/harness-scaffold.test.ts` is read
 - **THEN** it does not pass `path.join(repoRoot, '.claude/commands')` to
   `emptyMarkdownDir`
 
 ### Requirement: Live vs fixture classification is an explicit marker on the tree under check
+
 `check-agent-skills` SHALL classify and check the tree that contains the
 invoked `scripts/check-agent-skills.sh`. It SHALL NOT treat
 `git rev-parse --show-toplevel` of the process working directory as that
@@ -280,10 +312,12 @@ live-classified tree it SHALL exit non-zero when either of those
 directories has no `*.md`.
 
 #### Scenario: live working tree does not contain the fixture marker
+
 - **WHEN** the live working tree is inspected at `.harness/fixture`
 - **THEN** that path does not exist
 
 #### Scenario: a fixture containing packages/core/package.json is still a fixture
+
 - **WHEN** a fixture tree contains `.harness/fixture` and
   `packages/core/package.json`, its `.claude/agents` and
   `.claude/commands` have no `*.md`, skills are in sync, the manifest is
@@ -292,35 +326,40 @@ directories has no `*.md`.
 - **THEN** the process exits 0
 
 #### Scenario: a live-classified tree without packages/core/package.json is still live
+
 - **WHEN** a disposable live-classified tree has no
   `packages/core/package.json`, its `.claude/agents` has no `*.md`, and
   `check-agent-skills` is run against that tree
 - **THEN** the process exits non-zero
 
 #### Scenario: check-agent-skills checks the invoked script's tree, not cwd's git root
+
 - **WHEN** a fixture tree's `.cursor/skills` and `.claude/skills` differ
   and that tree's `scripts/check-agent-skills.sh` is invoked with cwd set
   to the live repository working tree
 - **THEN** the process exits non-zero
 
-
 ### Requirement: OpenCode config tracks the manifest
+
 `.opencode/opencode.json` SHALL exist. Its `model` and `agent.build.model`
 SHALL equal `agents.coder.opencode`. Its `agent["spec-to-ship"].model` SHALL
 equal `orchestrator.opencode`. `check-agent-skills` SHALL exit non-zero when
 any of those disagree.
 
 #### Scenario: opencode.json models match the manifest
+
 - **WHEN** `.opencode/opencode.json` and `.harness/models.json` are parsed
 - **THEN** `model` and `agent.build.model` equal `litellm/vn-coding` and
   `agent["spec-to-ship"].model` equals `litellm/vn-spec`
 
 #### Scenario: opencode.json drift fails the check
+
 - **WHEN** `.opencode/opencode.json` `model` differs from
   `agents.coder.opencode` and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
 ### Requirement: Manifest validation is fail-closed
+
 `sync-agent-skills` and `check-agent-skills` SHALL refuse to succeed when
 `.harness/models.json` is invalid: a non-boolean `readonly`, a missing
 `rationale` for a `claude` or `cursor` value that differs from the column
@@ -333,28 +372,34 @@ They SHALL also refuse to succeed when a canonical skills, agents, or
 commands tree contains a symlink.
 
 #### Scenario: string readonly fails validation
+
 - **WHEN** an agent's `readonly` in the manifest is the string `"false"`
   rather than the boolean `false` and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
 #### Scenario: unexplained cursor or claude deviation fails validation
+
 - **WHEN** `coder.claude` differs from the other agents' `claude` values and
   `rationale` has no `coder.claude` entry and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
 #### Scenario: symlink under canonical skills fails the check
+
 - **WHEN** `.cursor/skills` contains a symlink and `check-agent-skills` is run
 - **THEN** the process exits non-zero
 
 ### Requirement: New TypeScript for this capability is on the root test and format paths
+
 Tests that encode these scenarios SHALL run as part of the root `npm test`
 workspace, and SHALL be included in the root `format:check` glob.
 
 #### Scenario: harness-scaffold tests are in the Vitest workspace
-- **WHEN** `vitest.workspace.ts` is read
+
+- **WHEN** `vitest.config.ts` is read
 - **THEN** it includes a project that picks up the tests for this capability
 
 #### Scenario: harness-scaffold TypeScript is format-checked
+
 - **WHEN** the root `format:check` script is read
 - **THEN** its glob covers those test files
 
@@ -393,36 +438,35 @@ sequenceDiagram
 
 ## Decisions (rung recorded)
 
-| Decision | Outcome | Rung |
-| --- | --- | --- |
-| Take van-damme-slack-app sync/check lib, not cycle-processing | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation | Ticket |
-| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale | Copy vn-server / cycle-processing manifest table, not van-damme's all-`opus` column | Ticket (explicit, including the rationale that over-broad tests spec unasked API) |
-| LiteLLM aliases stay `litellm/vn-*` | `vn-spec`, `vn-test`, `vn-coding`, `vn-review`, `vn-verify` | Ticket |
-| `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree | Ticket + donor precedent |
-| `.github/skills` and `.agents/skills` are not created | Ticket called them droppable | Ticket |
-| No new agent/skill/command bodies | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`) |
-| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Sync still skips generation while canonical `*.md` count is zero. Superseded by P13 (RD-24164) for the check: fixtures still skip the drift comparison, but a live-classified tree fails it. RD-24173 then replaced the `packages/core/package.json` live probe with `.harness/fixture` and stopped wiping live `.claude` dirs | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) + RD-24173 |
-| Stop wiping live `.claude` dirs rather than serialize Vitest projects | The race is the wipe. Disposable live-classified trees cover empty-canonical failure. `vitest.workspace.ts` stays parallel | RD-24173 (ticket options) + source (`createTempHarnessRepo`) |
-| Explicit fixture marker `.harness/fixture`; absence is live (fail-closed) | Sparse live checkout without `packages/core/package.json` still fails empty canonical dirs; a fixture that contains that file is still a fixture | RD-24173 + source (`is_live_monorepo`) |
-| Classify and resolve the manifest from the tree that owns the invoked script, not cwd's git toplevel | A fixture invoked with cwd inside the live repo is judged as that fixture | RD-24173 |
-| Skills *are* mirrored Cursor → Claude even though P06 still owns skill *prose* | `.cursor/skills` is already canonical and populated; rsync is machinery, not new content | Source + ticket canonical direction |
-| `check-agent-skills` is an npm script; not added to the five-step `npm run check` chain | P00 pinned that chain. Harness-scaffold tests invoke the script during `npm test` | Source (`docs/internal/spec/ci-gate.md`) + ticket (script, not a hook) |
-| Map `.claude/`, `.harness/`, `.opencode/` onto `build_workspace` | P00 deferred `.claude/` mapping until P05 stood the trees up | Source (ci-gate decision table) + ticket (this PR touches harness paths) |
-| `docs/internal/{packets,spec,archive}` layout is required here even though P00/P01 already created it | Ticket lists it as P05; requiring it is idempotent | Ticket |
-| No public API / version bump | Root `package.json` is private; no package `src/` change | Source |
+| Decision                                                                                                                 | Outcome                                                                                                                                                                                                                                                                                                                                                                                                                 | Rung                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Take van-damme-slack-app sync/check lib, not cycle-processing                                                            | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation                                                                                                                                                                                                                                                                                                                         | Ticket                                                                                          |
+| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale                                               | Copy vn-server / cycle-processing manifest table, not van-damme's all-`opus` column                                                                                                                                                                                                                                                                                                                                     | Ticket (explicit, including the rationale that over-broad tests spec unasked API)               |
+| LiteLLM aliases stay `litellm/vn-*`                                                                                      | `vn-spec`, `vn-test`, `vn-coding`, `vn-review`, `vn-verify`                                                                                                                                                                                                                                                                                                                                                             | Ticket                                                                                          |
+| `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree                                                                                                                                                                                                                                           | Ticket + donor precedent                                                                        |
+| `.github/skills` and `.agents/skills` are not created                                                                    | Ticket called them droppable                                                                                                                                                                                                                                                                                                                                                                                            | Ticket                                                                                          |
+| No new agent/skill/command bodies                                                                                        | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window                                                                                                                                                                                                                                                                                        | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`)                                      |
+| Empty `.claude/agents` and `.claude/commands` do not wipe `.cursor` mirrors and do not fail the drift check              | Donor sync would `rm -rf` generated dirs; that would delete the running Cursor pipeline. Sync still skips generation while canonical `*.md` count is zero. Superseded by P13 (RD-24164) for the check: fixtures still skip the drift comparison, but a live-classified tree fails it. RD-24173 then replaced the `packages/core/package.json` live probe with `.harness/fixture` and stopped wiping live `.claude` dirs | Ticket ("no content yet") + source (tracked `.cursor/agents` and `.cursor/commands`) + RD-24173 |
+| Stop wiping live `.claude` dirs rather than serialize Vitest projects                                                    | The race is the wipe. Disposable live-classified trees cover empty-canonical failure. `vitest.config.ts` projects stay parallel                                                                                                                                                                                                                                                                                         | RD-24173 (ticket options) + source (`createTempHarnessRepo`)                                    |
+| Explicit fixture marker `.harness/fixture`; absence is live (fail-closed)                                                | Sparse live checkout without `packages/core/package.json` still fails empty canonical dirs; a fixture that contains that file is still a fixture                                                                                                                                                                                                                                                                        | RD-24173 + source (`is_live_monorepo`)                                                          |
+| Classify and resolve the manifest from the tree that owns the invoked script, not cwd's git toplevel                     | A fixture invoked with cwd inside the live repo is judged as that fixture                                                                                                                                                                                                                                                                                                                                               | RD-24173                                                                                        |
+| Skills _are_ mirrored Cursor → Claude even though P06 still owns skill _prose_                                           | `.cursor/skills` is already canonical and populated; rsync is machinery, not new content                                                                                                                                                                                                                                                                                                                                | Source + ticket canonical direction                                                             |
+| `check-agent-skills` is an npm script; not added to the five-step `npm run check` chain                                  | P00 pinned that chain. Harness-scaffold tests invoke the script during `npm test`                                                                                                                                                                                                                                                                                                                                       | Source (`docs/internal/spec/ci-gate.md`) + ticket (script, not a hook)                          |
+| Map `.claude/`, `.harness/`, `.opencode/` onto `build_workspace`                                                         | P00 deferred `.claude/` mapping until P05 stood the trees up                                                                                                                                                                                                                                                                                                                                                            | Source (ci-gate decision table) + ticket (this PR touches harness paths)                        |
+| `docs/internal/{packets,spec,archive}` layout is required here even though P00/P01 already created it                    | Ticket lists it as P05; requiring it is idempotent                                                                                                                                                                                                                                                                                                                                                                      | Ticket                                                                                          |
+| No public API / version bump                                                                                             | Root `package.json` is private; no package `src/` change                                                                                                                                                                                                                                                                                                                                                                | Source                                                                                          |
 
 ## Out of scope (deferred)
 
-| Item | Consequence of deferring |
-| --- | --- |
-| ~~P06 agent, skill, command, and `.cursor/rules` prose (RD-24147)~~ — no longer deferred | Delivered by P06. The canonical trees are populated and the mirror comparison is live; see `harness-prose.md` |
-| Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via this packet's tests inside `npm test`; a test skip would hide drift |
-| husky / lefthook / `prepare` / `core.hooksPath` | Drift is a script the agent runs (and CI runs via tests), not a pre-push hook |
-| `.github/skills`, `.agents/skills` | Those tools are not in the three-surface set |
-| `validate-skills.sh` (Anthropic Skills API lint in van-damme) | Ticket did not ask for a third script |
-| Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
-| `fileParallelism: false` / Vitest `sequence` for harness projects | Unnecessary once live dirs are not wiped; a later suite that mutates live harness files would reintroduce a race |
-| gitignore for `.harness/fixture` | Accidental creation on the live tree would classify it as a fixture until removed |
+| Item                                                                                     | Consequence of deferring                                                                                                    |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| ~~P06 agent, skill, command, and `.cursor/rules` prose (RD-24147)~~ — no longer deferred | Delivered by P06. The canonical trees are populated and the mirror comparison is live; see `harness-prose.md`               |
+| Adding `check-agent-skills` to `npm run check`                                           | A human who runs only `check` still hits the script via this packet's tests inside `npm test`; a test skip would hide drift |
+| husky / lefthook / `prepare` / `core.hooksPath`                                          | Drift is a script the agent runs (and CI runs via tests), not a pre-push hook                                               |
+| `.github/skills`, `.agents/skills`                                                       | Those tools are not in the three-surface set                                                                                |
+| `validate-skills.sh` (Anthropic Skills API lint in van-damme)                            | Ticket did not ask for a third script                                                                                       |
+| `fileParallelism: false` / Vitest `sequence` for harness projects                        | Unnecessary once live dirs are not wiped; a later suite that mutates live harness files would reintroduce a race            |
+| gitignore for `.harness/fixture`                                                         | Accidental creation on the live tree would classify it as a fixture until removed                                           |
 
 ## Acceptance mapping
 

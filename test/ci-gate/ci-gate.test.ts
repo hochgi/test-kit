@@ -11,7 +11,7 @@ const launchJsonPath = path.join(repoRoot, '.claude', 'launch.json');
 const gitignorePath = path.join(repoRoot, '.gitignore');
 const circleConfigPath = path.join(repoRoot, '.circleci', 'config.yml');
 const circleCiPath = path.join(repoRoot, '.circleci', 'ci.yml');
-const workspacePath = path.join(repoRoot, 'vitest.workspace.ts');
+const vitestConfigPath = path.join(repoRoot, 'vitest.config.ts');
 const componentTestingSkillPath = path.join(repoRoot, '.cursor', 'skills', 'component-testing', 'SKILL.md');
 
 const harnessMarkdownDirs = [
@@ -31,7 +31,7 @@ const workspaceWideSamplePaths = [
     'tsconfig.json',
     'tsconfig.base.json',
     '.eslintrc.json',
-    'vitest.workspace.ts',
+    'vitest.config.ts',
     'docs/internal/spec/ci-gate.md',
     '.circleci/ci.yml',
     '.circleci/config.yml',
@@ -381,6 +381,19 @@ describe('gitignore tracks harness, ignores local Claude state', () => {
         const wholesale = patterns.filter(ignoresEntireClaudeDirectory);
         expect(wholesale, '.gitignore must not ignore the entire .claude/ directory').toEqual([]);
     });
+
+    it('gitignore lists mutation artifacts', () => {
+        const gitignore = readUtf8(gitignorePath);
+        for (const token of [
+            '.stryker-tmp',
+            'reports/mutation',
+            'coverage',
+            'stryker.log',
+            '.stryker-package',
+        ] as const) {
+            expect(gitignore.includes(token), `.gitignore must contain ${token}`).toBe(true);
+        }
+    });
 });
 
 describe('Workspace-wide path changes run the root check in CI', () => {
@@ -418,6 +431,18 @@ describe('Workspace-wide path changes run the root check in CI', () => {
                 `repository-root test/ mapping ${regex} must not match packages/core/test/unit/duration.test.ts`,
             ).toBe(false);
         }
+        expect(
+            mappingsSetting(mappings, 'scripts/crap-report.js', 'build_workspace', 'true').length,
+            'scripts/crap-report.js must match a mapping that sets build_workspace true',
+        ).toBeGreaterThan(0);
+        expect(
+            mappingsSetting(mappings, 'vitest.mutation.config.ts', 'build_workspace', 'true').length,
+            'vitest.mutation.config.ts must match a mapping that sets build_workspace true',
+        ).toBeGreaterThan(0);
+        expect(
+            mappings.filter(([regex]) => pathMatchesMapping(regex, 'vitest.workspace.ts')),
+            'vitest.workspace.ts is not a mapped path',
+        ).toEqual([]);
     });
 
     it('workspace-wide workflow runs check', () => {
@@ -526,10 +551,12 @@ describe('Gate-describing harness prose names the real gates', () => {
 
 describe('New TypeScript for this capability is on the root test and format paths', () => {
     it('repo-gate tests are in the Vitest workspace', () => {
-        const workspace = readUtf8(workspacePath);
+        expect(existsSync(vitestConfigPath), 'vitest.config.ts must exist').toBe(true);
+        const config = readUtf8(vitestConfigPath);
+        expect(config.includes('test.projects'), 'vitest.config.ts must contain test.projects').toBe(true);
         expect(
-            workspace.includes('test/ci-gate'),
-            'vitest.workspace.ts must include a project that picks up test/ci-gate',
+            config.includes('test/ci-gate'),
+            'vitest.config.ts test.projects must include a project that picks up test/ci-gate',
         ).toBe(true);
     });
 
@@ -539,10 +566,96 @@ describe('New TypeScript for this capability is on the root test and format path
         const coversTests =
             (formatCheck ?? '').includes('test/**/*.ts') || (formatCheck ?? '').includes('test/ci-gate/**/*.ts');
         expect(coversTests, 'format:check glob must cover test/ci-gate TypeScript').toBe(true);
+        expect((formatCheck ?? '').includes('vitest.config.ts'), 'format:check glob must cover vitest.config.ts').toBe(
+            true,
+        );
         expect(
-            (formatCheck ?? '').includes('vitest.workspace.ts'),
-            'format:check glob must cover vitest.workspace.ts',
+            (formatCheck ?? '').includes('vitest.mutation.config.ts'),
+            'format:check glob must cover vitest.mutation.config.ts',
         ).toBe(true);
+    });
+});
+
+describe('Vitest projects live in vitest.config.ts', () => {
+    it('defineWorkspace and vitest.workspace.ts are gone', () => {
+        expect(existsSync(path.join(repoRoot, 'vitest.workspace.ts')), 'vitest.workspace.ts must not exist').toBe(
+            false,
+        );
+        expect(existsSync(vitestConfigPath), 'vitest.config.ts must exist').toBe(true);
+        const config = readUtf8(vitestConfigPath);
+        expect(config.includes('defineWorkspace'), 'vitest.config.ts must not contain defineWorkspace').toBe(false);
+        expect(config.includes('test.projects'), 'vitest.config.ts must contain test.projects').toBe(true);
+        for (const project of [
+            'packages/core',
+            'packages/mock',
+            'test/ci-gate',
+            'test/harness-prose',
+            'test/harness-scaffold',
+            'test/docs-truth',
+        ] as const) {
+            expect(config.includes(project), `test.projects must include ${project}`).toBe(true);
+        }
+        const testScript = readRootScripts()['test'] ?? '';
+        expect(testScript.includes('vitest.mutation.config.ts'), 'npm test must not use the mutation aliases').toBe(
+            false,
+        );
+    });
+
+    it('root scripts and path-filter name vitest.config.ts', () => {
+        const scripts = readRootScripts();
+        const lint = scripts['lint'] ?? '';
+        const formatCheck = scripts['format:check'] ?? '';
+        expect(lint.includes('vitest.config.ts'), 'lint must name vitest.config.ts').toBe(true);
+        expect(lint.includes('vitest.workspace.ts'), 'lint must not name vitest.workspace.ts').toBe(false);
+        expect(formatCheck.includes('vitest.config.ts'), 'format:check must name vitest.config.ts').toBe(true);
+        expect(formatCheck.includes('vitest.workspace.ts'), 'format:check must not name vitest.workspace.ts').toBe(
+            false,
+        );
+        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
+        expect(
+            mappingsSetting(mappings, 'vitest.config.ts', 'build_workspace', 'true').length,
+            'path-filtering must map vitest.config.ts onto build_workspace true',
+        ).toBeGreaterThan(0);
+        expect(
+            mappings.filter(([regex]) => pathMatchesMapping(regex, 'vitest.workspace.ts')),
+            'path-filtering must not map vitest.workspace.ts',
+        ).toEqual([]);
+    });
+});
+
+describe('Mutation scripts are defined and stay off check', () => {
+    it('test:mutation scripts exist and are not in check', () => {
+        const scripts = readRootScripts();
+        expect(scripts['test:mutation'], 'root package.json must define scripts.test:mutation').toEqual(
+            expect.any(String),
+        );
+        expect(scripts['test:mutation:changed'], 'root package.json must define scripts.test:mutation:changed').toEqual(
+            expect.any(String),
+        );
+        expect(scripts['check']).toBe(
+            'npm run format:check && npm run lint && npm run typecheck && npm run build && npm test',
+        );
+    });
+});
+
+describe('scripts and mutation configs map to the workspace-wide CI path', () => {
+    it('scripts and mutation configs map to build_workspace', () => {
+        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
+        expect(
+            mappingsSetting(mappings, 'scripts/mutation-package.sh', 'build_workspace', 'true').length,
+            'scripts/** must map onto build_workspace true',
+        ).toBeGreaterThan(0);
+        expect(
+            mappingsSetting(mappings, 'vitest.mutation.config.ts', 'build_workspace', 'true').length,
+            'vitest.mutation.config.ts must map onto build_workspace true',
+        ).toBeGreaterThan(0);
+        const strykerMapped = [
+            'stryker.config.mjs',
+            'stryker.config.js',
+            'stryker.config.ts',
+            'stryker.config.json',
+        ].some((name) => mappingsSetting(mappings, name, 'build_workspace', 'true').length > 0);
+        expect(strykerMapped, 'a Stryker config filename must map onto build_workspace true').toBe(true);
     });
 });
 

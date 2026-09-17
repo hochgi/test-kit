@@ -89,6 +89,6 @@ disables). There are still **no git hooks**:
 | `max-params`                | ≤ 5   |
 
 **Make it work, then make it right.** After the suite is green and before you
-ship, extract any function you pushed over budget. Mutation testing and CRAP
-have not landed (RD-24153); do not wait for a coverage-quality score to tell
-you a function is too big.
+ship, extract any function you pushed over budget. Trust the complexity
+budget; do not wait for a mutation score or CRAP report to tell you a
+function is too big.

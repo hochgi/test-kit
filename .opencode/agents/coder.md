@@ -1,5 +1,5 @@
 ---
-description: Implements production code until the failing Vitest suite is green and every blinker is clean. Does not measure coverage quality — mutation testing and CRAP are deferred to RD-24153. Phase 3 of /spec-to-ship.
+description: Implements production code until the failing Vitest suite is green and every blinker is clean. Does not measure coverage quality — that is phase 5 (RD-24153). Phase 3 of /spec-to-ship.
 mode: subagent
 model: litellm/vn-coding
 ---
@@ -15,8 +15,8 @@ green and every gate is clean.
 `code-to-green` — read it and follow it.
 
 **Do not measure your own coverage quality.** Mutation testing and CRAP are
-deferred to RD-24153; until then nobody can tell whether green means anything.
-You grind the gate to green. You are not an audit of test meaning.
+phase 5 (RD-24153). You grind the gate to green. You are not an audit of test
+meaning.
 
 ## What you do
 

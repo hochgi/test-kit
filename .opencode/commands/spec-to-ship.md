@@ -57,7 +57,7 @@ capability-per-dollar model for each phase arrives without a repo change.
 
 ```bash
 npm run build     # MANDATORY before a root `npm test` — pretest does NOT cascade
-npm test          # vitest run, every project in vitest.workspace.ts
+npm test          # vitest run, every project in vitest.config.ts
 npm run build --workspace=packages/<name> && npm test --workspace=packages/<name>
                   # always build first; pglite-driver has no pretest
 ```
@@ -112,7 +112,7 @@ which proves nothing and will later pass for the wrong reason.
 
 Delegate to **coder**. It grinds red→green→refactor until `format:check`, `lint`,
 `typecheck`, `build` and `test` are all clean. It does **not** measure coverage
-quality — mutation testing and CRAP are deferred to RD-24153.
+quality — that is phase 5 (RD-24153).
 
 ## Phase 4 — Review (agent: `reviewer`, skill: `review-changes`)
 
@@ -124,13 +124,10 @@ as the finding dictates.
 ## Phase 5 — Verify (agent: `verifier`, skill: `verify-changes`)
 
 Delegate to **verifier**, read-only. It re-runs the whole gate independently of
-phase 3, audits every suppression added on the patch, and sweeps for regressions.
-
-> **Phase 5 is deliberately thin here and says so.** test-kit has no mutation
-> testing and no CRAP report — that is RD-24153, and it is blocked on a real
-> problem (tests run against `dist`, so mutants in `src` are never loaded). Until
-> it lands, phase 5 cannot tell you whether green means anything. An unstated
-> missing gate is worse than a stated one: say it in the handoff, every time.
+phase 3, audits every suppression added on the patch, sweeps for regressions,
+and runs `npm run test:mutation:changed` and `npm run crap:changed`. A
+zero-mutant Stryker success is a defect. See `verify-changes` and
+`mutation-testing` (RD-24153).
 
 ## PR loop
 

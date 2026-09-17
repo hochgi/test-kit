@@ -429,7 +429,7 @@ workspace. (Root `format:check` already globs `test/**/*.ts`, so new files
 under `test/docs-truth/` are format-checked without a further glob change.)
 
 #### Scenario: docs-truth tests are in the Vitest workspace
-- **WHEN** `vitest.workspace.ts` is read
+- **WHEN** `vitest.config.ts` is read
 - **THEN** it includes a project that picks up the tests for this capability
 
 ## Flow
@@ -467,7 +467,6 @@ sequenceDiagram
 | Documenting remaining internal engine exports (`FilterChain`, `CallRecord`, `StreamRecord`, …) | api-surface still omits types that domain packages import from core |
 | Adding a `packages/pglite-driver/test/` suite | Package still uses `--passWithNoTests`; a README is added, not tests |
 | Compiling every markdown TypeScript fence | Signature drift is locked by string/shape assertions, not `tsc` on fences |
-| Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
 
 ## Acceptance mapping
 
@@ -490,4 +489,4 @@ sequenceDiagram
 17. migration-from-v1 tables are not `| v1 | v2 |`; concepts.md does not describe shipped behaviour as "v2".
 18. `packages/pglite-driver/README.md` exists and the sql README relative link resolves.
 19. Harness markdown does not claim the 41 defects are still outstanding.
-20. Docs-truth tests are in `vitest.workspace.ts` (root `format:check` already covers `test/**/*.ts`).
+20. Docs-truth tests are in `vitest.config.ts` (root `format:check` already covers `test/**/*.ts`).

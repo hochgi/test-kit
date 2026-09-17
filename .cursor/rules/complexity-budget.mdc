@@ -26,5 +26,5 @@ function past review — extract instead.
 - **Don't accrete into orchestrators.** Bolting "one more branch / guard" onto a
   big function is how factories and dispatchers rot. Prefer a pipeline of named
   helpers over a deeper `if` tree.
-- Mutation testing and CRAP have not landed (RD-24153). Do not wait for a
-  coverage-quality score to tell you a function is too big — trust the budget.
+- Trust the complexity budget; do not wait for a mutation score or CRAP
+  report to tell you a function is too big.

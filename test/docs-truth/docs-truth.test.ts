@@ -434,7 +434,7 @@ const sqlReadme = readUtf8(path.join(repoRoot, 'packages/sql/README.md'));
 const s3Readme = readUtf8(path.join(repoRoot, 'packages/s3/README.md'));
 const concepts = readUtf8(path.join(repoRoot, 'docs/concepts.md'));
 const migration = readUtf8(path.join(repoRoot, 'docs/internal/migration-from-v1.md'));
-const workspace = readUtf8(path.join(repoRoot, 'vitest.workspace.ts'));
+const vitestConfigPath = path.join(repoRoot, 'vitest.config.ts');
 
 describe('Phantom public APIs are absent from library docs', () => {
     it('phantom S3 commandsOf is absent', () => {
@@ -895,9 +895,12 @@ describe('Harness prose does not claim the 41 defects are still open', () => {
 
 describe('Docs-truth tests run on the root test path', () => {
     it('docs-truth tests are in the Vitest workspace', () => {
+        expect(existsSync(vitestConfigPath), 'vitest.config.ts must exist').toBe(true);
+        const config = readUtf8(vitestConfigPath);
+        expect(config.includes('test.projects'), 'vitest.config.ts must contain test.projects').toBe(true);
         expect(
-            workspace.includes('test/docs-truth'),
-            'vitest.workspace.ts must include a project that picks up the tests for this capability',
+            config.includes('test/docs-truth'),
+            'vitest.config.ts test.projects must include a project that picks up the tests for this capability',
         ).toBe(true);
     });
 });
