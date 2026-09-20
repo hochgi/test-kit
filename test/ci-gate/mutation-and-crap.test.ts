@@ -529,6 +529,40 @@ describe('A zero-mutant Stryker success is a failure', () => {
         expect(counts.total, 'JSON report must record more than 0 mutants').toBeGreaterThan(0);
         expect(counts.killed, 'JSON report must record more than 0 killed mutants').toBeGreaterThan(0);
     }, 180_000);
+
+    it('the shipped per-package runner instruments and kills mutants for sql', () => {
+        const script = path.join(repoRoot, mutationPackageRelative);
+        expect(existsSync(script), `${mutationPackageRelative} must exist`).toBe(true);
+        expect(existsSync(path.join(repoRoot, 'packages', 'sql', 'src')), 'packages/sql/src must exist').toBe(true);
+        rmSync(path.join(repoRoot, 'reports', 'mutation'), { recursive: true, force: true });
+        const result = spawnTimeout('bash', [script, 'sql'], 300_000);
+        expect(result.error, 'the shipped runner must not time out').toBeUndefined();
+        expect(
+            result.status,
+            `the shipped runner must exit 0 for sql: ${result.stdout ?? ''}\n${result.stderr ?? ''}`,
+        ).toBe(0);
+        const reportRelative = mutationJsonCandidates.find((candidate) => existsSync(path.join(repoRoot, candidate)));
+        expect(reportRelative, 'Stryker JSON report must exist').toEqual(expect.any(String));
+        const report: unknown = JSON.parse(readUtf8(path.join(repoRoot, reportRelative ?? mutationJsonCandidates[0])));
+        const counts = mutantCounts(report);
+        expect(counts.total, 'the shipped runner must instrument more than 0 mutants').toBeGreaterThan(0);
+        expect(counts.killed, 'the shipped runner must kill more than 0 mutants').toBeGreaterThan(0);
+    }, 300_000);
+
+    it('the per-package runner passes exactly one --mutate flag', () => {
+        const source = readRequired(mutationPackageRelative);
+        const commandLines = source
+            .split('\n')
+            .filter((line) => !line.trimStart().startsWith('#'))
+            .join('\n');
+        const occurrences = commandLines.match(/--mutate\b/g) ?? [];
+        expect(occurrences.length, 'repeating --mutate keeps only the last glob, so the runner must pass it once').toBe(
+            1,
+        );
+        expect(source, 'the single glob must cover .ts and .tsx under that package src and exclude .d.ts').toMatch(
+            /--mutate "packages\/\$\{pkg\}\/src\/\*\*\/\*\.ts,[^"]*packages\/\$\{pkg\}\/src\/\*\*\/\*\.tsx,[^"]*!packages\/\$\{pkg\}\/src\/\*\*\/\*\.d\.ts/,
+        );
+    });
 });
 
 describe('CRAP scores source functions from istanbul coverage', () => {

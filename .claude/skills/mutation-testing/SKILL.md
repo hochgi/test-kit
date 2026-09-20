@@ -58,6 +58,13 @@ until proven otherwise: fail closed. `#6183` did not reproduce on
 `@babel/generator@8.0.5` in the RD-24153 spike; the wrapper still
 exits non-zero.
 
+Before blaming `#6183`, check the mutate glob. Stryker's CLI parses
+`--mutate` with a comma splitter and keeps only the **last** occurrence,
+so repeating the flag silently throws away every earlier glob. Pass one
+`--mutate` with the globs comma-joined; negations are honoured as
+elements of that list. Three `--mutate` flags left a bare `!*.d.ts`
+negation and instrumented 0 mutants for every package (RD-24255).
+
 ## Survivors
 
 Hand-apply survivors before treating them as missing tests.

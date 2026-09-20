@@ -17,6 +17,9 @@ P12 (RD-24153) landed per-package Stryker and CRAP; they are not a
 step of `npm run check`. Phase 5 runs `test:mutation:changed` and
 `crap:changed`. Folded from
 `docs/internal/archive/2026-09-17-P12-mutation-and-crap/delta.md`.
+RD-24255 collapsed the per-package runner's three `--mutate` flags into
+one comma-joined glob; the repeated flag had made every package
+instrument zero mutants.
 
 ## Requirements
 
@@ -216,8 +219,8 @@ as the scoping mechanism.
 ### Requirement: Per-package mutation runner
 `scripts/mutation-package.sh` SHALL take a published package directory
 name, write that name to repository-root `.stryker-package`, and invoke
-Stryker with `mutate` limited to `packages/<name>/src/**/*.ts`
-excluding `*.d.ts`.
+Stryker with `mutate` limited to the `.ts` and `.tsx` sources under
+`packages/<name>/src`, excluding `*.d.ts`.
 
 The mutation Vite config SHALL include `packages/<name>/test/**/*.test.ts`
 for that name. When the name is `mysql`, that include SHALL NOT be
@@ -293,9 +296,16 @@ The per-package mutation runner SHALL exit non-zero when Stryker
 instruments zero mutants for the requested mutate glob, including the
 case where zero files matched.
 
+`scripts/mutation-package.sh` SHALL pass `--mutate` exactly once. The
+Stryker CLI parses `--mutate` with a comma splitter and keeps only the
+last occurrence, so repeating the flag silently discards every earlier
+glob. The single value SHALL be the comma-joined list
+`packages/<name>/src/**/*.ts`, `packages/<name>/src/**/*.tsx`,
+`!packages/<name>/src/**/*.d.ts`.
+
 #### Scenario: mutating a glob that matches no source fails
 - **WHEN** the per-package runner is invoked with a mutate glob that
-  matches no `packages/*/src/**/*.ts` file
+  matches no `.ts` or `.tsx` file under `packages/*/src`
 - **THEN** the process exits non-zero
 
 #### Scenario: duration.ts mutation produces a non-zero mutant count
@@ -303,6 +313,19 @@ case where zero files matched.
   the mutation Vite config and `.stryker-package` set to `core`
 - **THEN** the JSON report records more than 0 mutants and more than 0
   killed mutants
+
+#### Scenario: the shipped runner instruments and kills mutants for a real package
+- **WHEN** `scripts/mutation-package.sh` is invoked end to end with the
+  package directory name `sql`
+- **THEN** it exits 0 and the JSON report it leaves at
+  `reports/mutation/mutation.json` records more than 0 mutants and more
+  than 0 killed mutants
+
+#### Scenario: the per-package runner passes one mutate flag
+- **WHEN** the non-comment lines of `scripts/mutation-package.sh` are
+  scanned for `--mutate`
+- **THEN** the flag appears exactly once, and its value joins the
+  `*.ts` and `*.tsx` globs for that package's `src` with commas
 
 ### Requirement: CRAP scores source functions from istanbul coverage
 `scripts/crap-report.js` SHALL exist in the existing `scripts/`
@@ -607,6 +630,7 @@ sequenceDiagram
 | `concurrency: 1` only for mysql; mysql include is that package's tests and is not excluded | Only mysql starts Testcontainers; Vitest exclude wins over include | Source + Bugbot on RD-24153 |
 | Istanbul, not v8; `thresholds.break: null`; not a step of `npm run check` | Coverage keys are `packages/*/src/**/*.ts`; P00 pinned the five-step check chain | Spike + source (`ci-gate.md`) |
 | `changed-src.sh` prefers `vn/main` then `main`; pathspec `packages/*/src` | Ticket named those two bugs | Ticket |
+| One comma-joined `--mutate`, not three `--mutate` flags | Stryker 10 parses `--mutate` with a comma splitter and keeps only the last occurrence, so three flags collapsed to the bare `!*.d.ts` negation and every package instrumented 0 mutants | Measurement (RD-24255): shipped runner on `sql` went from `Instrumented 0 source file(s) with 0 mutant(s)` (exit 1) to `Instrumented 3 source file(s) with 49 mutant(s)`, 15 killed; `--mutate "packages/sql/src/**/*.ts,!packages/sql/src/**/factory.ts"` instrumented 2 files, so a negation inside the comma list is still honoured |
 
 ## Out of scope (deferred)
 
@@ -648,3 +672,4 @@ sequenceDiagram
 20. `vitest.workspace.ts` is gone; `vitest.config.ts` has `test.projects`; `vitest.mutation.config.ts` aliases `@vnatures/*` to `src/index.ts`.
 21. `test:mutation` / `test:mutation:changed` / `crap` / `crap:changed` exist and are not steps of `scripts.check`; a zero-mutant Stryker success exits non-zero.
 22. Mysql mutation include is `packages/mysql/test/**/*.test.ts` and that glob is not excluded; core mutation still excludes mysql tests.
+23. `scripts/mutation-package.sh` passes `--mutate` exactly once with the comma-joined `*.ts` / `*.tsx` / `!*.d.ts` globs, and running the shipped runner end to end against `sql` exits 0 with more than 0 mutants and more than 0 killed.
