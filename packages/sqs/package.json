@@ -1,11 +1,25 @@
 {
-  "name": "@vnatures/test-kit-sqs",
+  "name": "@hochgi/test-kit-sqs",
   "version": "2.0.2",
   "description": "Probe-driven SQS adapter with a functional in-memory backing",
-  "license": "UNLICENSED",
+  "keywords": [
+    "testing",
+    "component-testing",
+    "test-double",
+    "fake",
+    "probe",
+    "vitest",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Gilad Hoch <giladhoch@gmail.com> (https://github.com/hochgi)",
+  "homepage": "https://github.com/hochgi/test-kit/tree/main/packages/sqs#readme",
+  "bugs": {
+    "url": "https://github.com/hochgi/test-kit/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vnatures/test-kit.git",
+    "url": "https://github.com/hochgi/test-kit.git",
     "directory": "packages/sqs"
   },
   "type": "module",
@@ -24,10 +38,12 @@
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "LICENSE"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
@@ -42,7 +58,7 @@
     "node": ">=20"
   },
   "peerDependencies": {
-    "@vnatures/test-kit": "^2.0.0",
+    "@hochgi/test-kit": "^2.0.0",
     "@aws-sdk/client-sqs": ">=3.600.0"
   },
   "devDependencies": {

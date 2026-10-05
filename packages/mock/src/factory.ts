@@ -8,7 +8,7 @@ import {
     type PendingCallBase,
     type ProbeRoot,
     type Selection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type {
     AsyncMethodName,
     CheckedMethods,

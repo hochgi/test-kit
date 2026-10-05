@@ -1,4 +1,4 @@
-# @vnatures/test-kit-s3
+# @hochgi/test-kit-s3
 
 ## 1.1.0
 

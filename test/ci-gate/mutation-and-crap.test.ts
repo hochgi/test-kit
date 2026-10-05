@@ -312,12 +312,12 @@ describe('Mutation-only Vite config aliases workspace packages to source', () =>
     it('mutation config aliases each workspace package to src/index.ts', async () => {
         const { aliases } = await loadMutationConfig();
         expect(
-            aliases['@vnatures/test-kit'] ?? '',
-            '@vnatures/test-kit must alias to packages/core/src/index.ts',
+            aliases['@hochgi/test-kit'] ?? '',
+            '@hochgi/test-kit must alias to packages/core/src/index.ts',
         ).toContain('packages/core/src/index.ts');
         expect(
-            aliases['@vnatures/test-kit-mock'] ?? '',
-            '@vnatures/test-kit-mock must alias to packages/mock/src/index.ts',
+            aliases['@hochgi/test-kit-mock'] ?? '',
+            '@hochgi/test-kit-mock must alias to packages/mock/src/index.ts',
         ).toContain('packages/mock/src/index.ts');
         for (const pkg of publishedWorkspacePackages()) {
             expect(aliases[pkg.name] ?? '', `${pkg.name} must alias to packages/${pkg.dir}/src/index.ts`).toContain(
@@ -335,7 +335,7 @@ describe('Mutation-only Vite config aliases workspace packages to source', () =>
             'typecheck enabled must be false',
         ).toBe(true);
         expect(source.includes('inline'), 'must set test.server.deps.inline').toBe(true);
-        expect(source.includes('@vnatures/'), 'inline must transform @vnatures/ packages').toBe(true);
+        expect(source.includes('@hochgi/'), 'inline must transform @hochgi/ packages').toBe(true);
     });
 
     it('Stryker uses the mutation config and disables related mode', () => {
@@ -364,7 +364,7 @@ describe('Mutation-only Vite config aliases workspace packages to source', () =>
             server: { middlewareMode: true },
         });
         try {
-            const resolved = await server.pluginContainer.resolveId('@vnatures/test-kit');
+            const resolved = await server.pluginContainer.resolveId('@hochgi/test-kit');
             const resolvedPath = resolved && typeof resolved.id === 'string' ? resolved.id : '';
             expect(resolvedPath.includes('packages/core/src'), 'resolved path must contain packages/core/src').toBe(
                 true,
@@ -652,11 +652,12 @@ describe('Istanbul coverage keys are TypeScript sources', () => {
     }, 60_000);
 });
 
-describe('changed-src.sh resolves vn/main and packages/*/src', () => {
-    it('resolve_patch_base prefers vn/main then main', () => {
+describe('changed-src.sh resolves origin/main and packages/*/src', () => {
+    it('resolve_patch_base prefers origin/main then main', () => {
         const source = readRequired(changedSrcRelative);
         expect(source.includes('resolve_patch_base'), 'must define resolve_patch_base').toBe(true);
-        expect(source.includes('vn/main'), 'resolve_patch_base must contain vn/main').toBe(true);
+        expect(source.includes('origin/main'), 'resolve_patch_base must contain origin/main').toBe(true);
+        expect(source.includes('vn/main'), 'must not contain the old vn/main remote').toBe(false);
         expect(source.includes('main'), 'resolve_patch_base must contain main').toBe(true);
         expect(source.includes('vn/master'), 'must not contain vn/master').toBe(false);
         expect(source.includes('origin/master'), 'must not contain origin/master').toBe(false);

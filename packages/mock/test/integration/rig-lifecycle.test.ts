@@ -3,8 +3,8 @@
  * cancels in-flight waiters, and the safety timeout.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRig, milliseconds, seconds, type ProbedAdapterWithLifecycle, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, milliseconds, seconds, type ProbedAdapterWithLifecycle, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Service {
     doThing(arg: number): Promise<string>;

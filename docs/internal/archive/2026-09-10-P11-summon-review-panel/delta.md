@@ -168,17 +168,17 @@ findings that have already landed stays in `pr-review-style`.
 - **THEN** it contains `summon-review-panel` and does not contain
   `Assembling the review panel`
 
-### Requirement: OSS.md tracks versatile-internal harness pieces
+### Requirement: OSS.md tracks org-internal harness pieces
 `docs/internal/OSS.md` SHALL exist. It SHALL name
 `summon-review-panel` and `.harness/review-panel.json` as
-`versatile-internal`. It SHALL name the LiteLLM role aliases in
-`.harness/models.json` (`litellm/vn-`) as `versatile-internal`. It SHALL
+`org-internal`. It SHALL name the LiteLLM role aliases in
+`.harness/models.json` (`litellm/vn-`) as `org-internal`. It SHALL
 NOT introduce a skill-frontmatter marking convention.
 
-#### Scenario: OSS.md tracks summon-review-panel as versatile-internal
+#### Scenario: OSS.md tracks summon-review-panel as org-internal
 - **WHEN** `docs/internal/OSS.md` is read
 - **THEN** it contains `summon-review-panel`, `litellm`, and
-  `versatile-internal`
+  `org-internal`
 
 ## MODIFIED Requirements
 
@@ -198,7 +198,7 @@ It SHALL NOT contain skill directories named `slack-driven-sessions`,
 Donor service names SHALL NOT leak into the ported skills: none of
 `engineering-principles`, `regression-dog`, `pr-review-style`,
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
-`@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
+`@donor-service/contracts`, `pnpm verify`, or `lefthook`.
 
 #### Scenario: eight support skills are present
 - **WHEN** `.cursor/skills/` is listed
@@ -222,7 +222,7 @@ Donor service names SHALL NOT leak into the ported skills: none of
 #### Scenario: ported support skills do not name donor service machinery
 - **WHEN** the five newly ported support `SKILL.md` files other than
   `component-testing` are read
-- **THEN** none of them contains `@cycle-processing/contracts`,
+- **THEN** none of them contains `@donor-service/contracts`,
   `pnpm verify`, or `lefthook`
 
 ## REMOVED Requirements
@@ -275,18 +275,18 @@ sequenceDiagram
 | `pr-review-style` drops `Assembling the review panel` and names this skill | Summoning and triage stay separate | Ticket |
 | Bugbot comment body is exactly `@cursor review`, not `🤖: @cursor review` | Ticket's trigger string; `🤖:` stays the prefix for review replies | Ticket + source (`pr-review-style`) |
 | No GitHub Actions, no CODEOWNERS, no Baz repo config | Per-PR Copilot reviewer and `@cursor review` need zero CI | Ticket + source (no `.github/`) |
-| Track versatile-internal in `docs/internal/OSS.md`, no frontmatter mark | Ticket forbade a marking convention; `docs/internal/` is already the OSS-ignore tree | Ticket |
+| Track org-internal in `docs/internal/OSS.md`, no frontmatter mark | Ticket forbade a marking convention; `docs/internal/` is already the OSS-ignore tree | Ticket |
 | No published-API / version bump | Harness markdown, one JSON file, and repo tests | Source |
 
 ## Out of scope (deferred)
 
 | Item | Consequence of deferring |
 | --- | --- |
-| Confirming Baz org-wide install on `vnatures`, or Copilot PR-review seats on private repos | Capability stays a runtime gap statement; this repo's committed `wanted` omits `baz` until someone adds it |
+| Confirming Baz org-wide install on `the org`, or Copilot PR-review seats on private repos | Capability stays a runtime gap statement; this repo's committed `wanted` omits `baz` until someone adds it |
 | A `/summon-review-panel` slash command | Re-summon by invoking the skill; no Cursor/Claude/OpenCode command mirror |
 | A sixth pipeline agent | Orchestrator (main thread) runs the skill |
 | GitHub Actions, CODEOWNERS, or Baz repo config | test-kit still has no `.github/` |
-| A skill-frontmatter `oss:` / `versatile-internal` mark | `docs/internal/OSS.md` is the list |
+| A skill-frontmatter `oss:` / `org-internal` mark | `docs/internal/OSS.md` is the list |
 | An unattended PR-watching review orchestrator | Ticket: that agent has nobody to ask; this skill's recorded policy is the file it will need |
 | Installing Baz or changing org seat policy | Out of this repository |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
@@ -305,5 +305,5 @@ sequenceDiagram
 10. `.harness/review-panel.json` exists; `wanted` includes `copilot` and `bugbot`; every entry is a known id; no `capability` or `seats` key.
 11. `.claude/commands/spec-to-ship.md` and `.cursor/skills/spec-to-ship/SKILL.md` contain `summon-review-panel`.
 12. `.cursor/skills/pr-review-style/SKILL.md` contains `summon-review-panel` and does not contain `Assembling the review panel`.
-13. `docs/internal/OSS.md` contains `summon-review-panel`, `litellm`, and `versatile-internal`.
+13. `docs/internal/OSS.md` contains `summon-review-panel`, `litellm`, and `org-internal`.
 14. `.cursor/skills/` has the eight support skills (including `add-adapter` and `summon-review-panel`).

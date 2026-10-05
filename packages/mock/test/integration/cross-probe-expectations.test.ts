@@ -9,8 +9,8 @@
  *   - return type infers per-step (TPending for capture, TCall for observe)
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, milliseconds, observation, seconds, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, milliseconds, observation, seconds, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Payments {
     charge(userId: number, amount: number): Promise<{ ok: boolean; txn?: string }>;

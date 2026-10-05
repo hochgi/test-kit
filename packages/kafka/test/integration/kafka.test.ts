@@ -1,5 +1,5 @@
 /**
- * @vnatures/test-kit-kafka — acceptance tests.
+ * @hochgi/test-kit-kafka — acceptance tests.
  *
  * Mirrors the assertion style in packages/pg-kysely/test/integration/probe.test.ts.
  *
@@ -13,8 +13,8 @@
  * connect/disconnect routed through the probe.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { brokerDownError, createProbedKafkaProducer, type ProbedKafkaProducer } from '@vnatures/test-kit-kafka';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { brokerDownError, createProbedKafkaProducer, type ProbedKafkaProducer } from '@hochgi/test-kit-kafka';
 
 // eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedKafkaProducer', () => {

@@ -11,7 +11,7 @@ import {
     type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import { formatKey, fromStored, toStored } from './key.js';
 import type { CacheAdapter, CacheCall, CacheKeyInput, CacheMethod, CachePendingCall, CacheProbe } from './types.js';
 

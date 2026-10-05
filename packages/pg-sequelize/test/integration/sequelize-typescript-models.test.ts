@@ -16,8 +16,8 @@ import 'reflect-metadata';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AllowNull, AutoIncrement, Column, DataType, Model, PrimaryKey, Sequelize, Table } from 'sequelize-typescript';
 import type { CreationOptional, InferAttributes, InferCreationAttributes } from 'sequelize';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedSequelizeAdapter } from '@vnatures/test-kit-pg-sequelize';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedSequelizeAdapter } from '@hochgi/test-kit-pg-sequelize';
 
 @Table({ tableName: 'products', timestamps: false, underscored: true })
 class Product extends Model<InferAttributes<Product>, InferCreationAttributes<Product>> {

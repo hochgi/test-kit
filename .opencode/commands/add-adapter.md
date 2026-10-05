@@ -77,11 +77,11 @@ skill. Do not fold this set into `/spec-to-ship`.
    if anything, is in besides `filter()`?
 9. **SQL family vs standalone.** Plug into `SqlDriver` in `packages/sql`, or
    a new standalone domain package?
-10. **Names.** Factory `createProbed…` and package `@vnatures/test-kit-…`
+10. **Names.** Factory `createProbed…` and package `@hochgi/test-kit-…`
     (match sibling spelling, e.g. `createProbedMysqlAdapter`).
 11. **Out of scope.** What is explicitly not this packet.
 12. **Size.** Estimate against a ~40-test split.
-13. **Ticket / Depends on.** Jira key if any; which packet this follows.
+13. **Issue / Depends on.** GitHub issue if any; which packet this follows.
 
 Ask only decisions. Collapse follow-ups; do not re-ask facts you looked up.
 

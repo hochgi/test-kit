@@ -1,4 +1,4 @@
-# @vnatures/test-kit-redis
+# @hochgi/test-kit-redis
 
 In-memory cache adapter for component tests, backed by `ioredis-mock`
 behind a focused `CacheAdapter` interface.
@@ -18,14 +18,14 @@ probe-driven adapter for it.
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-redis
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-redis
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedCacheAdapter } from "@vnatures/test-kit-redis";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedCacheAdapter } from "@hochgi/test-kit-redis";
 
 const rig = createRig();
 const cache = rig.attach(createProbedCacheAdapter({ harness: rig }));
@@ -90,7 +90,7 @@ useful for shape assertions.
 
 ## See also
 
-- [`@vnatures/test-kit-mock`](../mock/README.md) for non-cache
+- [`@hochgi/test-kit-mock`](../mock/README.md) for non-cache
   boundaries.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
   reference.

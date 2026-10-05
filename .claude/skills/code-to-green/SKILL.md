@@ -4,7 +4,7 @@ description: >-
   Implement production code until the failing Vitest suite is green and the whole
   gate is clean. Use as phase 3 of spec-to-ship, or when asked to "make the tests
   pass" or "grind to green". Does not measure coverage quality — that is
-  phase 5 (RD-24153).
+  phase 5.
 ---
 
 # code-to-green — implement until green
@@ -31,11 +31,10 @@ tests are the authority.**
 
 ## What you must leave clean
 
-There are **no git hooks** — no husky, no lefthook (RD-24141 kept it that way
-on purpose). CircleCI path-filtering maps workspace-wide paths (root configs,
-`docs/**`, `.circleci/**`, `.cursor/**`) onto `build_workspace`, which runs
-`npm run check`. Per-package dirs still only *build* that package. The full gate
-is `npm run check` (RD-24141):
+There are **no git hooks** — no husky, no lefthook (kept that way
+on purpose). GitHub Actions (`.github/workflows/ci.yml`) runs `npm run check`
+on every pull request, whatever paths it touches. The full gate is
+`npm run check`:
 
 ```bash
 npm run format:check   # prettier: packages/**/*.ts + examples/**/*.ts + test/**/*.ts + vitest.config.ts + vitest.mutation.config.ts

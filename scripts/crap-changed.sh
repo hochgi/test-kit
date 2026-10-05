@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CRAP on files changed vs merge-base (vn/main, else main).
+# CRAP on files changed vs merge-base (origin/main, else main).
 # Collects istanbul coverage via vitest.mutation.config.ts so keys are
 # packages/*/src TypeScript, then scores patch-overlapping functions.
 set -euo pipefail

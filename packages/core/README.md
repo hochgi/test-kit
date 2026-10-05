@@ -1,4 +1,4 @@
-# @vnatures/test-kit
+# @hochgi/test-kit
 
 Core engine for probe-driven component testing. Provides the `Rig`,
 `Clock`, lifecycle, and the `Probe` / `Selection` / `RuleBuilder` /
@@ -6,14 +6,14 @@ Core engine for probe-driven component testing. Provides the `Rig`,
 
 You usually do not import factories from this package directly — install
 the domain adapter that matches the boundary you are testing
-(`@vnatures/test-kit-mock`, `@vnatures/test-kit-pg-kysely`,
-`@vnatures/test-kit-redis`, `@vnatures/test-kit-s3`, …) and consume this
+(`@hochgi/test-kit-mock`, `@hochgi/test-kit-pg-kysely`,
+`@hochgi/test-kit-redis`, `@hochgi/test-kit-s3`, …) and consume this
 package transitively.
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit
+npm install --save-dev @hochgi/test-kit
 ```
 
 ## What this package gives you
@@ -32,7 +32,7 @@ import {
     type Expectations,
     type ProbedAdapter,
     type ProbedResource,
-} from "@vnatures/test-kit";
+} from "@hochgi/test-kit";
 ```
 
 - `createRig()` — Constructs a `Rig` that owns a `Clock`,
@@ -60,8 +60,8 @@ For full type signatures and matching semantics see
 ## Rig lifecycle
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMock } from "@vnatures/test-kit-mock";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMock } from "@hochgi/test-kit-mock";
 
 let rig: Rig;
 
@@ -100,11 +100,11 @@ is a worked walkthrough; the implementation specification lives in
 
 ## Related packages
 
-- [`@vnatures/test-kit-mock`](../mock/README.md) — programmable mock
+- [`@hochgi/test-kit-mock`](../mock/README.md) — programmable mock
   adapters for arbitrary TypeScript interfaces.
-- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md),
-  [`@vnatures/test-kit-pg-knex`](../pg-knex/README.md),
-  [`@vnatures/test-kit-pg-sequelize`](../pg-sequelize/README.md) — SQL
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md),
+  [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md),
+  [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md) — SQL
   adapters backed by PGlite.
-- [`@vnatures/test-kit-redis`](../redis/README.md) — cache adapter.
-- [`@vnatures/test-kit-s3`](../s3/README.md) — S3 + presigner adapters.
+- [`@hochgi/test-kit-redis`](../redis/README.md) — cache adapter.
+- [`@hochgi/test-kit-s3`](../s3/README.md) — S3 + presigner adapters.

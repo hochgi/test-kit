@@ -25,8 +25,8 @@ COMMANDS_OPENCODE_DIR=".opencode/commands"
 # ---------------------------------------------------------------------------
 # Model targeting is data, not code. `.harness/models.json` is the ONE place a
 # model may be named in this repo; every helper below reads it. The `opencode`
-# column holds LiteLLM role aliases (litellm/<role>), repointed centrally when a
-# better or cheaper model appears — so following the frontier never touches a repo.
+# column holds OpenCode provider/model ids (`<provider>/<model>`); repoint a
+# column at whatever provider your OpenCode is configured for.
 # ---------------------------------------------------------------------------
 # ROOT is the tree that owns the invoked script (not cwd's git toplevel).
 export HARNESS_MANIFEST="$ROOT/.harness/models.json"
@@ -73,6 +73,14 @@ harness_field() {
   ' "$1" "$2"
 }
 
+# The one OpenCode reasoning variant (e.g. `xhigh`) that every generated
+# OpenCode agent and the OpenCode config carry. OpenCode reads it as a separate
+# `variant` field; folding it into the model id (`xai/grok-4.7#xhigh`) makes
+# OpenCode look the whole string up as one catalog key and fail.
+opencode_variant() {
+  node -e 'process.stdout.write(String(require(process.env.HARNESS_MANIFEST).opencode_variant))'
+}
+
 # Reject a manifest that cannot generate correct mirrors, BEFORE anything is
 # written. Two classes of bug this closes:
 #
@@ -89,14 +97,15 @@ harness_field() {
 #     live deviation is an error too, so the explanations cannot rot in place.
 #
 # `opencode` is exempt from the deviation rule by design: those are per-phase
-# LiteLLM role aliases (`litellm/vn-spec`, `litellm/vn-review`, ...), so every
-# phase differing IS the intended shape.
+# OpenCode provider/model ids chosen per phase by whoever runs OpenCode, so a
+# phase differing from its siblings needs no rationale.
 harness_validate() {
   assert_harness_manifest_present
   node -e '
     const m = require(process.env.HARNESS_MANIFEST);
     const errs = [];
     const isStr = (v) => typeof v === "string" && v.trim() !== "" && !/[\r\n]/.test(v);
+    const isProviderModel = (v) => /^[a-z0-9][a-z0-9._-]*\/[^\s#]+$/.test(v);
     const isText = (v) => typeof v === "string" && v.trim() !== "";
     const isRationale = (v) =>
       isText(v) || (Array.isArray(v) && v.length > 0 && v.every(isText));
@@ -121,8 +130,11 @@ harness_validate() {
     }
     if (!m.orchestrator || !isStr(m.orchestrator.opencode)) {
       errs.push("`orchestrator.opencode` must be a non-empty string without newlines");
-    } else if (!m.orchestrator.opencode.startsWith("litellm/vn-")) {
-      errs.push(`orchestrator.opencode must be a litellm/vn-<role> alias, got "${m.orchestrator.opencode}"`);
+    } else if (!isProviderModel(m.orchestrator.opencode)) {
+      errs.push(`orchestrator.opencode must be a <provider>/<model> id, got "${m.orchestrator.opencode}"`);
+    }
+    if (!isStr(m.opencode_variant)) {
+      errs.push("`opencode_variant` must be a non-empty string without newlines (an OpenCode reasoning variant such as xhigh)");
     }
     const rationale = m.rationale ?? {};
     if (typeof rationale !== "object" || Array.isArray(rationale)) {
@@ -141,8 +153,8 @@ harness_validate() {
       for (const col of ["claude", "cursor", "opencode"]) {
         if (!isStr(a[col])) errs.push(`agents.${name}.${col} must be a non-empty string without newlines`);
       }
-      if (isStr(a.opencode) && !a.opencode.startsWith("litellm/vn-")) {
-        errs.push(`agents.${name}.opencode must be a litellm/vn-<role> alias, got "${a.opencode}"`);
+      if (isStr(a.opencode) && !isProviderModel(a.opencode)) {
+        errs.push(`agents.${name}.opencode must be a <provider>/<model> id, got "${a.opencode}"`);
       }
       if (typeof a.readonly !== "boolean") {
         errs.push(`agents.${name}.readonly must be a JSON boolean (true/false), got ${JSON.stringify(a.readonly)}`);
@@ -225,6 +237,8 @@ assert_opencode_config() {
     want("model", conf.model, coder);
     want("agent.build.model", conf.agent?.build?.model, coder);
     want("agent[\"spec-to-ship\"].model", conf.agent?.["spec-to-ship"]?.model, m.orchestrator?.opencode);
+    want("agent.build.variant", conf.agent?.build?.variant, m.opencode_variant);
+    want("agent[\"spec-to-ship\"].variant", conf.agent?.["spec-to-ship"]?.variant, m.opencode_variant);
     const paths = conf.skills?.paths;
     if (!Array.isArray(paths) || paths.length !== 1 || paths[0] !== "./.cursor/skills") {
       errs.push(`skills.paths must be ["./.cursor/skills"] so OpenCode reads the canonical skills dir in place, got ${JSON.stringify(paths)}`);
@@ -418,7 +432,7 @@ emit_cursor_agents() {
 #
 # The fallback is appended to the END of the `**Model selection.**` paragraph,
 # located structurally. Two earlier versions keyed off a model literal instead —
-# first a hardcoded `cursor-grok-4.6-xhigh`, then the manifest's `spec-author`
+# first a hardcoded Cursor model id, then the manifest's `spec-author`
 # tier — and both were wrong for the same underlying reason: the command should
 # not be naming a model in the first place. `.harness/models.json` says nothing
 # else in this repo may, and a single tier quoted in shared prose also misstates
@@ -467,17 +481,18 @@ emit_cursor_commands() {
 }
 
 # Translate a canonical Claude subagent into OpenCode's agent markdown schema.
-# OpenCode frontmatter: description, mode, model, optional permission.
+# OpenCode frontmatter: description, mode, model, variant, optional permission.
 # Body after frontmatter is emitted unchanged. Claude tools/model are dropped.
 translate_opencode_agent() {
-  local src="$1" base="$2" model="$3" readonly="$4"
-  awk -v model="$model" -v readonly="$readonly" '
+  local src="$1" base="$2" model="$3" readonly="$4" variant="$5"
+  awk -v model="$model" -v readonly="$readonly" -v variant="$variant" '
     BEGIN { fm = 0 }
     NR == 1 && $0 == "---" { fm = 1; print "---"; next }
     fm == 1 && $0 == "---" {
       print "description: " desc
       print "mode: subagent"
       print "model: " model
+      print "variant: " variant
       if (readonly == "true") {
         print "permission:"
         print "  edit: deny"
@@ -500,21 +515,22 @@ generate_opencode_agents() {
 }
 
 emit_opencode_agents() {
-  local out_dir="$1" src_dir="$2" f base ro model
+  local out_dir="$1" src_dir="$2" f base ro model variant
+  variant="$(opencode_variant)" || return 1
   for f in "$src_dir"/*.md; do
     [ -e "$f" ] || continue
     assert_regular_source "$f" || return 1
     base="$(basename "$f" .md)"
     ro="$(agent_readonly "$base")" || return 1
     model="$(agent_model "$base" opencode)" || return 1
-    translate_opencode_agent "$f" "$base" "$model" "$ro" > "$out_dir/$base.md" || return 1
+    translate_opencode_agent "$f" "$base" "$model" "$ro" "$variant" > "$out_dir/$base.md" || return 1
   done
 }
 
-# Live LiteLLM role aliases from the manifest, backtick-quoted, comma-separated,
+# Live OpenCode model ids from the manifest, backtick-quoted, comma-separated,
 # in phase order. The OpenCode command rewrite interpolates this list so a
 # drifted agents.*.opencode fails check-agent-skills instead of matching a
-# hardcoded alias set.
+# hardcoded id set.
 opencode_role_alias_markup() {
   local name alias out=""
   while IFS= read -r name; do
@@ -562,9 +578,9 @@ translate_opencode_command() {
         print "**Model selection.** When launching a subagent via task, **omit any"
         print "`model` override** unless the human explicitly asked for a specific"
         print "listed model. Agent frontmatter is authoritative, and on OpenCode every"
-        print "phase targets a LiteLLM **role alias** (" aliases ") rather than a vendor"
-        print "model id. The alias is repointed centrally in LiteLLM, so the best"
-        print "capability-per-dollar model for each phase arrives without a repo change."
+        print "phase targets the model named for it in `.harness/models.json` (" aliases ")."
+        print "Repoint a phase there, or point OpenCode at a gateway that aliases those ids,"
+        print "to change models without touching any prompt."
         skip_model_para = 1
         next
       }

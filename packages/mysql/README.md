@@ -1,9 +1,9 @@
-# @vnatures/test-kit-mysql
+# @hochgi/test-kit-mysql
 
 Probe-driven MySQL adapter backed by a **real** MySQL 8 Testcontainer —
 no mocks, no in-memory fakes. Every application query runs against a real
 database and is routed through the shared SQL probe surface from
-[`@vnatures/test-kit-sql`](../sql/README.md).
+[`@hochgi/test-kit-sql`](../sql/README.md).
 
 ## Why a real-container adapter?
 
@@ -14,7 +14,7 @@ package gives you a real MySQL 8 instance in a Docker container, with
 every query observable and controllable through the probe.
 
 If you don't need a real database, use
-[`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md) (PGlite, no
+[`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) (PGlite, no
 Docker) instead.
 
 ## Prerequisites
@@ -27,15 +27,15 @@ Docker) instead.
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-mysql
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-mysql
 # peer: mysql2 (consumer provides its own version)
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMysqlAdapter } from "@vnatures/test-kit-mysql";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMysqlAdapter } from "@hochgi/test-kit-mysql";
 
 const rig = createRig();
 const mysql = await rig.attach(
@@ -95,7 +95,7 @@ const {
   `pool.query`). Both route through the probe. Use `query()` for
   statements that can't be prepared (e.g. `SHOW TABLES`).
 - `probe: QueryProbe` — `.calls`, `.sql(match)`, `.expect.*`, `.drain()`.
-  Same probe surface as `@vnatures/test-kit-pg-kysely`. Default rule is
+  Same probe surface as `@hochgi/test-kit-pg-kysely`. Default rule is
   `always().forward()` so queries run transparently against the real
   MySQL.
 - `container: MysqlContainerInfo` — `{ host, port, database, username,
@@ -162,5 +162,5 @@ describe.skipIf(!hasDocker)("my MySQL tests", () => {
   backed-adapter model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
   reference.
-- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md) for the
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) for the
   PGlite (no-Docker) SQL adapter with the same probe surface.

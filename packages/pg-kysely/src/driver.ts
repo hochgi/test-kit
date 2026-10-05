@@ -13,9 +13,9 @@ import {
     type TransactionSettings,
 } from 'kysely';
 import { PGliteDialect } from 'kysely-pglite-dialect';
-import type { ProbeRoot } from '@vnatures/test-kit';
-import type { QueryCall, QueryPendingCall, SqlDriver } from '@vnatures/test-kit-sql';
-import type { PgliteHandle } from '@vnatures/test-kit-pglite-driver';
+import type { ProbeRoot } from '@hochgi/test-kit';
+import type { QueryCall, QueryPendingCall, SqlDriver } from '@hochgi/test-kit-sql';
+import type { PgliteHandle } from '@hochgi/test-kit-pglite-driver';
 
 class ProbedConnection implements DatabaseConnection {
     readonly realConnection: DatabaseConnection;

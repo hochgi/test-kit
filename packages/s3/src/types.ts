@@ -5,7 +5,7 @@ import type {
     PendingCallBase,
     Probe,
     Selection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { S3Client, ServiceInputTypes } from '@aws-sdk/client-s3';
 import type { RequestPresigningArguments } from '@aws-sdk/types';
 import type { getSignedUrl } from '@aws-sdk/s3-request-presigner';

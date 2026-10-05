@@ -590,7 +590,7 @@ timeout applies when omitted.
 Durations are explicit values, not raw numbers.
 
 ```typescript
-import { milliseconds, seconds, type Duration } from '@vnatures/test-kit';
+import { milliseconds, seconds, type Duration } from '@hochgi/test-kit';
 
 const short = milliseconds(100);
 const long = seconds(5);
@@ -608,7 +608,7 @@ implementation. **The Clock is for the test author's use; it does not
 drive any of test-kit's internal timing.**
 
 ```typescript
-import { createRig, jestFakeClock } from '@vnatures/test-kit';
+import { createRig, jestFakeClock } from '@hochgi/test-kit';
 
 const rig = createRig({ clock: jestFakeClock() });
 ```
@@ -730,7 +730,7 @@ expect(charge.args[1]).toEqual(expectedTotal);
 ## Rig Pattern
 
 The rig is the lifecycle owner of probes and adapters. It is provided
-by `@vnatures/test-kit`.
+by `@hochgi/test-kit`.
 
 **When the rig is required:**
 
@@ -756,9 +756,9 @@ and one line of teardown, and it gives consistent behavior across
 test files.
 
 ```typescript
-import { createRig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
-import { createProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
+import { createRig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
+import { createProbedKyselyAdapter } from '@hochgi/test-kit-pg-kysely';
 
 function createTestHarness() {
     const rig = createRig();
@@ -900,7 +900,7 @@ observation-only (let the rule resolve it normally), wrap the
 selection with `observation(...)`:
 
 ```typescript
-import { observation } from '@vnatures/test-kit';
+import { observation } from '@hochgi/test-kit';
 
 const [chargeCall, _publishCall] = await rig.expect.sequence(
     [
@@ -1449,14 +1449,14 @@ Domain probes provide typed shorthands. These are pure sugar over `filter`
 and exist because they enable type narrowing the user can't easily write
 themselves.
 
-### Method probes (`@vnatures/test-kit-mock`)
+### Method probes (`@hochgi/test-kit-mock`)
 
 ```typescript
 methodProbe.on('getUser');
 // ≡ methodProbe.filter((call): call is TypedMethodCall<T, 'getUser'> => call.method === 'getUser', "method === 'getUser'")
 ```
 
-### Query probes (`@vnatures/test-kit-pg-*`)
+### Query probes (`@hochgi/test-kit-pg-*`)
 
 ```typescript
 queryProbe.sql(/insert into orders/i);
@@ -1467,14 +1467,14 @@ queryProbe.sql((sql) => sql.startsWith('SELECT'));
 // matches by predicate
 ```
 
-### Cache probes (`@vnatures/test-kit-redis`)
+### Cache probes (`@hochgi/test-kit-redis`)
 
 ```typescript
 cacheProbe.on('get');
 // ≡ cacheProbe.filter((call): call is GetCall => call.method === 'get', "method === 'get'")
 ```
 
-### S3 probes (`@vnatures/test-kit-s3`)
+### S3 probes (`@hochgi/test-kit-s3`)
 
 ```typescript
 s3Probe.command(GetObjectCommand);

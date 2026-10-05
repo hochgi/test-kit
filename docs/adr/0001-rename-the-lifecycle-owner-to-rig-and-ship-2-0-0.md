@@ -10,7 +10,7 @@
 One word, "harness", had come to name two different things, and this repository
 is the one place that needs both of them at once.
 
-- **The library sense.** Since 1.0.0, `@vnatures/test-kit` has exported the
+- **The library sense.** Since 1.0.0, `@hochgi/test-kit` has exported the
   object that owns probe and adapter lifecycle — `attach` / `reset` / `close`,
   the shared `Clock`, the shared `defaultTimeout`, the safety timeout, and the
   cross-probe expectations — under that word, together with a family of
@@ -19,7 +19,7 @@ is the one place that needs both of them at once.
   we have adopted internally — an agent's *harness* is everything in an AI agent
   except the model itself: the tool definitions, the prompt scaffolding, the
   loop, the gates, the skills. It is the industry term, it is what every sibling
-  repository at Versatile now calls that layer, and it is not a word we control.
+  repository we work in now calls that layer, and it is not a word we control.
 
 Those two senses collided the moment this repository installed an agent pipeline
 on itself. `test-kit` now carries `.harness/`, `test/harness-scaffold/`,
@@ -144,7 +144,7 @@ One pull request has no window. The two tickets are one semver event.
 
 ### Invent a new word for the agent sense (e.g. "armature") — rejected
 
-Keeps `@vnatures/test-kit`'s published surface untouched, costs no major version,
+Keeps `@hochgi/test-kit`'s published surface untouched, costs no major version,
 forces no consumer call sites. Rejected because the agent sense is not ours to
 rename: it is the industry term, and every sibling repository already uses it.
 A private dialect for the layer that most needs cross-repository discussion
@@ -175,10 +175,9 @@ owns. Deferred, with the inconsistency documented above.
 ## Footnote: the first published 2.x is 2.0.1, not 2.0.0
 
 This ADR and the PR that carried it set every manifest to `2.0.0`, but that exact
-string never reaches the registry. `vn-ci/init` reads the version out of the
-manifest on every merge to `main`, bumps the patch
-(`NEW_VERSION=$1.$2.($3+1)`), commits `chore: bump version to vX [skip ci]`, and
-only then does `vn-ci/build-publish` run `npm publish`. So the merge that landed
+string never reaches the registry. The CI of the time read the version out of
+the manifest on every merge to `main`, bumped the patch, committed `chore: bump
+version to vX [skip ci]`, and only then ran `npm publish`. So the merge that landed
 the rename published **2.0.1** across all 13 packages.
 
 Nothing about the decision changes: the whole argument above is about the

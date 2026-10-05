@@ -8,23 +8,23 @@ mental model and vocabulary, start with [`concepts.md`](concepts.md).
 
 Test-kit ships as a small family of packages:
 
-- `@vnatures/test-kit`: generic probe engine, `Selection` / `RuleBuilder` /
+- `@hochgi/test-kit`: generic probe engine, `Selection` / `RuleBuilder` /
   `Expectations`, `Clock`, `Rig`, shared types.
-- `@vnatures/test-kit-pglite-driver`: shared PGlite lifecycle helper
+- `@hochgi/test-kit-pglite-driver`: shared PGlite lifecycle helper
   (`createPgliteHandle`). Published; used by the `pg-*` packages.
-- `@vnatures/test-kit-mock`: Proxy-based programmable mock adapters.
-- `@vnatures/test-kit-sql`: shared `QueryProbe` surface and `SqlDriver` seam.
-- `@vnatures/test-kit-pg-kysely`: Kysely + PGlite backed adapter.
-- `@vnatures/test-kit-pg-knex`: Knex + PGlite backed adapter.
-- `@vnatures/test-kit-pg-sequelize`: Sequelize v6 + PGlite backed adapter.
-- `@vnatures/test-kit-redis`: cache adapter backed by a Redis-compatible fake.
-- `@vnatures/test-kit-bull`: Bull `Queue` adapter with an in-memory backing.
-- `@vnatures/test-kit-s3`: S3 and presigner adapters.
-- `@vnatures/test-kit-sqs`: SQS adapter with a functional in-memory backing.
-- `@vnatures/test-kit-kafka`: Kafka producer adapter with an in-memory topic log.
-- `@vnatures/test-kit-mysql`: real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam.
+- `@hochgi/test-kit-mock`: Proxy-based programmable mock adapters.
+- `@hochgi/test-kit-sql`: shared `QueryProbe` surface and `SqlDriver` seam.
+- `@hochgi/test-kit-pg-kysely`: Kysely + PGlite backed adapter.
+- `@hochgi/test-kit-pg-knex`: Knex + PGlite backed adapter.
+- `@hochgi/test-kit-pg-sequelize`: Sequelize v6 + PGlite backed adapter.
+- `@hochgi/test-kit-redis`: cache adapter backed by a Redis-compatible fake.
+- `@hochgi/test-kit-bull`: Bull `Queue` adapter with an in-memory backing.
+- `@hochgi/test-kit-s3`: S3 and presigner adapters.
+- `@hochgi/test-kit-sqs`: SQS adapter with a functional in-memory backing.
+- `@hochgi/test-kit-kafka`: Kafka producer adapter with an in-memory topic log.
+- `@hochgi/test-kit-mysql`: real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam.
 
-`@vnatures/test-kit-http` is not shipped.
+`@hochgi/test-kit-http` is not shipped.
 
 ## Design Overview
 
@@ -724,7 +724,7 @@ Pending call rules:
 
 ## Mock Adapter API
 
-Package: `@vnatures/test-kit-mock`.
+Package: `@hochgi/test-kit-mock`.
 
 ```typescript
 export type MethodCall<
@@ -948,7 +948,7 @@ type erasure, the design can be revisited.
 
 ## Stream Mock Adapter API
 
-Package: `@vnatures/test-kit-mock`. Sibling of the Mock Adapter API above,
+Package: `@hochgi/test-kit-mock`. Sibling of the Mock Adapter API above,
 for boundaries shaped `(...) => AsyncIterable<TChunk>` (typically an
 `async *stream()` generator method) rather than `(...) => Promise<T>`. A
 Promise settles once; a stream yields zero-or-more chunks over time and
@@ -1059,10 +1059,10 @@ for await (const chunk of model.adapter.stream('hi')) {
 
 ## Backed Database Adapters
 
-Packages: `@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`.
+Packages: `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`.
 
 All three packages share the same probe surface, defined in
-`@vnatures/test-kit-sql`. What differs across them is the
+`@hochgi/test-kit-sql`. What differs across them is the
 `adapter` type (Kysely, Knex, Sequelize instance) and the construction
 mechanics (which underlying driver wraps PGlite, how schema bootstrap is
 expressed). The probe API is identical.
@@ -1093,7 +1093,7 @@ export interface QueryProbe extends ForwardableProbe<QueryCall, QueryPendingCall
 ### Per-ORM factory shapes
 
 ```typescript
-// @vnatures/test-kit-pg-kysely
+// @hochgi/test-kit-pg-kysely
 export type ProbedKyselyAdapter<DB> = ProbedAdapterWithLifecycle<Kysely<DB>, QueryProbe> & {
     seed<Table extends keyof DB & string>(table: Table, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
     readonly pglite: PgliteHandle;
@@ -1111,7 +1111,7 @@ export function createProbedKyselyAdapter<DB>(
     options: CreateProbedKyselyAdapterOptions<DB>,
 ): Promise<ProbedKyselyAdapter<DB>>;
 
-// @vnatures/test-kit-pg-knex
+// @hochgi/test-kit-pg-knex
 export type ProbedKnexAdapter = ProbedAdapterWithLifecycle<Knex, QueryProbe> & {
     seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 };
@@ -1128,7 +1128,7 @@ export function createProbedKnexAdapter(
     options: CreateProbedKnexAdapterOptions,
 ): Promise<ProbedKnexAdapter>;
 
-// @vnatures/test-kit-pg-sequelize
+// @hochgi/test-kit-pg-sequelize
 export type ProbedSequelizeAdapter = ProbedAdapterWithLifecycle<Sequelize, QueryProbe> & {
     seed(table: string, rows: ReadonlyArray<Record<string, unknown>>): Promise<void>;
 };
@@ -1211,7 +1211,7 @@ afterAll(() => rig.close());
 
 ## Cache Adapter API
 
-Package: `@vnatures/test-kit-redis`.
+Package: `@hochgi/test-kit-redis`.
 
 ```typescript
 export type CacheKeyInput = string | { format: string; args: ReadonlyArray<string | number> };
@@ -1273,7 +1273,7 @@ cache.probe.on('get').once().reject(new Error('redis down'));
 
 ## Bull Queue Adapter API
 
-Package: `@vnatures/test-kit-bull`.
+Package: `@hochgi/test-kit-bull`.
 
 ```typescript
 export type BullQueueMethod = 'add' | 'process';
@@ -1345,7 +1345,7 @@ queue.probe.on('add').once().reject(maxRetriesPerRequestError());
 
 ## S3 Adapter API
 
-Package: `@vnatures/test-kit-s3`.
+Package: `@hochgi/test-kit-s3`.
 
 ```typescript
 export interface S3Call<TCommand = unknown> {
@@ -1410,7 +1410,7 @@ Behavior:
 
 ## Presigner Adapter API
 
-Package: `@vnatures/test-kit-s3` (alongside the S3 client adapter).
+Package: `@hochgi/test-kit-s3` (alongside the S3 client adapter).
 
 The presigner is **not** backed: real signing requires real credentials and
 real AWS semantics, which test-kit does not emulate.
@@ -1461,7 +1461,7 @@ Behavior:
 
 ## SQS Adapter API
 
-Package: `@vnatures/test-kit-sqs`.
+Package: `@hochgi/test-kit-sqs`.
 
 ```typescript
 export interface SqsCall<TCommand = unknown> {
@@ -1527,7 +1527,7 @@ Behavior:
 
 ## Kafka Producer Adapter API
 
-Package: `@vnatures/test-kit-kafka`.
+Package: `@hochgi/test-kit-kafka`.
 
 ```typescript
 export type KafkaMethod = 'send' | 'sendBatch' | 'connect' | 'disconnect';
@@ -1607,9 +1607,9 @@ Behavior:
 
 ## MySQL Adapter API
 
-Package: `@vnatures/test-kit-mysql`.
+Package: `@hochgi/test-kit-mysql`.
 
-A real MySQL 8 Testcontainer behind the `@vnatures/test-kit-sql` probe
+A real MySQL 8 Testcontainer behind the `@hochgi/test-kit-sql` probe
 seam. Requires Docker; tests should use `describe.skipIf` when Docker is
 unavailable.
 
@@ -1655,7 +1655,7 @@ Behavior:
 
 - The factory starts a MySQL 8 Testcontainer, creates two `mysql2/promise`
   pools (application + maintenance), and wires the `SqlDriver` through
-  `createProbedSqlAdapter` from `@vnatures/test-kit-sql`.
+  `createProbedSqlAdapter` from `@hochgi/test-kit-sql`.
 - The application pool routes `execute` / `query` through the probe; the
   maintenance pool bypasses it for `bootstrap`, `seed`, and `reset`.
 - The probe surface is `QueryProbe` (same as pg-kysely / pg-knex /
@@ -1861,7 +1861,7 @@ grows larger, it is duplicating core behavior.
 ### Extender's guide (must ship)
 
 The repo must ship a short guide showing how to build a new domain package
-end-to-end (e.g., `@vnatures/test-kit-grpc-client`). The guide must demonstrate:
+end-to-end (e.g., `@hochgi/test-kit-grpc-client`). The guide must demonstrate:
 
 1. Defining the domain `Call` type.
 2. Defining the domain `PendingCall` type (with or without `forward`).

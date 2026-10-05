@@ -238,7 +238,7 @@ It SHALL NOT contain skill directories named `slack-driven-sessions`,
 Donor service names SHALL NOT leak into the ported skills: none of
 `engineering-principles`, `regression-dog`, `pr-review-style`,
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
-`@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
+`@donor-service/contracts`, `pnpm verify`, or `lefthook`.
 
 The three existing scenarios remain. This packet adds a presence
 assertion for the six phase skills so deleting one fails the gate.
@@ -264,7 +264,7 @@ assertion for the six phase skills so deleting one fails the gate.
 #### Scenario: ported support skills do not name donor service machinery
 - **WHEN** the five newly ported support `SKILL.md` files other than
   `component-testing` are read
-- **THEN** none of them contains `@cycle-processing/contracts`,
+- **THEN** none of them contains `@donor-service/contracts`,
   `pnpm verify`, or `lefthook`
 
 ### Requirement: component-testing teaches this repo's current API in Vitest

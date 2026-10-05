@@ -20,7 +20,7 @@ Re-measured 2026-09-10 against ESLint 8.57 + `@typescript-eslint` 8.59.1
 (the ticket table was a throwaway config; the tree has moved). Chosen
 options: sibling `ban-ts-comment` (`allow-with-description` for all four
 directives) and `max-lines-per-function` with `skipBlankLines` /
-`skipComments` / `IIFEs` (cycle-processing donor). Under those options:
+`skipComments` / `IIFEs` (donor-service-repo donor). Under those options:
 
 | rule | `packages/*/src` | `packages/*/test` | repo-root `test/` |
 | --- | --- | --- | --- |
@@ -226,8 +226,8 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| `ban-ts-comment` options | Pin `@vnatures/eslint-config` (reports_service / vn-server): `allow-with-description` for `ts-expect-error`, `ts-ignore`, `ts-nocheck`, `ts-check`. `"ts-expect-error": true` is not used — re-measure still turns 0 into 5 in `checked-methods.test-d.ts` and `pg-kysely` `probe.test.ts`. cycle-processing does not override the rule (recommended default also allows described `ts-expect-error`) | Sibling (`@vnatures/eslint-config` 1.1.0) + re-measure |
-| `max-lines-per-function` skip flags | `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }` as in cycle-processing's shared eslint-config. Re-measure: src 11 → 7, packages test 19 → 17 | Sibling (`cycle-processing/packages/eslint-config`) + ticket + re-measure |
+| `ban-ts-comment` options | Pin a sibling shared `eslint-config` (a-consumer-service / donor-server-repo): `allow-with-description` for `ts-expect-error`, `ts-ignore`, `ts-nocheck`, `ts-check`. `"ts-expect-error": true` is not used — re-measure still turns 0 into 5 in `checked-methods.test-d.ts` and `pg-kysely` `probe.test.ts`. donor-service-repo does not override the rule (recommended default also allows described `ts-expect-error`) | Sibling (`@hochgi/eslint-config` 1.1.0) + re-measure |
+| `max-lines-per-function` skip flags | `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }` as in donor-service-repo's shared eslint-config. Re-measure: src 11 → 7, packages test 19 → 17 | Sibling (`donor-service-repo/packages/eslint-config`) + ticket + re-measure |
 | Ratchet via next-line disables, not file-glob `overrides` | New violations in an already-excused file still fail lint unless a new visible disable is added | Ticket |
 | Convert `pg-sequelize/src/dialect.ts` file-level `no-explicit-any` disable to next-line | File-level disable of a ratchet rule would let new `any`s slip in. `max-classes-per-file` on that same comment is not a ratchet rule and may stay file-level | Ticket (never file-level for the ratchet) |
 | Autofix the 4 `consistent-type-imports` hits rather than disable | Ticket: all four `--fix-dry-run` confirmed. Re-measure still 1 src + 3 test | Ticket + re-measure |

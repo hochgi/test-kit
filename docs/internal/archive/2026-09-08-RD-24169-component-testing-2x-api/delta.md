@@ -45,7 +45,7 @@ or `expect.none()` with no second-argument options object.
 not only in prose:
 
 - `observation(` wrapping a selection passed to `rig.expect.sequence`,
-  imported from `@vnatures/test-kit`
+  imported from `@hochgi/test-kit`
 - `rig.expect.allOf(`
 - `drain(`, `drainAndReject(`, and `drainAndForward(`
 - `expect.calledTimes(`, `expect.neverCalled(`, and `expect.called(`
@@ -71,7 +71,7 @@ inherit `filter()`.
 - **WHEN** fenced `typescript` or `ts` blocks in
   `.cursor/skills/component-testing/SKILL.md` are read
 - **THEN** at least one block contains `observation(` and
-  `rig.expect.sequence`, and the file contains `from '@vnatures/test-kit'`
+  `rig.expect.sequence`, and the file contains `from '@hochgi/test-kit'`
   together with `observation`
 
 #### Scenario: allOf is demonstrated

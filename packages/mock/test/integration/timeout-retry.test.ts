@@ -5,8 +5,8 @@
  * timeout and retry semantics. Uses Vitest fake timers via the rig.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRig, seconds, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, seconds, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Dep {
     request(input: { siteId: number }): Promise<{ ok: boolean }>;

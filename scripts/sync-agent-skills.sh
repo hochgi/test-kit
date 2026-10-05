@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Sync agent artifacts across every coding tool (Cursor, Claude Code, ...) so
-# each dev's IDE works to the same conventions out of the box. Adapted from
-# vnatures/vn-server + van-damme-slack-app.
+# each dev's IDE works to the same conventions out of the box.
 #
 # THREE artifact types are kept in sync, each with its own canonical source:
 #   * skills   — .cursor/skills  is CANONICAL -> fanned out to .claude/skills

@@ -1,7 +1,7 @@
 /**
  * Translated from v1 packages/core/test/probe.test.ts to v2 grammar.
  *
- * v1 vocabulary mapping (per docs/internal/migration-from-v1.md):
+ * v1 vocabulary mapping:
  *   createProbePair<T>()                    → createProbedMock<T>({ methods: [...] })
  *   { fake, probe }                         → { adapter, probe }
  *   probe.expectNext(ms?)                   → probe.expect.intercept({ within: milliseconds(...) })
@@ -13,8 +13,8 @@
  *   probe.drainAndRejectAll(error?)         → probe.drainAndReject(error)
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, milliseconds, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface DemoService {
     getById(id: number): Promise<{ id: number }>;

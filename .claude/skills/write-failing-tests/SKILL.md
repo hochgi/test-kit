@@ -14,7 +14,7 @@ suite that compiles and fails for missing behaviour, not missing symbols.
 
 ## We are inside test-kit, not using it
 
-Every consumer repo tests *with* `@vnatures/test-kit` — probes, adapters,
+Every consumer repo tests *with* `@hochgi/test-kit` — probes, adapters,
 Goldilocks boundaries. **That is not what you are doing.** Here, test-kit is the
 artifact under development. You test the packages directly: call the factory,
 drive the probe, assert on what it recorded.
@@ -44,7 +44,7 @@ fails: it shells `docker info` once and wraps the suite in
 
 ## Import by package name
 
-Tests import `@vnatures/test-kit`, `@vnatures/test-kit-mock` and friends — not
+Tests import `@hochgi/test-kit`, `@hochgi/test-kit-mock` and friends — not
 relative `../src`. That resolves through a workspace symlink into `dist/`, so
 **a stale build silently tests yesterday's code**:
 

@@ -1,4 +1,4 @@
-import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
+import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@hochgi/test-kit';
 import type { Message as KafkaMessageInput, ProducerBatch, ProducerRecord, RecordMetadata } from 'kafkajs';
 
 // Re-export the kafkajs shapes consumers build against at the producer

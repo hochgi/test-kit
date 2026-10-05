@@ -1,4 +1,4 @@
-# @vnatures/test-kit-bull
+# @hochgi/test-kit-bull
 
 Drop-in probed Bull `Queue` adapter for component tests, backed by a
 functional in-memory queue — no real Redis required.
@@ -12,20 +12,20 @@ enqueue / consume lifecycle in-process.
 
 The primary probed seam is the producer (`add`). Failure and hang
 injection (`reject`, `intercept` + `rig.clock.advance`) model the
-application-observable enqueue outcome (RD-23255 stale-socket failures).
+application-observable enqueue outcome (for example, stale-socket failures).
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-bull
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-bull
 # peer: bull (consumer provides its own version)
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedBullQueue, maxRetriesPerRequestError } from "@vnatures/test-kit-bull";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedBullQueue, maxRetriesPerRequestError } from "@hochgi/test-kit-bull";
 import { getQueueToken } from "@nestjs/bull";
 
 const rig = createRig();

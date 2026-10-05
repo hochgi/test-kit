@@ -2,11 +2,11 @@
  * Tests for the worked extender example.
  *
  * The point of this file is to verify that the extender contract works end-
- * to-end on top of @vnatures/test-kit. If a future change to the core
+ * to-end on top of @hochgi/test-kit. If a future change to the core
  * engine breaks the extender path, this test fails first.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig } from '@hochgi/test-kit';
 import { createProbedGrpcClient } from '../src/index.js';
 
 interface ListUsersRequest {

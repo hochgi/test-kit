@@ -1,6 +1,6 @@
 # Documentation
 
-Reference documentation for `@vnatures/test-kit`. The root [`README.md`](../README.md)
+Reference documentation for `@hochgi/test-kit`. The root [`README.md`](../README.md)
 covers installation, packages, and a guided tour. The docs in this folder
 cover the deeper material.
 
@@ -19,6 +19,3 @@ cover the deeper material.
 - [`internal/tech-design.md`](internal/tech-design.md) — Implementation
   specification: internal core API, storage model, rule resolution algorithm,
   per-domain implementation patterns, build/test/distribution choices.
-- [`internal/migration-from-v1.md`](internal/migration-from-v1.md) — Mapping
-  from the pre-OSS internal test-kit API to the 2.0.0 surface. Used by the
-  vnatures team to rewrite legacy tests; does not apply to OSS adopters.

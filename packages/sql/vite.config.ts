@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//],
+            external: [/^node:/, /^@hochgi\//],
         },
         sourcemap: true,
         minify: false,

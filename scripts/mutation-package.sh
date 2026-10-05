@@ -42,7 +42,7 @@ mkdir -p reports/mutation
 # One --mutate only. Stryker's CLI parses --mutate with a comma splitter and
 # commander keeps only the LAST occurrence, so repeating the flag silently
 # discards every earlier glob; three flags left a bare negation that matched
-# nothing and instrumented zero mutants (RD-24255).
+# nothing and instrumented zero mutants.
 "$stryker_bin" run \
   --concurrency "$concurrency" \
   --mutate "packages/${pkg}/src/**/*.ts,packages/${pkg}/src/**/*.tsx,!packages/${pkg}/src/**/*.d.ts"

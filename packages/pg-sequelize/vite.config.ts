@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, /^@electric-sql\//, /^@middle-management\//, 'sequelize'],
+            external: [/^node:/, /^@hochgi\//, /^@electric-sql\//, /^@middle-management\//, 'sequelize'],
         },
         sourcemap: true,
         minify: false,

@@ -11,7 +11,7 @@ an adapter or probe. One command asks a known question set and writes a
 **packet**. The spec (phase 1) still owns behaviour. Grilling stays the
 fallback for novel work.
 
-The donor skill in cycle-processing is inverted, not copied. Canonical
+The donor skill in donor-service-repo is inverted, not copied. Canonical
 names in this repo are the command and skill `add-adapter`. The donor
 directories `extend-test-kit` and `add-module` stay absent.
 
@@ -73,7 +73,7 @@ agent.
 
 ### Requirement: add-adapter skill is the in-repo extender contract
 `.cursor/skills/add-adapter/SKILL.md` SHALL exist. It is the in-repo
-authoring guide that cycle-processing's `extend-test-kit` lacked: the
+authoring guide that donor-service-repo's `extend-test-kit` lacked: the
 seven-step walkthrough from `docs/architecture.md` ("Adding a New Domain
 Package: Walkthrough") plus `examples/grpc-client` as the extender
 contract guard.
@@ -82,7 +82,7 @@ The skill SHALL tell the agent to inventory current coverage from
 `packages/` rather than from a hardcoded missing list. It SHALL contain
 `npm` and `workspaces`. It SHALL NOT contain `pnpm workspaces`,
 `pnpm link`, `Missing (author these)`, or
-`/Users/giladhoch/dev/test-kit`.
+`/Users/<you>/dev/test-kit`.
 
 The skill SHALL name these decision topics so the command can ask them
 without rediscovering the tree:
@@ -101,7 +101,7 @@ without rediscovering the tree:
 - SQL family via the `SqlDriver` seam in `packages/sql`, versus
   standalone
 - factory naming `createProbed` and package naming
-  `@vnatures/test-kit-`
+  `@hochgi/test-kit-`
 
 The skill SHALL include a packet skeleton for `docs/internal/packets/PNN-*.md`
 that contains `Depends on:`, a Goldilocks ruling, adapter category,
@@ -119,7 +119,7 @@ a spec (behaviour).
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
 - **THEN** it contains `npm` and `workspaces` and `packages/`, and it
   does not contain `pnpm workspaces`, `pnpm link`,
-  `Missing (author these)`, or `/Users/giladhoch/dev/test-kit`
+  `Missing (author these)`, or `/Users/<you>/dev/test-kit`
 
 #### Scenario: skill teaches the seven-step walkthrough and contract guard
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
@@ -135,7 +135,7 @@ a spec (behaviour).
   `function boundary`, `PGlite`, `testcontainers`,
   `@testcontainers/mysql`, `ProbedResource`, `reset`, `close`,
   `probe.always().forward()`, `park`, `strictly optional`,
-  `SqlDriver`, `createProbed`, and `@vnatures/test-kit-`
+  `SqlDriver`, `createProbed`, and `@hochgi/test-kit-`
 
 #### Scenario: skill packet skeleton owns scope not behaviour
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
@@ -220,7 +220,7 @@ It SHALL NOT contain skill directories named `slack-driven-sessions`,
 Donor service names SHALL NOT leak into the ported skills: none of
 `engineering-principles`, `regression-dog`, `pr-review-style`,
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
-`@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
+`@donor-service/contracts`, `pnpm verify`, or `lefthook`.
 
 #### Scenario: seven support skills are present
 - **WHEN** `.cursor/skills/` is listed
@@ -244,7 +244,7 @@ Donor service names SHALL NOT leak into the ported skills: none of
 #### Scenario: ported support skills do not name donor service machinery
 - **WHEN** the five newly ported support `SKILL.md` files other than
   `component-testing` are read
-- **THEN** none of them contains `@cycle-processing/contracts`,
+- **THEN** none of them contains `@donor-service/contracts`,
   `pnpm verify`, or `lefthook`
 
 ### Requirement: AGENTS.md is the tool-agnostic agent entrypoint
@@ -253,7 +253,7 @@ Repository-root `AGENTS.md` SHALL exist. It SHALL be tool-agnostic
 headings for: what the repo is, layout, commands, blinkers, testing,
 workflow, and model targeting.
 
-It SHALL state that this repository is the `@vnatures/test-kit` npm
+It SHALL state that this repository is the `@hochgi/test-kit` npm
 workspace of published packages.
 
 It SHALL name these layout paths: `packages/`, `examples/`, `docs/`,
@@ -425,14 +425,14 @@ sequenceDiagram
 | Factory pattern is `createProbed…` as siblings actually export (`createProbedMysqlAdapter`, `createProbedKafkaProducer`, …) | Donor said `createProbedMySql*Adapter` | Source (`packages/*/src/factory.ts`) |
 | No sixth pipeline agent; OpenCode command may keep `agent: spec-to-ship` | Primary orchestrator already has `question: allow`; translator hardcodes that agent field | Source (`.opencode/opencode.json`, `translate_opencode_command`) |
 | spec-to-ship names `/add-adapter` but does not absorb its questions | Fills the drawn step 0 without collapsing phases | Ticket |
-| Cycle-processing `extend-test-kit` copy is not edited in this PR | Different repo; test-author/coder allowlists are this tree. P07 also stayed in-repo | Source (this repo) + sibling (P07) |
+| donor-service-repo `extend-test-kit` copy is not edited in this PR | Different repo; test-author/coder allowlists are this tree. P07 also stayed in-repo | Source (this repo) + sibling (P07) |
 | No published-API / version bump | Harness markdown and repo tests only | Source |
 
 ## Out of scope (deferred)
 
 | Item | Consequence of deferring |
 | --- | --- |
-| Updating cycle-processing's `extend-test-kit` skill | That copy stays stale (pnpm, hardcoded path, SQS/Kafka/MySQL as missing) until a follow-up in that repo |
+| Updating donor-service-repo's `extend-test-kit` skill | That copy stays stale (pnpm, hardcoded path, SQS/Kafka/MySQL as missing) until a follow-up in that repo |
 | Porting the grilling skill into this repo | Novel work still falls back to grilling; there is no in-repo grilling skill |
 | A second command if the branch grows past a third of the questions | Ticket said split later if that happens |
 | Changing `translate_opencode_command` to set `agent:` from the command stem | OpenCode `/add-adapter` keeps `agent: spec-to-ship` (primary orchestrator) |
@@ -449,9 +449,9 @@ sequenceDiagram
 3. That command writes under `docs/internal/packets/` with `Depends on:`, does not write a spec delta, and does not run `/spec-to-ship`.
 4. That command stops without a packet on novel work and names grilling as the fallback.
 5. `.cursor/skills/add-adapter/SKILL.md` exists.
-6. The skill contains `npm` and `workspaces` and `packages/`, and does not contain `pnpm workspaces`, `pnpm link`, `Missing (author these)`, or `/Users/giladhoch/dev/test-kit`.
+6. The skill contains `npm` and `workspaces` and `packages/`, and does not contain `pnpm workspaces`, `pnpm link`, `Missing (author these)`, or `/Users/<you>/dev/test-kit`.
 7. The skill names the architecture walkthrough heading, the seven-step topics, and `examples/grpc-client`.
-8. The skill names the known question set (Goldilocks trio, three call shapes, four categories, PGlite, testcontainers, ProbedResource lifecycle, default-forward vs park, strictly optional sugars, SqlDriver, `createProbed`, `@vnatures/test-kit-`).
+8. The skill names the known question set (Goldilocks trio, three call shapes, four categories, PGlite, testcontainers, ProbedResource lifecycle, default-forward vs park, strictly optional sugars, SqlDriver, `createProbed`, `@hochgi/test-kit-`).
 9. The skill's packet skeleton includes `docs/internal/packets/`, `Depends on:`, Goldilocks, and `40`, and states packet-owns-scope / spec-owns-behaviour.
 10. After sync, `.cursor/commands/add-adapter.md` and `.opencode/commands/add-adapter.md` exist; `.opencode/agents/add-adapter.md` does not.
 11. `.claude/commands/spec-to-ship.md` and `.cursor/skills/spec-to-ship/SKILL.md` contain `add-adapter`.

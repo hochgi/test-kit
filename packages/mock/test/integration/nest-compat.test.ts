@@ -17,7 +17,7 @@ import 'reflect-metadata';
 import { describe, expect, it } from 'vitest';
 import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Bedrock {
     send(cmd: { id: number }): Promise<{ ok: boolean }>;

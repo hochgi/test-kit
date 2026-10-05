@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, 'ioredis-mock'],
+            external: [/^node:/, /^@hochgi\//, 'ioredis-mock'],
         },
         sourcemap: true,
         minify: false,

@@ -18,8 +18,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedPresignerAdapter, type ProbedPresignerAdapter } from '@vnatures/test-kit-s3';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedPresignerAdapter, type ProbedPresignerAdapter } from '@hochgi/test-kit-s3';
 
 const dummyClient = new S3Client({ region: 'us-east-1' });
 

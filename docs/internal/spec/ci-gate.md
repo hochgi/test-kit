@@ -1,9 +1,9 @@
 # CI gate
 
-What currently gates a change to this repository: CircleCI path-filtered
-per-package jobs, a workspace-wide `npm run check` workflow for named
-root/docs/CI and harness-surface paths, a lint+test workflow for `examples/grpc-client`, and
-main-only backup/audit. There are no git hooks (no husky, no lefthook).
+What currently gates a change to this repository: GitHub Actions runs the
+whole `npm run check` on every pull request and every push to `main`, with
+no secrets, plus a dry run of the release. Publishing is a separate, manual
+workflow. There are no git hooks (no husky, no lefthook).
 `npm run lint` enforces the complexity budget and type-seam rules as a
 ratchet (P09 / RD-24150). P10 (RD-24151) extracted s3 `handleList` to
 complexity ≤ 12 and deleted the P09 next-line disable.
@@ -21,29 +21,13 @@ RD-24255 collapsed the per-package runner's three `--mutate` flags into
 one comma-joined glob; the repeated flag had made every package
 instrument zero mutants.
 
+When the repository went public, CircleCI (path-filtered per-package
+`vn-ci` workflows, auto-publish to GitHub Packages on merge, main-only
+backup and audit) was replaced by `.github/workflows/ci.yml` and
+`.github/workflows/release.yml`. The requirements that described CircleCI
+were removed rather than archived; the previous text is in git history.
+
 ## Requirements
-
-### Requirement: Per-package CircleCI workflows
-When a file under `packages/<name>/` changes relative to `main`, CircleCI SHALL
-set the corresponding `build_<name>` pipeline parameter so that package's
-`vn-ci/init` workflow runs. On `main`, that package's `vn-ci/build-publish`
-workflow SHALL also run. Adding workspace-wide and grpc-client mappings SHALL
-NOT remove or rename these thirteen mappings.
-
-#### Scenario: each published package has a path-filter mapping
-- **WHEN** `.circleci/config.yml` path-filtering mapping is read
-- **THEN** it contains a `packages/<name>/.*` line setting `build_<name>` true
-  for each of: core, pglite-driver, mock, sql, redis, bull, s3, sqs, kafka,
-  mysql, pg-kysely, pg-knex, pg-sequelize
-
-### Requirement: Main-only backup and audit
-The setup config SHALL keep the existing `backup` and `audit` workflows that run
-only on `main`.
-
-#### Scenario: backup and audit stay main-only
-- **WHEN** `.circleci/config.yml` is read
-- **THEN** `vn-ci/backup-code` and `vn-ci/npm-audit` remain filtered to the
-  `main` branch
 
 ### Requirement: Root check script
 The repository SHALL expose a root npm script named `check` that runs the
@@ -61,14 +45,81 @@ non-zero exit.
 - **THEN** it does not use `;` or `&` between steps in a way that would continue
   after a failure
 
-### Requirement: Stale Claude worktree is unregistered
-The repository working tree SHALL NOT have a git worktree registered at
-`.claude/worktrees/gallant-ritchie-e7507a`. The local branch
-`claude/gallant-ritchie-e7507a` SHALL remain (it is not deleted).
+### Requirement: Pull-request CI runs the whole gate without secrets
+`.github/workflows/ci.yml` SHALL trigger on `pull_request` and on `push`
+to `main`, with no `paths` / `paths-ignore` filter and no
+`pull_request_target`. It SHALL run `npm ci` and then `npm run check`.
+It SHALL NOT reference any secret or request `id-token`, and its
+top-level `permissions` SHALL be `contents: read`. Its Node matrix SHALL
+include the minimum major named by root `engines.node`. It SHALL run
+`node scripts/publish-unpublished.mjs --dry-run`. `.circleci/` SHALL
+NOT exist.
 
-#### Scenario: gallant-ritchie worktree is absent
-- **WHEN** `git worktree list --porcelain` is read
-- **THEN** no `worktree` line ends with `.claude/worktrees/gallant-ritchie-e7507a`
+#### Scenario: ci workflow runs on every pull request and on main, with no path filter
+- **WHEN** `.github/workflows/ci.yml` is read
+- **THEN** its triggers are exactly `pull_request` and `push`, `push` is
+  limited to `main`, and it contains no `paths:`, `paths-ignore:`, or
+  `pull_request_target`
+
+#### Scenario: ci workflow runs npm run check after npm ci
+- **WHEN** the `run:` steps of `ci.yml` are listed
+- **THEN** `npm run check` comes after `npm ci`
+
+#### Scenario: ci workflow holds no secrets and only read permission
+- **WHEN** `ci.yml` is read
+- **THEN** it contains no `secrets.` and no `id-token`, and top-level
+  `permissions` is `contents: read`
+
+#### Scenario: ci workflow tests the minimum Node major from engines
+- **WHEN** root `engines.node` (`>=<major>`) and the `ci.yml` node matrix are read
+- **THEN** the matrix contains that major
+
+#### Scenario: ci workflow dry-runs the release
+- **WHEN** the `run:` steps of `ci.yml` are listed
+- **THEN** one is `node scripts/publish-unpublished.mjs --dry-run`
+
+#### Scenario: CircleCI is gone
+- **WHEN** the repository root is listed
+- **THEN** `.circleci/` does not exist
+
+### Requirement: Releases are manual and isolated
+`.github/workflows/release.yml` SHALL trigger only on
+`workflow_dispatch`. It SHALL run `npm run check` before
+`node scripts/publish-unpublished.mjs`. It SHALL request
+`id-token: write` (npm trusted publishing and provenance), run in the
+`npm` environment, and reference no secret other than `NPM_TOKEN`
+(the first-publish fallback). `scripts/publish-unpublished.mjs` SHALL
+publish, in dependency order, every `packages/*` workspace whose
+manifest version is not yet on the npm registry, and SHALL skip one that
+is.
+
+#### Scenario: release workflow only runs on manual dispatch
+- **WHEN** `release.yml` is read
+- **THEN** its only trigger is `workflow_dispatch`
+
+#### Scenario: release workflow runs the gate before publishing
+- **WHEN** the `run:` steps of `release.yml` are listed
+- **THEN** `node scripts/publish-unpublished.mjs` comes after `npm run check`
+
+#### Scenario: release workflow uses OIDC in a protected environment and no other secret
+- **WHEN** `release.yml` is read
+- **THEN** it requests `id-token: write`, runs in environment `npm`, and
+  the only secret it names is `NPM_TOKEN`
+
+### Requirement: Every published package is publicly publishable
+Root `LICENSE` SHALL be the MIT license. Each of the thirteen
+`packages/<name>/package.json` manifests SHALL have `license` `MIT`,
+`publishConfig` exactly `{ "access": "public", "provenance": true }`, and
+`LICENSE` in `files`, and `packages/<name>/LICENSE` SHALL equal the root
+`LICENSE`. The repository SHALL NOT commit a root `.npmrc`.
+
+#### Scenario: each package is MIT, public, provenance-signed, and ships the license
+- **WHEN** root `LICENSE` and each package manifest and `LICENSE` are read
+- **THEN** each meets the requirement above
+
+#### Scenario: no committed npmrc points the scope at a private registry
+- **WHEN** the repository root is listed
+- **THEN** `.npmrc` does not exist
 
 ### Requirement: No cross-repo Claude launch config
 The path `.claude/launch.json` SHALL NOT exist on disk.
@@ -79,13 +130,12 @@ The path `.claude/launch.json` SHALL NOT exist on disk.
 
 ### Requirement: Local Claude settings do not undercut read-only phases
 If `.claude/settings.local.json` exists, its `permissions.allow` list SHALL NOT
-contain `Bash(git push *)`, `Bash(gh pr *)`, or `Read(//Users/giladhoch/dev/**)`,
-and the file SHALL NOT contain a CircleCI API poll for branch
-`docs/v2-probed-adapters` or a `git -C` invocation into `reports_service`.
+contain `Bash(git push *)`, `Bash(gh pr *)`, or any `Read(//Users/…/dev/**)`
+grant that reaches across sibling checkouts.
 
 #### Scenario: forbidden grants are absent when the file exists
 - **WHEN** `.claude/settings.local.json` exists
-- **THEN** none of those permission strings or residue commands appear in it
+- **THEN** none of those permission strings appear in it
 
 #### Scenario: missing local settings file is allowed
 - **WHEN** `.claude/settings.local.json` does not exist
@@ -107,60 +157,11 @@ It SHALL also ignore `.stryker-tmp`, `reports/mutation`, `coverage`,
 - **THEN** it contains `.stryker-tmp`, `reports/mutation`, `coverage`,
   `stryker.log`, and `.stryker-package`
 
-### Requirement: Workspace-wide path changes run the root check in CI
-CircleCI path-filtering SHALL map a change to any of these paths onto a
-boolean pipeline parameter dedicated to a workspace-wide gate (distinct
-from the per-package `build_*` parameters):
-
-- `package.json` (repository root only)
-- `package-lock.json` (repository root only)
-- `.prettierrc` (repository root only)
-- `tsconfig.json`
-- `tsconfig.base.json`
-- `.eslintrc.json`
-- `vitest.config.ts`
-- `vitest.mutation.config.ts`
-- the Stryker config file
-- anything under `scripts/`
-- anything under `docs/`
-- anything under `.circleci/`
-- anything under `.cursor/`
-- anything under `.claude/`
-- anything under `.harness/`
-- anything under `.opencode/`
-- anything under repository-root `test/` (not `packages/*/test/`)
-
-A workflow in `.circleci/ci.yml` gated on that parameter SHALL run the
-root `check` script (`npm run check`).
-
-The existing `.cursor/**` / `.claude/**` / `.harness/**` / `.opencode/**`
-mappings SHALL remain. Harness-only PRs still set `build_workspace`.
-That job's `npm test` still includes the suites that invoke
-`check-agent-skills`. This packet SHALL NOT add a markdown or
-frontmatter linter to `npm run check`.
-
-#### Scenario: workspace-wide paths are mapped
-- **WHEN** the path-filtering mapping in `.circleci/config.yml` is
-  evaluated with `^`/`$` anchors as the orb applies them
-- **THEN** each of those paths matches a mapping line that sets the
-  workspace-wide parameter to `true`, and `packages/core/package.json`
-  does not match the root `package.json` mapping, and
-  `packages/core/test/unit/duration.test.ts` does not match the
-  repository-root `test/` mapping
-
-#### Scenario: workspace-wide workflow runs check
-- **WHEN** `.circleci/ci.yml` is read
-- **THEN** it declares that workspace-wide parameter (boolean, default
-  `false`) and a workflow that runs when the parameter is true whose
-  steps invoke `npm run check`
-
 ### Requirement: Vitest projects live in vitest.config.ts
 Root `vitest.config.ts` SHALL be the Vitest config that lists every test
 project under `test.projects`. The repository SHALL NOT contain
 `vitest.workspace.ts`. Root `package.json` `lint` and `format:check`
-SHALL name `vitest.config.ts`. CircleCI path-filtering SHALL map
-`vitest.config.ts` onto `build_workspace true` and SHALL NOT map
-`vitest.workspace.ts`. `npm test` SHALL keep using each package's own
+SHALL name `vitest.config.ts`. `npm test` SHALL keep using each package's own
 `vite.config.ts` (built `dist/` via package name), not the mutation
 aliases.
 
@@ -172,18 +173,17 @@ aliases.
   `test/ci-gate`, `test/harness-prose`, `test/harness-scaffold`, and
   `test/docs-truth`
 
-#### Scenario: root scripts and path-filter name vitest.config.ts
-- **WHEN** root `package.json` scripts `lint` and `format:check`, and
-  `.circleci/config.yml` path-filtering mapping, are read
+#### Scenario: root scripts name vitest.config.ts
+- **WHEN** root `package.json` scripts `lint` and `format:check` are read
 - **THEN** each names `vitest.config.ts` and none names
   `vitest.workspace.ts`
 
 ### Requirement: Mutation-only Vite config aliases workspace packages to source
 Root `vitest.mutation.config.ts` SHALL alias every published
-`@vnatures/test-kit*` workspace package name to that package's
+`@hochgi/test-kit*` workspace package name to that package's
 `packages/<dir>/src/index.ts`. It SHALL NOT enable Vitest typecheck. It
 SHALL NOT list `test.projects` and SHALL NOT import `defineWorkspace`.
-It SHALL set `test.server.deps.inline` so `@vnatures/` packages are
+It SHALL set `test.server.deps.inline` so `@hochgi/` packages are
 transformed. Test include SHALL be scoped to one package via
 `.stryker-package`, not to repository-root `test/`.
 
@@ -193,8 +193,8 @@ as the scoping mechanism.
 
 #### Scenario: mutation config aliases each workspace package to src/index.ts
 - **WHEN** `vitest.mutation.config.ts` is loaded
-- **THEN** its resolve aliases map `@vnatures/test-kit` to
-  `packages/core/src/index.ts` and `@vnatures/test-kit-mock` to
+- **THEN** its resolve aliases map `@hochgi/test-kit` to
+  `packages/core/src/index.ts` and `@hochgi/test-kit-mock` to
   `packages/mock/src/index.ts`, and every other published workspace
   package name under `packages/*/package.json` has a corresponding
   alias to that directory's `src/index.ts`
@@ -213,7 +213,7 @@ as the scoping mechanism.
 - **WHEN** `npx vitest run --config vitest.mutation.config.ts` is run
   against `packages/core/test/unit/duration.test.ts` after writing the
   package name `core` to `.stryker-package`
-- **THEN** the run's resolved `@vnatures/test-kit` module path contains
+- **THEN** the run's resolved `@hochgi/test-kit` module path contains
   `packages/core/src` and does not contain `packages/core/dist`
 
 ### Requirement: Per-package mutation runner
@@ -368,41 +368,24 @@ the mutation Vite config so `coverage-final.json` keys are
   path contains `packages/core/src/` and ends with `.ts`, and has no key
   whose path contains `packages/core/dist/`
 
-### Requirement: changed-src.sh resolves vn/main and packages/*/src
+### Requirement: changed-src.sh resolves origin/main and packages/*/src
 `scripts/changed-src.sh` SHALL define `resolve_patch_base` that prefers
-`vn/main`, then local `main`, and SHALL fail if neither exists. It SHALL
-NOT look up `vn/master` or `origin/master`. `changed_src_files` SHALL
+`origin/main`, then local `main`, and SHALL fail if neither exists. It SHALL
+NOT look up `vn/main`, `vn/master`, or `origin/master`. `changed_src_files` SHALL
 list production TypeScript under `packages/*/src` (committed, staged,
 unstaged, and untracked vs that base) and SHALL exclude
 `packages/*/test/**` and `*.test.ts` / `*.spec.ts` files.
 
-#### Scenario: resolve_patch_base prefers vn/main then main
+#### Scenario: resolve_patch_base prefers origin/main then main
 - **WHEN** `scripts/changed-src.sh` is read
-- **THEN** `resolve_patch_base` contains `vn/main` and `main`, and does
-  not contain `vn/master` or `origin/master`
+- **THEN** `resolve_patch_base` contains `origin/main` and `main`, and
+  does not contain `vn/main`, `vn/master`, or `origin/master`
 
 #### Scenario: changed_src_files is packages/*/src, not root src or specs
 - **WHEN** `scripts/changed-src.sh` is read
 - **THEN** `changed_src_files` names `packages/` and `src`, and does not
   use a pathspec that is exactly `src` at the repository root, and does
   not grep for `/specs/`
-
-### Requirement: grpc-client is a CI-checked extender guard
-Changes under `examples/grpc-client/` SHALL trigger a CircleCI workflow that
-builds `@vnatures/test-kit`, then runs that workspace's `lint`, `typecheck`,
-and `test` scripts. That workflow SHALL NOT publish the example to the npm
-registry and SHALL NOT push a version-bump commit for it.
-
-#### Scenario: grpc-client path is mapped
-- **WHEN** the path-filtering mapping is evaluated with orb anchors
-- **THEN** a path under `examples/grpc-client/` matches a mapping line that sets
-  a grpc-client-specific boolean parameter to `true`
-
-#### Scenario: grpc-client workflow lints and tests without publishing
-- **WHEN** `.circleci/ci.yml` is read
-- **THEN** it declares that parameter (boolean, default `false`) and a workflow
-  gated on it that builds `@vnatures/test-kit`, runs lint, typecheck, and test
-  for `examples/grpc-client`, and does not invoke `vn-ci/build-publish`
 
 ### Requirement: Gate-describing harness prose names the real gates
 Any tracked markdown file under `.cursor/agents/`, `.cursor/skills/`,
@@ -413,14 +396,13 @@ state that the repository has no git hooks (no husky, no lefthook). It
 SHALL NOT claim that there is no `check` script.
 
 It SHALL NOT claim that `package-lock.json` or `.prettierrc` remain
-unmapped CircleCI holes.
+unmapped CI holes.
 
 `.cursor/skills/spec-to-ship/SKILL.md` SHALL state that harness markdown
 under `.cursor/` and `.claude/` is not format-checked or linted by
-`npm run check`. It SHALL state that changes there still run the
-workspace-wide `check` job in CI via the `.cursor/**` and `.claude/**`
-path-filter mappings, and that that job's `npm test` includes the
-suites that invoke `check-agent-skills`. It SHALL NOT contain the
+`npm run check`. It SHALL state that changes there (`.cursor/**`, `.claude/**`) still
+run the full `check` job in CI, and that that job's `npm test` includes
+the suites that invoke `check-agent-skills`. It SHALL NOT contain the
 phrase `a later packet` about a markdown or frontmatter linter. It
 SHALL NOT instruct inventing a markdown or frontmatter linter.
 
@@ -540,19 +522,22 @@ workspace, and SHALL be included in the root `format:check` glob.
 
 ```mermaid
 sequenceDiagram
-  participant Push as git push
-  participant Setup as config.yml setup
-  participant Filter as path-filtering orb
-  participant Cont as ci.yml
-  Push->>Setup: pipeline starts
-  Setup->>Filter: paths changed vs main
-  Filter->>Cont: continue with parameters
-  alt workspace-wide path matched
-    Cont->>Cont: npm run check
-  else examples/grpc-client matched
-    Cont->>Cont: build core, then lint typecheck test grpc-client
-  else packages/name matched
-    Cont->>Cont: vn-ci/init for that package
+  participant Dev as contributor
+  participant CI as ci.yml
+  participant Maint as maintainer
+  participant Rel as release.yml
+  participant Npm as npm registry
+  Dev->>CI: pull request (any paths, forks included)
+  CI->>CI: npm ci, npm run check on each Node major
+  CI->>CI: publish-unpublished.mjs --dry-run
+  Maint->>Maint: squash-merge onto main (versions bumped in the PR)
+  Maint->>Rel: workflow_dispatch
+  Rel->>Rel: npm ci, npm run check
+  Rel->>Npm: npm view name@version per package
+  alt version not on the registry
+    Rel->>Npm: npm publish --provenance (OIDC)
+  else already published
+    Rel->>Rel: skip
   end
 ```
 
@@ -580,7 +565,7 @@ sequenceDiagram
   participant S as stryker
   participant M as vitest.mutation.config.ts
   V->>Inc: npm run test:mutation:changed
-  Inc->>Inc: resolve_patch_base vn/main then main
+  Inc->>Inc: resolve_patch_base origin/main then main
   Inc->>Inc: changed_src_files packages/*/src
   alt no production src changed
     Inc->>V: exit 0
@@ -589,7 +574,7 @@ sequenceDiagram
     Pkg->>Pkg: write .stryker-package
     Pkg->>S: mutate packages/name/src
     S->>M: configFile related false
-    M->>S: alias @vnatures/* to src/index.ts
+    M->>S: alias @hochgi/* to src/index.ts
     S->>Pkg: mutation.json
     alt mutant count is 0
       Pkg->>V: exit non-zero
@@ -604,46 +589,41 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Workspace-wide CI is one `check` job, not all 13 package workflows | Path-filter those paths onto a dedicated parameter whose workflow runs `npm run check` | Ticket (close the zero-check hole for P01/P05) plus source: root `npm test` without `build` hits stale `dist/`, so `vn-ci/init` at repo root is the wrong gate |
-| `tsconfig.json` is mapped alongside the ticket's `tsconfig.base.json` | Both files set the workspace-wide parameter | Source: root `typecheck` is `tsc --build` against `tsconfig.json` |
-| grpc-client CI does not use `vn-ci/build-publish` and does not version-bump on main | Build core (no pretest), then lint + typecheck + test only | Source: `examples/grpc-client/package.json` is `private` / `UNLICENSED`; ticket: it is the extender contract guard, not a published package |
-| Parameter names follow existing `build_*` spelling | `build_workspace` and `build_grpc_client` | Source: `build_pglite_driver` / `build_pg_kysely` in `.circleci/config.yml` |
 | gitignore narrows `.claude/` rather than deleting the directory | Ignore only `settings.local.json` and `worktrees/` | Ticket |
-| Worktree is removed; branch `claude/gallant-ritchie-e7507a` is kept | `git worktree remove`, no `git branch -D` | Ticket |
 | Git hooks are not added | Document absence in gate-describing harness prose | Ticket ("document, do not fix here") |
 | Tests live at repo-file boundaries, not inside a published package | A Vitest project included from `vitest.config.ts` that reads tracked files | Ticket (this capability is the repo gate) plus write-failing-tests layout does not apply to a non-package |
-| `.cursor/` is mapped onto `build_workspace` | Harness-only PRs run `npm run check` | Source: `.circleci/config.yml` (added by RD-24147) |
-| `.claude/`, `.harness/`, `.opencode/` are mapped onto `build_workspace` | Harness-only PRs on any of the three surfaces run `npm run check` | Superseded by P05 (RD-24146): P00 deferred this until the trees existed |
 | No public API / version bump | Root `package.json` is private; no package `src/` change | Source |
-| `ban-ts-comment` options | Pin `@vnatures/eslint-config` (reports_service / vn-server): `allow-with-description` for `ts-expect-error`, `ts-ignore`, `ts-nocheck`, `ts-check`. `"ts-expect-error": true` is not used | Sibling (`@vnatures/eslint-config` 1.1.0) + re-measure (RD-24150) |
-| `max-lines-per-function` skip flags | `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }` as in cycle-processing's shared eslint-config | Sibling (`cycle-processing/packages/eslint-config`) + ticket + re-measure (RD-24150) |
+| One GitHub Actions gate for every PR, no path filtering | A public repo takes fork PRs; the whole gate is ~1 minute, so per-path jobs bought nothing but holes | Repository going public |
+| Release is a manual `workflow_dispatch` that publishes whatever version is not on npm yet | Merging never publishes; a partial failure is fixed by re-running | Repository going public |
+| npm trusted publishing (OIDC) with an `NPM_TOKEN` fallback for first publish | A package cannot have a trusted publisher until it exists on the registry | npm documentation |
+| `ban-ts-comment` options | Pin a sibling repository's shared `eslint-config`: `allow-with-description` for `ts-expect-error`, `ts-ignore`, `ts-nocheck`, `ts-check`. `"ts-expect-error": true` is not used | Sibling + re-measure (RD-24150) |
+| `max-lines-per-function` skip flags | `{ max: 80, skipBlankLines: true, skipComments: true, IIFEs: true }` as in a sibling repository's shared eslint-config | Sibling + ticket + re-measure (RD-24150) |
 | Ratchet via next-line disables, not file-glob `overrides` | New violations in an already-excused file still fail lint unless a new visible disable is added | Ticket (RD-24150) |
 | Convert `pg-sequelize/src/dialect.ts` file-level `no-explicit-any` disable to next-line | File-level disable of a ratchet rule would let new `any`s slip in. `max-classes-per-file` on that same comment is not a ratchet rule and may stay file-level | Ticket (RD-24150) |
 | Autofix `consistent-type-imports` rather than disable | Ticket: all four `--fix-dry-run` confirmed | Ticket + re-measure (RD-24150) |
 | Do not extract `handleList` (complexity 26) | Superseded by P10 (RD-24151): `handleList` is extracted to complexity ≤ 12 and the P09 next-line disable is gone | Ticket (P10) |
 | Root `test/` is in the ratchet | `npm run lint` starts with `eslint test vitest.config.ts vitest.mutation.config.ts` | Source (`package.json` `scripts.lint`) + re-measure (RD-24150) |
-| Mutation-only Vite aliases `@vnatures/*` → `packages/*/src/index.ts`; `npm test` keeps validating `dist/` | Spike: poisoning `duration.ts` failed mutation vitest and passed workspace vitest | Spike measurement + ticket (RD-24153) |
+| Mutation-only Vite aliases `@hochgi/*` → `packages/*/src/index.ts`; `npm test` keeps validating `dist/` | Spike: poisoning `duration.ts` failed mutation vitest and passed workspace vitest | Spike measurement + ticket (RD-24153) |
 | Replace `vitest.workspace.ts` / `defineWorkspace` with `vitest.config.ts` `test.projects` | With the workspace file present, `--config vitest.mutation.config.ts` still loaded dist | Spike measurement + ticket (Vitest 3.2 deprecation) |
 | Scope tests via mutation config include / `.stryker-package`, not Stryker `vitest.dir` | Stryker 10 passes `dir` as top-level `createVitest` option; Vitest 3.2.7 treats that as Vite cache dir | Spike measurement |
 | `vitest.related: false` | Tests import by package name, not by file path | Ticket + source |
 | Core mutation include is all in-process package tests, minus mysql and four layout files | `probe-engine.ts` scored 0% killed against core's 18 remaining tests | Spike measurement |
 | `concurrency: 1` only for mysql; mysql include is that package's tests and is not excluded | Only mysql starts Testcontainers; Vitest exclude wins over include | Source + Bugbot on RD-24153 |
 | Istanbul, not v8; `thresholds.break: null`; not a step of `npm run check` | Coverage keys are `packages/*/src/**/*.ts`; P00 pinned the five-step check chain | Spike + source (`ci-gate.md`) |
-| `changed-src.sh` prefers `vn/main` then `main`; pathspec `packages/*/src` | Ticket named those two bugs | Ticket |
+| `changed-src.sh` prefers `origin/main` then `main`; pathspec `packages/*/src` | Ticket named those two bugs | Ticket |
 | One comma-joined `--mutate`, not three `--mutate` flags | Stryker 10 parses `--mutate` with a comma splitter and keeps only the last occurrence, so three flags collapsed to the bare `!*.d.ts` negation and every package instrumented 0 mutants | Measurement (RD-24255): shipped runner on `sql` went from `Instrumented 0 source file(s) with 0 mutant(s)` (exit 1) to `Instrumented 3 source file(s) with 49 mutant(s)`, 15 killed; `--mutate "packages/sql/src/**/*.ts,!packages/sql/src/**/factory.ts"` instrumented 2 files, so a negation inside the comma list is still honoured |
 
 ## Out of scope (deferred)
 
 | Item | Consequence of deferring |
 | --- | --- |
-| Adding husky/lefthook/`prepare` / setting `core.hooksPath` | Agents and humans can still push without running `check`; CircleCI plus `npm run check` remain the only gates |
-| Running grpc-client tests when `packages/core` changes | A core-only PR still does not execute the extender guard in CircleCI; root `check` does, when a workspace-wide path also changed |
+| Adding husky/lefthook/`prepare` / setting `core.hooksPath` | Agents and humans can still push without running `check`; GitHub Actions plus `npm run check` remain the only gates |
 | Extract `dispatch` in `packages/s3/src/s3-client/in-memory-backing.ts` (complexity 14) | It stays behind `eslint-disable-next-line complexity -- existing function over the published budget; extract on next touch` until that method is edited |
 | Extracting the other complexity-13 functions (`recordCallImpl` × 2, `createProbedSequelizeAdapter`, repo-root test helpers) | They stay behind next-line disables until a later touch extracts them |
 | Turning on other currently-off rules (`no-empty-object-type`, `no-empty-function`, `no-namespace`, `no-empty-pattern`) | Those stays-off are not this packet's ratchet |
 | Replacing remaining `any` type-seam escapes with `unknown` | The 12-no-escape-hatches blinker still forbids *new* `any`; existing ones are justified inline |
 | Adding mutation or CRAP to the five-step `npm run check` | `npm run check` stays fast; phase 5 runs the extra scripts |
-| CircleCI job that runs Stryker / a non-null `thresholds.break` | CI still only runs `npm run check`; a PR can merge with un-run mutation unless the verifier ran it |
+| A CI job that runs Stryker / a non-null `thresholds.break` | CI still only runs `npm run check`; a PR can merge with un-run mutation unless the verifier ran it |
 | Mutating `examples/grpc-client` or `pglite-driver` (no tests) | Those trees are not scored |
 | Killing the genuine `duration.ts` `<` vs `<=` survivors | Score is not 100%; the skill says hand-apply survivors |
 | Fixing open stryker-js#6192 | Single-project mutation config avoids the reported projects repro; survivors are still hand-checked |
@@ -651,15 +631,15 @@ sequenceDiagram
 ## Acceptance mapping
 
 1. Root `package.json` has `scripts.check` running `format:check`, `lint`, `typecheck`, `build`, `test` in order with `&&`.
-2. `git worktree list` has no `gallant-ritchie-e7507a` worktree; branch of that name may still exist.
+2. `.github/workflows/ci.yml` runs on every pull request and on `main` with no path filter, runs `npm run check` after `npm ci` on a Node matrix that includes the `engines` minimum, holds no secret, and dry-runs the release; `.circleci/` does not exist.
 3. `.claude/launch.json` does not exist.
-4. If `.claude/settings.local.json` exists, it lacks the forbidden push/PR/cross-repo-read grants and the listed residue commands.
+4. If `.claude/settings.local.json` exists, it lacks the forbidden push/PR/cross-repo-read grants.
 5. `.gitignore` ignores `.claude/settings.local.json` and `.claude/worktrees/` and does not ignore `.claude/` wholesale; it also ignores `.stryker-tmp`, `reports/mutation`, `coverage`, `stryker.log`, and `.stryker-package`.
-6. Path-filtering maps root `package.json`, root `package-lock.json`, root `.prettierrc`, `tsconfig.json`, `tsconfig.base.json`, `.eslintrc.json`, `vitest.config.ts`, `vitest.mutation.config.ts`, the Stryker config, `scripts/**`, `docs/**`, `.circleci/**`, `.cursor/**`, `.claude/**`, `.harness/**`, `.opencode/**`, and repository-root `test/**` onto `build_workspace true`, without `packages/core/package.json` matching a root-file line or `packages/core/test/**` matching the `test/` line.
-7. `.circleci/ci.yml` has `build_workspace` and a workflow that runs `npm run check` when it is true.
-8. Path-filtering maps `examples/grpc-client/**` onto `build_grpc_client true`.
-9. `.circleci/ci.yml` has `build_grpc_client` and a workflow that builds core, then lints, typechecks, and tests `examples/grpc-client` without `vn-ci/build-publish`.
-10. The thirteen existing `packages/<name>/.*` mappings remain.
+6. `.github/workflows/release.yml` runs only on `workflow_dispatch`, runs `npm run check` before `publish-unpublished.mjs`, uses `id-token: write` in the `npm` environment, and names no secret but `NPM_TOKEN`.
+7. Root `LICENSE` is MIT; every published package is `MIT`, `publishConfig` `{ access: public, provenance: true }`, ships `LICENSE`; no root `.npmrc`.
+8. (removed: CircleCI grpc-client mapping; every PR runs the whole gate, which includes `examples/grpc-client`.)
+9. (removed: CircleCI grpc-client workflow.)
+10. (removed: CircleCI per-package mappings.)
 11. Gate-describing harness markdown, if any, says `npm run check` and that there are no git hooks, and does not claim `package-lock.json` or `.prettierrc` remain unmapped.
 12. The tests for these scenarios run under root `npm test` and are in the root `format:check` glob.
 13. `.cursor/skills/spec-to-ship/SKILL.md` contains no `a later packet` about a markdown linter, states that harness markdown under `.cursor/` and `.claude/` is not format-checked or linted by `npm run check`, and states that those paths still run the workspace-wide `check` job whose `npm test` invokes `check-agent-skills`.
@@ -669,7 +649,7 @@ sequenceDiagram
 17. No tracked `packages/` / `examples/` / repo-root `test/` `*.ts` file has a file-level or block `eslint-disable` of a ratchet rule.
 18. Every next-line or same-line disable of a ratchet rule in those files includes `--` plus a non-empty justification.
 19. `npm run lint` exits 0 with the ratchet on (`--max-warnings 0`). There are still no git hooks.
-20. `vitest.workspace.ts` is gone; `vitest.config.ts` has `test.projects`; `vitest.mutation.config.ts` aliases `@vnatures/*` to `src/index.ts`.
+20. `vitest.workspace.ts` is gone; `vitest.config.ts` has `test.projects`; `vitest.mutation.config.ts` aliases `@hochgi/*` to `src/index.ts`.
 21. `test:mutation` / `test:mutation:changed` / `crap` / `crap:changed` exist and are not steps of `scripts.check`; a zero-mutant Stryker success exits non-zero.
 22. Mysql mutation include is `packages/mysql/test/**/*.test.ts` and that glob is not excluded; core mutation still excludes mysql tests.
 23. `scripts/mutation-package.sh` passes `--mutate` exactly once with the comma-joined `*.ts` / `*.tsx` / `!*.d.ts` globs, and running the shipped runner end to end against `sql` exits 0 with more than 0 mutants and more than 0 killed.

@@ -84,7 +84,7 @@ mechanically.
 - **This is a published library.** A requirement that changes a public surface is
   a semver event. Say so in the delta.
 
-> **Docs follow the code.** RD-24142 reconciled published docs with
+> **Docs follow the code.** Published docs were reconciled with
 > `packages/*/src`. Where a doc and the code still disagree, **the code wins**,
 > and you note the discrepancy.
 

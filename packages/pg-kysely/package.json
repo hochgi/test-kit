@@ -1,11 +1,25 @@
 {
-  "name": "@vnatures/test-kit-pg-kysely",
+  "name": "@hochgi/test-kit-pg-kysely",
   "version": "2.0.2",
   "description": "Probe-driven Kysely adapter backed by PGlite",
-  "license": "UNLICENSED",
+  "keywords": [
+    "testing",
+    "component-testing",
+    "test-double",
+    "fake",
+    "probe",
+    "vitest",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Gilad Hoch <giladhoch@gmail.com> (https://github.com/hochgi)",
+  "homepage": "https://github.com/hochgi/test-kit/tree/main/packages/pg-kysely#readme",
+  "bugs": {
+    "url": "https://github.com/hochgi/test-kit/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vnatures/test-kit.git",
+    "url": "https://github.com/hochgi/test-kit.git",
     "directory": "packages/pg-kysely"
   },
   "type": "module",
@@ -24,10 +38,12 @@
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "LICENSE"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "vite build && cp dist/index.d.ts dist/index.d.cts",
@@ -43,12 +59,12 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.2",
-    "@vnatures/test-kit-pglite-driver": "^2.0.0",
-    "@vnatures/test-kit-sql": "^2.0.0",
+    "@hochgi/test-kit-pglite-driver": "^2.0.0",
+    "@hochgi/test-kit-sql": "^2.0.0",
     "kysely-pglite-dialect": "^1.2.0"
   },
   "peerDependencies": {
-    "@vnatures/test-kit": "^2.0.0",
+    "@hochgi/test-kit": "^2.0.0",
     "kysely": ">=0.27.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # APPENDIX — PGlite Adapter Landscape & Sequelize Evaluation
 
-This document captures the research and evaluation performed before building `@vnatures/test-kit-pg-sequelize`. It is intended as a reference for future architectural decisions around ORM selection and test-kit support.
+This document captures the research and evaluation performed before building `@hochgi/test-kit-pg-sequelize`. It is intended as a reference for future architectural decisions around ORM selection and test-kit support.
 
 ---
 
@@ -65,17 +65,16 @@ This document captures the research and evaluation performed before building `@v
 
 ## 3. ORM Migration Analysis
 
-Given the absence of a native PGlite-Sequelize adapter, we evaluated whether migrating existing services from Sequelize v6 to an ORM with native PGlite support would be practical.
+Given the absence of a native PGlite-Sequelize adapter, we evaluated whether migrating an existing Sequelize v6 codebase to an ORM with native PGlite support would be practical.
 
-### Sequelize footprint in our codebase
+### What a typical Sequelize v6 codebase depends on
 
-- **10 repositories** use Sequelize v6 + `sequelize-typescript`: 8 services + 2 shared model libraries.
-- Heavy reliance on Sequelize-specific features:
+Services built on Sequelize v6 + `sequelize-typescript` tend to lean on Sequelize-specific features:
   - **Decorator-based models:** `@Table`, `@Column`, `@BelongsTo`, `@HasMany`, `@BelongsToMany`, `@Scopes`
   - **Lifecycle hooks:** `@BeforeSave`, `@AfterFind`, `@BeforeCreate`
   - **Query operators:** `Op.gt`, `Op.lt`, `Op.in`, `Op.like`, `Op.or`, `Op.and`
   - **Advanced features:** `DataType.VIRTUAL` (computed columns), polymorphic associations, `Sequelize.literal()` for raw SQL fragments, `$association.column$` nested `where` clauses, `findOrCreate`, `paranoid` (soft deletes)
-- The heaviest service (`reports_service`) uses nearly every Sequelize feature; the lightest (`alerts-controller`) still uses `findOrCreate`, `Op` operators, and cross-table associations.
+- Even a thin service usually still uses `findOrCreate`, `Op` operators, and cross-table associations.
 
 ### Comparison with PGlite-native ORMs
 
@@ -93,7 +92,7 @@ Given the absence of a native PGlite-Sequelize adapter, we evaluated whether mig
 
 ### Migration effort assessment
 
-**TypeORM** is the closest match in terms of decorator style and feature set. However, migrating even a thin service like `alerts-controller` requires:
+**TypeORM** is the closest match in terms of decorator style and feature set. However, migrating even a thin service requires:
 
 1. Rewriting all model definitions (different decorator API, no `@Scopes`)
 2. Rewriting all query code (`findAll` → `find`, `Op.gt` → `MoreThan()`, etc.)
@@ -102,11 +101,11 @@ Given the absence of a native PGlite-Sequelize adapter, we evaluated whether mig
 5. Replacing `Sequelize.literal()` with `QueryBuilder` raw expressions
 6. Testing all edge cases around association loading, transaction handling, and raw queries
 
-For heavier services (`reports_service`, `user-management-service`), the effort is a **major rewrite** — weeks of work per service plus extensive regression testing.
+For heavier services, the effort is a **major rewrite** — weeks of work per service plus extensive regression testing.
 
 **Drizzle** and **Prisma** are even further from Sequelize's API (no decorators, no hooks, different query patterns), making migration substantially harder.
 
-**Verdict:** Migrating away from Sequelize solely for PGlite test compatibility is not practical given the current codebase size and coupling. The `pglite-pg-adapter` shim is the right trade-off.
+**Verdict:** Migrating away from Sequelize solely for PGlite test compatibility is rarely practical for a codebase of any size. The `pglite-pg-adapter` shim is the right trade-off.
 
 ---
 
@@ -114,14 +113,14 @@ For heavier services (`reports_service`, `user-management-service`), the effort 
 
 ### Short-term (now)
 
-Use `@vnatures/test-kit-pg-sequelize` with `pglite-pg-adapter` for component testing existing Sequelize v6 services. This preserves the codebase investment while enabling PGlite-backed tests with the same `DbProbe` workflow as Kysely and Knex.
+Use `@hochgi/test-kit-pg-sequelize` with `pglite-pg-adapter` for component testing existing Sequelize v6 services. This preserves the codebase investment while enabling PGlite-backed tests with the same `DbProbe` workflow as Kysely and Knex.
 
 ### Medium-term (new services)
 
 For **new services**, prefer an ORM/query builder with native PGlite support:
 
-- **Knex** → `@vnatures/test-kit-pg-knex` (already available, well-tested)
-- **Kysely** → `@vnatures/test-kit-pg-kysely` (already available, well-tested)
+- **Knex** → `@hochgi/test-kit-pg-knex` (already available, well-tested)
+- **Kysely** → `@hochgi/test-kit-pg-kysely` (already available, well-tested)
 - **TypeORM** → Closest to Sequelize's decorator style. A `test-kit-pg-typeorm` package could be added using the community `typeorm-pglite` adapter.
 - **Drizzle** → Modern, type-safe. A `test-kit-pg-drizzle` package could be added using its native PGlite driver.
 
@@ -129,12 +128,12 @@ This avoids the adapter shim for new code while allowing existing services to re
 
 ### Long-term (migration, if warranted)
 
-If the organization decides to standardize on a single ORM:
+If a team decides to standardize on a single ORM:
 
-1. **Start with thin services** (`alerts-controller`, `construction_rules_service`) as migration pilots.
+1. **Start with thin services** as migration pilots.
 2. **Prefer TypeORM** for the migration target — it has the most similar decorator-based model definition and is the easiest migration path from `sequelize-typescript`.
-3. Add a `@vnatures/test-kit-pg-typeorm` package to support migrated services.
-4. Migrate heavier services (`reports_service`, `user-management-service`) only after validating the pattern on simpler ones.
+3. Add a `@hochgi/test-kit-pg-typeorm` package to support migrated services.
+4. Migrate heavier services only after validating the pattern on simpler ones.
 
 ### Monitor
 

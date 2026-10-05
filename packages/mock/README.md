@@ -1,21 +1,21 @@
-# @vnatures/test-kit-mock
+# @hochgi/test-kit-mock
 
 Programmable mock adapters for any TypeScript interface, built on top of
-[`@vnatures/test-kit`](../core/README.md). Use this when the boundary is a
+[`@hochgi/test-kit`](../core/README.md). Use this when the boundary is a
 plain TypeScript interface — REST/gRPC clients, internal service
 interfaces, factory abstractions.
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-mock
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-mock
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMock } from "@vnatures/test-kit-mock";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMock } from "@hochgi/test-kit-mock";
 
 interface UserService {
     getUser(id: number): Promise<{ id: number; name: string }>;
@@ -131,7 +131,7 @@ await probe.on("publish").expect.exactly(3);
 ### Timeouts
 
 ```typescript
-import { seconds } from "@vnatures/test-kit";
+import { seconds } from "@hochgi/test-kit";
 
 it("times out when downstream does not respond", async () => {
     const responsePromise = sut.run();
@@ -209,7 +209,7 @@ over time and then completes or fails. `createProbedStreamMock` is the
 sibling factory for exactly that shape.
 
 ```typescript
-import { createProbedStreamMock } from "@vnatures/test-kit-mock";
+import { createProbedStreamMock } from "@hochgi/test-kit-mock";
 
 interface Model {
     stream(prompt: string): AsyncIterable<{ text: string }>;
@@ -282,7 +282,7 @@ For Sinon, pass an installed `FakeTimers` instance explicitly:
 
 ## See also
 
-- [`@vnatures/test-kit`](../core/README.md) — core engine.
+- [`@hochgi/test-kit`](../core/README.md) — core engine.
 - [`docs/concepts.md`](../../docs/concepts.md) — mental model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — exhaustive API
   reference.

@@ -2,7 +2,7 @@
 name: component-testing
 description: >-
   Guide for writing Vitest tests in this repository while developing
-  @vnatures/test-kit. Covers Goldilocks boundary design, createRig / Rig
+  @hochgi/test-kit. Covers Goldilocks boundary design, createRig / Rig
   lifecycle, probed adapters, retry/timeout/sequence recipes, and fake-timer
   interop. Use when adding or refactoring tests under packages/*/test.
 ---
@@ -25,7 +25,7 @@ Vitest picks up `test/**/*.test.ts` from each package's `vite.config.ts`.
 
 ## Import by package name, then build
 
-Tests import `@vnatures/test-kit`, `@vnatures/test-kit-mock`, and friends — not
+Tests import `@hochgi/test-kit`, `@hochgi/test-kit-mock`, and friends — not
 relative `../src`. That resolves through a workspace symlink into `dist/`, so
 **a stale build silently tests yesterday's code**:
 
@@ -83,16 +83,16 @@ responses.
 
 **Example — Postgres with Kysely:** inject `Kysely<Database>` directly. Too
 thin would be `pg.Pool`; too fat would be `IPostgresService` wrapping queries
-behind methods. `@vnatures/test-kit-pg-kysely` exposes
+behind methods. `@hochgi/test-kit-pg-kysely` exposes
 `createProbedKyselyAdapter` (real PGlite plus a `QueryProbe`). Default rule is
 `always().forward()` so bootstrap, seed, and reset run transparently.
 
-**Example — Postgres with Knex:** inject `Knex`. `@vnatures/test-kit-pg-knex`
+**Example — Postgres with Knex:** inject `Knex`. `@hochgi/test-kit-pg-knex`
 provides `createProbedKnexAdapter`. Pass `knexConfig` when production uses
 plugins such as `knex-stringcase`.
 
 **Example — Postgres with Sequelize:** inject `Sequelize`.
-`@vnatures/test-kit-pg-sequelize` provides `createProbedSequelizeAdapter`.
+`@hochgi/test-kit-pg-sequelize` provides `createProbedSequelizeAdapter`.
 
 **Example — streaming boundary:** a method typed `(...) => AsyncIterable<T>`
 is not a Promise boundary. `createProbedMock` can't take this shape; use
@@ -120,7 +120,7 @@ The type is `Rig`. The factory option key on probed mocks is still `harness`
 (a deliberate keep). Optional `createRig` keys:
 
 ```typescript
-import { createRig, milliseconds, seconds, viFakeClock } from '@vnatures/test-kit';
+import { createRig, milliseconds, seconds, viFakeClock } from '@hochgi/test-kit';
 
 const rig = createRig({
     clock: viFakeClock(),
@@ -132,8 +132,8 @@ const rig = createRig({
 Correct 2.x usage:
 
 ```typescript
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 function createMyRig() {
     const rig = createRig();
@@ -214,7 +214,7 @@ permanent rule takes over. A one-shot always wins over a permanent rule.
 `.filter(...)`) returns a pending call while the call is still in flight.
 
 ```typescript
-import { milliseconds } from '@vnatures/test-kit';
+import { milliseconds } from '@hochgi/test-kit';
 
 const call = await probe.on('download').expect.intercept();
 expect(call.args[0]).toBe('https://example.com/img.png');
@@ -243,7 +243,7 @@ timeout behavior.
 `exactly` and `none` require `within`; `atLeast` may omit it.
 
 ```typescript
-import { milliseconds } from '@vnatures/test-kit';
+import { milliseconds } from '@hochgi/test-kit';
 
 await probe.on('delete').expect.none({ within: milliseconds(100) });
 await probe.on('publish').expect.atLeast(2);
@@ -298,7 +298,7 @@ For methods shaped `(...) => AsyncIterable<TChunk>` — `createProbedMock`
 requires a Promise-returning method. Use the sibling factory:
 
 ```typescript
-import { createProbedStreamMock } from '@vnatures/test-kit-mock';
+import { createProbedStreamMock } from '@hochgi/test-kit-mock';
 
 const rig = createRig();
 const model = rig.attach(createProbedStreamMock<Model>({
@@ -403,7 +403,7 @@ probe.on('download').always().answerWith((c) => {
 ### Cross-probe ordering
 
 ```typescript
-import { milliseconds, observation } from '@vnatures/test-kit';
+import { milliseconds, observation } from '@hochgi/test-kit';
 
 const { rig, authProbe, usersProbe, paymentsProbe, eventsProbe } = createMyRig();
 
@@ -446,7 +446,7 @@ See `packages/mock/test/integration/cross-probe-expectations.test.ts` and
   relying on `rig.clock.advance` to drain those continuations.
 
 ```typescript
-import { createRig, type Rig } from '@vnatures/test-kit';
+import { createRig, type Rig } from '@hochgi/test-kit';
 
 let rig: Rig;
 

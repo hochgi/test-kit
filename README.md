@@ -1,4 +1,8 @@
-# @vnatures/test-kit
+# @hochgi/test-kit
+
+[![CI](https://github.com/hochgi/test-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/hochgi/test-kit/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@hochgi/test-kit.svg)](https://www.npmjs.com/package/@hochgi/test-kit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Probe-driven component testing for TypeScript services. Drive a real component
 end-to-end while keeping deterministic, in-process control over every external
@@ -12,9 +16,9 @@ dependency — databases, caches, S3, third-party APIs.
   proxy-based mocks for everything else.
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMock } from "@vnatures/test-kit-mock";
-import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMock } from "@hochgi/test-kit-mock";
+import { createProbedKyselyAdapter } from "@hochgi/test-kit-pg-kysely";
 
 const rig = createRig();
 const users = rig.attach(
@@ -29,6 +33,20 @@ users.probe.on("getUser").always().answer({ id: 1, name: "Alice" });
 const response = await supertest(app).get("/api/data");
 expect(response.status).toBe(200);
 ```
+
+## Install
+
+Install the core plus the adapters for the dependencies your service talks to,
+as dev dependencies:
+
+```bash
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-mock @hochgi/test-kit-pg-kysely
+```
+
+Adapters take `@hochgi/test-kit` as a peer dependency, along with any client
+library they wrap (`kysely`, `knex`, `sequelize`, `bull`, `kafkajs`, `mysql2`,
+the AWS SDK clients), so the versions your service already uses are the ones
+under test.
 
 ## Why
 
@@ -54,19 +72,19 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 
 | Package | Purpose |
 | :--- | :--- |
-| [`@vnatures/test-kit`](packages/core/README.md) | Core probe engine: `Rig`, `Clock`, `Selection`, `RuleBuilder`, `Expectations`, shared types. Domain packages are built on top of this. |
-| [`@vnatures/test-kit-mock`](packages/mock/README.md) | `createProbedMock<T>` for faking any TypeScript interface (REST clients, internal service interfaces, …). |
-| [`@vnatures/test-kit-sql`](packages/sql/README.md) | Shared `QueryProbe` surface and `SqlDriver` seam consumed by every `pg-*` adapter. |
-| [`@vnatures/test-kit-pglite-driver`](packages/pglite-driver/README.md) | Shared PGlite lifecycle helper (`createPgliteHandle`) used by the `pg-*` packages. Published. |
-| [`@vnatures/test-kit-pg-kysely`](packages/pg-kysely/README.md) | `createProbedKyselyAdapter` — Kysely-typed PGlite-backed adapter. |
-| [`@vnatures/test-kit-pg-knex`](packages/pg-knex/README.md) | `createProbedKnexAdapter` — Knex-typed PGlite-backed adapter. |
-| [`@vnatures/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | `createProbedSequelizeAdapter` — Sequelize v6 PGlite-backed adapter. |
-| [`@vnatures/test-kit-redis`](packages/redis/README.md) | `createProbedCacheAdapter` — focused cache interface backed by `ioredis-mock`. |
-| [`@vnatures/test-kit-bull`](packages/bull/README.md) | `createProbedBullQueue` — drop-in probed Bull `Queue` with an in-memory backing. |
-| [`@vnatures/test-kit-s3`](packages/s3/README.md) | `createProbedS3Adapter` and `createProbedPresignerAdapter` with an in-memory backing. |
-| [`@vnatures/test-kit-sqs`](packages/sqs/README.md) | `createProbedSqsAdapter` — SQS `SQSClient` adapter with a functional in-memory backing (visibility timeout, long-poll, receipt-handle delete). |
-| [`@vnatures/test-kit-kafka`](packages/kafka/README.md) | `createProbedKafkaProducer` — kafkajs-shaped `Producer` adapter with an in-memory topic log (partitioning, per-partition offsets, byte-exact reads). |
-| [`@vnatures/test-kit-mysql`](packages/mysql/README.md) | `createProbedMysqlAdapter` — real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam (requires Docker). |
+| [`@hochgi/test-kit`](packages/core/README.md) | Core probe engine: `Rig`, `Clock`, `Selection`, `RuleBuilder`, `Expectations`, shared types. Domain packages are built on top of this. |
+| [`@hochgi/test-kit-mock`](packages/mock/README.md) | `createProbedMock<T>` for faking any TypeScript interface (REST clients, internal service interfaces, …). |
+| [`@hochgi/test-kit-sql`](packages/sql/README.md) | Shared `QueryProbe` surface and `SqlDriver` seam consumed by every `pg-*` adapter. |
+| [`@hochgi/test-kit-pglite-driver`](packages/pglite-driver/README.md) | Shared PGlite lifecycle helper (`createPgliteHandle`) used by the `pg-*` packages. Published. |
+| [`@hochgi/test-kit-pg-kysely`](packages/pg-kysely/README.md) | `createProbedKyselyAdapter` — Kysely-typed PGlite-backed adapter. |
+| [`@hochgi/test-kit-pg-knex`](packages/pg-knex/README.md) | `createProbedKnexAdapter` — Knex-typed PGlite-backed adapter. |
+| [`@hochgi/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | `createProbedSequelizeAdapter` — Sequelize v6 PGlite-backed adapter. |
+| [`@hochgi/test-kit-redis`](packages/redis/README.md) | `createProbedCacheAdapter` — focused cache interface backed by `ioredis-mock`. |
+| [`@hochgi/test-kit-bull`](packages/bull/README.md) | `createProbedBullQueue` — drop-in probed Bull `Queue` with an in-memory backing. |
+| [`@hochgi/test-kit-s3`](packages/s3/README.md) | `createProbedS3Adapter` and `createProbedPresignerAdapter` with an in-memory backing. |
+| [`@hochgi/test-kit-sqs`](packages/sqs/README.md) | `createProbedSqsAdapter` — SQS `SQSClient` adapter with a functional in-memory backing (visibility timeout, long-poll, receipt-handle delete). |
+| [`@hochgi/test-kit-kafka`](packages/kafka/README.md) | `createProbedKafkaProducer` — kafkajs-shaped `Producer` adapter with an in-memory topic log (partitioning, per-partition offsets, byte-exact reads). |
+| [`@hochgi/test-kit-mysql`](packages/mysql/README.md) | `createProbedMysqlAdapter` — real MySQL 8 via Testcontainers behind the `test-kit-sql` probe seam (requires Docker). |
 
 The package family is intentionally small. Each domain adapter targets the
 "Goldilocks" boundary for its category — fat enough to skip noise (raw HTTP
@@ -99,9 +117,9 @@ For the full rule grammar (`once`/`always`, `answer`/`answerWith`/`reject`,
 ## A worked example
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMock } from "@vnatures/test-kit-mock";
-import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMock } from "@hochgi/test-kit-mock";
+import { createProbedKyselyAdapter } from "@hochgi/test-kit-pg-kysely";
 
 async function createTestHarness() {
     const rig = createRig();
@@ -148,7 +166,7 @@ it("tests the component", async () => {
 - [`docs/api-surface.md`](docs/api-surface.md) — Exhaustive API reference.
 - [`APPENDIX.md`](APPENDIX.md) — Background notes on the PGlite adapter
   landscape and the Sequelize evaluation that informed
-  `@vnatures/test-kit-pg-sequelize`.
+  `@hochgi/test-kit-pg-sequelize`.
 
 ## Development
 
@@ -172,7 +190,13 @@ npm run format
 # Build/test a single package
 npm run build --workspace=packages/core
 npm test --workspace=packages/core
+
+# The full gate CI runs on every pull request
+npm run check
 ```
+
+`packages/mysql` runs a real MySQL through Testcontainers, so its tests need
+Docker. Everything else runs in-process.
 
 ## Requirements
 
@@ -181,3 +205,13 @@ npm test --workspace=packages/core
 - A test runner of your choice (Vitest and Jest are both first-class; see
   `Clock` in [`docs/api-surface.md`](docs/api-surface.md) for fake-timer
   integration).
+
+## Contributing
+
+Issues and pull requests are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Please report security issues privately, as described in
+[`SECURITY.md`](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © Gilad Hoch

@@ -1,4 +1,4 @@
-import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
+import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@hochgi/test-kit';
 import type { Job, Queue } from 'bull';
 
 export type BullQueueMethod = 'add' | 'process';

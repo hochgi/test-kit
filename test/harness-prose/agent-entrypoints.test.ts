@@ -33,7 +33,7 @@ const testingGotchas = ['pretest', 'dist', 'npm run check', 'husky', 'lefthook',
 
 const specToShipPhases = ['spec-to-ship', 'spec-author', 'test-author', 'coder', 'reviewer', 'verifier'] as const;
 
-const distinctiveModelIds = ['cursor-grok-4.6-xhigh', 'claude-opus-4-8', 'litellm/vn-'] as const;
+const distinctiveModelIds = ['cursor-grok-4.7-xhigh', 'claude-opus-4-8', 'xai/'] as const;
 
 const staleDraftMarkers = ['prettify', 'mock-aws-s3-v3', 'no Docker needed'] as const;
 
@@ -205,10 +205,6 @@ function expectDoesNotContain(content: string, fragments: readonly string[], lab
     }
 }
 
-function namesGitRemoteVn(content: string): boolean {
-    return /(?<![\w])vn(?!atures)(?![\w])/.test(content);
-}
-
 function omitsOrForbidsMergeOntoMainWhilePrOpen(content: string): boolean {
     if (/do not (?:squash-)?merge/i.test(content) || /not merge[\s\S]{0,80}until the PR is merged/i.test(content)) {
         return true;
@@ -339,9 +335,7 @@ describe('AGENTS.md is the tool-agnostic agent entrypoint', () => {
             headings.some((heading) => /model/i.test(heading.title) && /target/i.test(heading.title)),
             'AGENTS.md must have a heading that names model targeting',
         ).toBe(true);
-        expect(content.includes('@vnatures/test-kit'), 'AGENTS.md must name the @vnatures/test-kit workspace').toBe(
-            true,
-        );
+        expect(content.includes('@hochgi/test-kit'), 'AGENTS.md must name the @hochgi/test-kit workspace').toBe(true);
     });
 
     it('AGENTS.md names layout paths and check commands', () => {
@@ -357,11 +351,9 @@ describe('AGENTS.md is the tool-agnostic agent entrypoint', () => {
 
     it('AGENTS.md states git conventions', () => {
         const content = readExisting('AGENTS.md');
-        expect(namesGitRemoteVn(content), 'AGENTS.md must name the git remote vn as a token, not only vnatures').toBe(
-            true,
-        );
         expect(/\bmain\b/.test(content), 'AGENTS.md must contain main as a word').toBe(true);
-        expectContains(content, ['origin', 'squash', 'RD-', 'Conventional Commits'], 'AGENTS.md');
+        expectContains(content, ['origin', 'squash', '<type>/<slug>', 'Conventional Commits'], 'AGENTS.md');
+        expect(/\bvn\b/.test(content), 'AGENTS.md must not name the old remote vn').toBe(false);
     });
 
     it('AGENTS.md summarises spec-to-ship without merging an open PR', () => {

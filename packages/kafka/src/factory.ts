@@ -10,7 +10,7 @@ import {
     type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { ProducerBatch, ProducerRecord, RecordMetadata } from 'kafkajs';
 import type { KafkaCall, KafkaMethod, KafkaPendingCall, KafkaProbe, KafkaProducer, TopicLogEntry } from './types.js';
 import { InMemoryKafkaBacking } from './in-memory-backing.js';

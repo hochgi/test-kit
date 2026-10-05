@@ -32,19 +32,13 @@ const supportSkills = [
     'mutation-testing',
     'component-testing',
     'add-adapter',
-    'summon-review-panel',
 ] as const;
 
 const bannedAddAdapterSplitCommands = ['extend-probe.md', 'new-package.md', 'extend-test-kit.md'] as const;
 
 const addAdapterRequiredSkillTokens = ['npm', 'workspaces', 'packages/'] as const;
 
-const addAdapterStaleConsumerTokens = [
-    'pnpm workspaces',
-    'pnpm link',
-    'Missing (author these)',
-    '/Users/giladhoch/dev/test-kit',
-] as const;
+const addAdapterStaleConsumerTokens = ['pnpm workspaces', 'pnpm link', 'Missing (author these)', '/Users/'] as const;
 
 const addAdapterWalkthroughTokens = [
     'Adding a New Domain Package',
@@ -78,7 +72,7 @@ const addAdapterQuestionTokens = [
     'strictly optional',
     'SqlDriver',
     'createProbed',
-    '@vnatures/test-kit-',
+    '@hochgi/test-kit-',
 ] as const;
 
 const phaseSkills = [
@@ -108,7 +102,7 @@ const donorSkillDirectories = [
     'add-module',
 ] as const;
 
-const donorMachinery = ['@cycle-processing/contracts', 'pnpm verify', 'lefthook'] as const;
+const donorMachinery = ['pnpm verify', 'lefthook'] as const;
 
 const coverageQualityGates = ['test:mutation', 'stryker run', 'pnpm crap'] as const;
 
@@ -310,7 +304,6 @@ function trackedMarkdownUnder(dirs: readonly string[]): string[] {
 const commonMarkFenceIndents = [1, 2, 3] as const;
 
 const componentTestingSkill = '.cursor/skills/component-testing/SKILL.md';
-const summonReviewPanelSkill = '.cursor/skills/summon-review-panel/SKILL.md';
 
 function matchingCloseParenIndex(source: string, openParenIndex: number): number {
     let depth = 0;
@@ -542,7 +535,7 @@ describe('spec-to-ship names add-adapter as the adapter packet-shaping step', ()
 });
 
 describe('Support skills exist under the Cursor canonical tree', () => {
-    it('eight support skills are present', () => {
+    it('seven support skills are present', () => {
         for (const name of supportSkills) {
             const relative = `.cursor/skills/${name}/SKILL.md`;
             expect(existsSync(path.join(repoRoot, relative)), `${relative} must exist`).toBe(true);
@@ -621,205 +614,6 @@ describe('add-adapter skill is the in-repo extender contract', () => {
                 (/spec[\s\S]{0,160}behaviou?r/i.test(content) || /behaviou?r[\s\S]{0,80}spec/i.test(content)),
             'must state that the packet owns scope and the spec owns behaviour',
         ).toBe(true);
-    });
-});
-
-describe('summon-review-panel skill summons the policy/capability intersection', () => {
-    it('summon-review-panel skill exists under the Cursor canonical tree', () => {
-        const dir = path.join(repoRoot, '.cursor/skills/summon-review-panel');
-        expect(existsSync(dir), '.cursor/skills/summon-review-panel must exist').toBe(true);
-        expect(readdirSync(dir), '.cursor/skills/summon-review-panel must contain SKILL.md').toContain('SKILL.md');
-    });
-
-    it('skill separates policy from capability', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('policy'), 'summon-review-panel skill must contain policy').toBe(true);
-        expect(content.includes('capability'), 'summon-review-panel skill must contain capability').toBe(true);
-        expect(
-            content.includes('.harness/review-panel.json'),
-            'summon-review-panel skill must contain .harness/review-panel.json',
-        ).toBe(true);
-    });
-
-    it('skill summons copilot as a reviewer and comments @cursor review', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(
-            /copilot[\s\S]{0,80}as a reviewer/i.test(content) || /as a reviewer[\s\S]{0,80}copilot/i.test(content),
-            'summon-review-panel skill must contain copilot as a reviewer',
-        ).toBe(true);
-        expect(content.includes('@cursor review'), 'summon-review-panel skill must contain @cursor review').toBe(true);
-        expect(
-            content.includes('🤖: @cursor review'),
-            'summon-review-panel skill must not use 🤖: @cursor review as the Bugbot trigger',
-        ).toBe(false);
-    });
-
-    it('skill names baz and does not add GitHub Actions or Baz config', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('baz'), 'summon-review-panel skill must contain baz').toBe(true);
-        expect(content.includes('no GitHub Actions'), 'summon-review-panel skill must contain no GitHub Actions').toBe(
-            true,
-        );
-        expect(
-            content.includes('.github/workflows'),
-            'summon-review-panel skill must not contain .github/workflows',
-        ).toBe(false);
-    });
-
-    it('skill hands findings to pr-review-style', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('pr-review-style'), 'summon-review-panel skill must contain pr-review-style').toBe(
-            true,
-        );
-        expect(
-            content.includes('Each finding is either actionable or noise'),
-            'summon-review-panel skill must not contain Each finding is either actionable or noise',
-        ).toBe(false);
-    });
-
-    it('skill can be re-run without triage', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(
-            /(?:after a (?:later )?push|later push)[\s\S]{0,160}without[\s\S]{0,40}(?:running )?triage/i.test(
-                content,
-            ) ||
-                /without[\s\S]{0,40}(?:running )?triage[\s\S]{0,160}(?:after a (?:later )?push|later push)/i.test(
-                    content,
-                ) ||
-                /re-?summon[\s\S]{0,80}without[\s\S]{0,40}(?:running )?triage/i.test(content) ||
-                /without[\s\S]{0,40}(?:running )?triage[\s\S]{0,80}re-?summon/i.test(content),
-            'must state that summoning can run again after a push without running triage',
-        ).toBe(true);
-    });
-
-    it('no summon-review-panel command', () => {
-        expect(
-            markdownNames('.claude/commands'),
-            '.claude/commands must not contain summon-review-panel.md',
-        ).not.toContain('summon-review-panel.md');
-    });
-});
-
-describe('first-run records policy; later runs re-prompt only on failure', () => {
-    it('skill bootstraps missing policy via AskUserQuestion', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('AskUserQuestion'), 'summon-review-panel skill must contain AskUserQuestion').toBe(
-            true,
-        );
-        expect(content.includes('multi-select'), 'summon-review-panel skill must contain multi-select').toBe(true);
-        expect(content.includes('review-panel.json'), 'summon-review-panel skill must contain review-panel.json').toBe(
-            true,
-        );
-    });
-
-    it('later runs use recorded policy without asking', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(
-            /later run[\s\S]{0,200}(?:does not ask|not ask|skip(?:s)? the ask)[\s\S]{0,80}review-panel\.json/i.test(
-                content,
-            ) ||
-                /(?:does not ask|not ask again|skip(?:s)? the ask)[\s\S]{0,160}review-panel\.json[\s\S]{0,40}exists/i.test(
-                    content,
-                ) ||
-                /while[\s\S]{0,40}review-panel\.json[\s\S]{0,40}exists[\s\S]{0,80}(?:does not ask|not ask)/i.test(
-                    content,
-                ) ||
-                /not ask again[\s\S]{0,80}(?:while|when)[\s\S]{0,80}review-panel\.json/i.test(content),
-            'must state that a later run does not ask while review-panel.json exists',
-        ).toBe(true);
-    });
-
-    it('skill states a capability gap without editing policy', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('policy wants'), 'summon-review-panel skill must contain policy wants').toBe(true);
-        expect(content.includes('seat'), 'summon-review-panel skill must contain seat').toBe(true);
-        expect(
-            /(?:shall not|do not|does not|must not)[\s\S]{0,80}(?:edit|drop|remove)[\s\S]{0,80}wanted/i.test(content) ||
-                /(?:shall not|do not|does not|must not)[\s\S]{0,80}review-panel\.json[\s\S]{0,80}(?:drop|remove)/i.test(
-                    content,
-                ),
-            'must not instruct removing a bot from wanted because a summon failed',
-        ).toBe(true);
-    });
-
-    it('skill re-prompts when a summon fails or a bot is unreachable', () => {
-        const content = readExisting(summonReviewPanelSkill);
-        expect(content.includes('AskUserQuestion'), 'summon-review-panel skill must contain AskUserQuestion').toBe(
-            true,
-        );
-        expect(content.includes('unreachable'), 'summon-review-panel skill must contain unreachable').toBe(true);
-    });
-});
-
-describe('review-panel.json is committed policy without capability', () => {
-    it('review-panel.json exists alongside models.json', () => {
-        const dir = path.join(repoRoot, '.harness');
-        expect(existsSync(dir), '.harness must exist').toBe(true);
-        const names = readdirSync(dir);
-        expect(names, '.harness must contain review-panel.json').toContain('review-panel.json');
-        expect(names, '.harness must contain models.json').toContain('models.json');
-    });
-
-    it('review-panel.json wanted lists copilot and bugbot and no capability key', () => {
-        const parsed: unknown = JSON.parse(readExisting('.harness/review-panel.json'));
-        const root = asRecord(parsed, '.harness/review-panel.json');
-        expect(Object.hasOwn(root, 'capability'), '.harness/review-panel.json must not contain a capability key').toBe(
-            false,
-        );
-        expect(Object.hasOwn(root, 'seats'), '.harness/review-panel.json must not contain a seats key').toBe(false);
-        const wanted = root['wanted'];
-        expect(Array.isArray(wanted), 'wanted must be an array').toBe(true);
-        const wantedIds = Array.isArray(wanted) ? wanted : [];
-        expect(
-            wantedIds.every((id) => id === 'copilot' || id === 'bugbot' || id === 'baz'),
-            'every wanted entry must be one of copilot, bugbot, or baz',
-        ).toBe(true);
-        expect(wantedIds.includes('copilot'), 'wanted must include copilot').toBe(true);
-        expect(wantedIds.includes('bugbot'), 'wanted must include bugbot').toBe(true);
-        expect(new Set(wantedIds).size, 'wanted must not contain duplicate ids').toBe(wantedIds.length);
-    });
-});
-
-describe('spec-to-ship PR loop names summon-review-panel', () => {
-    it('spec-to-ship command names summon-review-panel', () => {
-        const content = readExisting('.claude/commands/spec-to-ship.md');
-        expect(
-            content.includes('summon-review-panel'),
-            '.claude/commands/spec-to-ship.md must contain summon-review-panel',
-        ).toBe(true);
-    });
-
-    it('spec-to-ship skill names summon-review-panel', () => {
-        const content = readExisting('.cursor/skills/spec-to-ship/SKILL.md');
-        expect(
-            content.includes('summon-review-panel'),
-            '.cursor/skills/spec-to-ship/SKILL.md must contain summon-review-panel',
-        ).toBe(true);
-    });
-});
-
-describe('pr-review-style defers summoning to summon-review-panel', () => {
-    it('pr-review-style names summon-review-panel and does not assemble the panel', () => {
-        const content = readExisting('.cursor/skills/pr-review-style/SKILL.md');
-        expect(content.includes('summon-review-panel'), 'pr-review-style must contain summon-review-panel').toBe(true);
-        expect(content.includes('@cursor review'), 'pr-review-style must name the Bugbot trigger exception').toBe(true);
-        expect(
-            content.includes('Assembling the review panel'),
-            'pr-review-style must not contain Assembling the review panel',
-        ).toBe(false);
-        expect(
-            content.includes('🤖: @cursor review'),
-            'pr-review-style must not use 🤖: @cursor review as the Bugbot trigger',
-        ).toBe(false);
-    });
-});
-
-describe('OSS.md tracks versatile-internal harness pieces', () => {
-    it('OSS.md tracks summon-review-panel as versatile-internal', () => {
-        const content = readExisting('docs/internal/OSS.md');
-        expect(content.includes('summon-review-panel'), 'OSS.md must contain summon-review-panel').toBe(true);
-        expect(content.includes('litellm'), 'OSS.md must contain litellm').toBe(true);
-        expect(content.includes('versatile-internal'), 'OSS.md must contain versatile-internal').toBe(true);
     });
 });
 
@@ -946,10 +740,10 @@ describe('component-testing teaches the missing 2.x probe surface', () => {
             'at least one typescript/ts fence must contain observation( and rig.expect.sequence',
         ).toBe(true);
         expect(
-            /import\s*\{[^}]*\bobservation\b[^}]*\}\s*from\s*'@vnatures\/test-kit'/.test(content),
-            "the file must import observation from '@vnatures/test-kit'",
+            /import\s*\{[^}]*\bobservation\b[^}]*\}\s*from\s*'@hochgi\/test-kit'/.test(content),
+            "the file must import observation from '@hochgi/test-kit'",
         ).toBe(true);
-        expect(content.includes("from '@vnatures/test-kit'"), "must contain from '@vnatures/test-kit'").toBe(true);
+        expect(content.includes("from '@hochgi/test-kit'"), "must contain from '@hochgi/test-kit'").toBe(true);
         expect(content.includes('observation'), 'must contain observation').toBe(true);
     });
 
@@ -1181,7 +975,7 @@ describe('mutation-testing skill is the Stryker how-to', () => {
 
     it('mutation-testing does not import donor service machinery', () => {
         const content = readExisting('.cursor/skills/mutation-testing/SKILL.md');
-        for (const token of ['pnpm crap', 'pnpm verify', 'lefthook', '@cycle-processing/contracts'] as const) {
+        for (const token of ['pnpm crap', 'pnpm verify', 'lefthook'] as const) {
             expect(content.includes(token), `mutation-testing must not contain ${token}`).toBe(false);
         }
     });
@@ -1316,10 +1110,10 @@ describe('Per-agent files name their skills and do not import donor bugs', () =>
         expect(content.includes('pr-review-style'), 'reviewer.md must contain pr-review-style').toBe(true);
     });
 
-    it('verifier agent names RD-24153 and does not claim the gate is missing', () => {
+    it('verifier agent names mutation-testing and does not claim the gate is missing', () => {
         const content = readExisting('.claude/agents/verifier.md');
         expect(content.includes('verify-changes'), 'verifier.md must contain verify-changes').toBe(true);
-        expect(content.includes('RD-24153'), 'verifier.md must contain RD-24153').toBe(true);
+        expect(content.includes('mutation-testing'), 'verifier.md must contain mutation-testing').toBe(true);
         expect(content.includes('no mutation testing'), 'verifier.md must not contain "no mutation testing"').toBe(
             false,
         );

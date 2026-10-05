@@ -1,4 +1,4 @@
-// Public API of @vnatures/test-kit-mock.
+// Public API of @hochgi/test-kit-mock.
 export type {
     AsyncMethodName,
     CheckedMethods,

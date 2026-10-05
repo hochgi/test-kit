@@ -16,13 +16,13 @@ do not run these gates.
 
 ```bash
 npm run test:mutation -- core          # one published package directory name
-npm run test:mutation:changed          # packages/*/src changed vs vn/main, else main
+npm run test:mutation:changed          # packages/*/src changed vs origin/main, else main
 npm run crap                           # istanbul coverage via vitest.mutation.config.ts, then CRAP
 npm run crap:changed                   # same, scoped to changed production src
 ```
 
 None of these are a step of `npm run check`. `thresholds.break` is `null`;
-this is not a CircleCI merge gate.
+this is not a CI merge gate.
 
 ## Why vitest.mutation.config.ts exists
 
@@ -31,7 +31,7 @@ package `vite.config.ts`). A mutant applied to `src` is never loaded by
 the default suite.
 
 Stryker uses `vitest.mutation.config.ts`, which aliases every
-`@vnatures/test-kit*` name to `packages/<dir>/src/index.ts` so mutants
+`@hochgi/test-kit*` name to `packages/<dir>/src/index.ts` so mutants
 in `src` are the modules under test. `vitest.related` is `false` because
 tests import by package name, not by file path.
 
@@ -55,7 +55,7 @@ A Stryker JSON report with 0 mutants is a defect, including the case
 where the mutate glob matched no files. Treat that as
 [stryker-js#6183](https://github.com/stryker-mutator/stryker-js/issues/6183)
 until proven otherwise: fail closed. `#6183` did not reproduce on
-`@babel/generator@8.0.5` in the RD-24153 spike; the wrapper still
+`@babel/generator@8.0.5` in the original spike; the wrapper still
 exits non-zero.
 
 Before blaming `#6183`, check the mutate glob. Stryker's CLI parses
@@ -63,7 +63,7 @@ Before blaming `#6183`, check the mutate glob. Stryker's CLI parses
 so repeating the flag silently throws away every earlier glob. Pass one
 `--mutate` with the globs comma-joined; negations are honoured as
 elements of that list. Three `--mutate` flags left a bare `!*.d.ts`
-negation and instrumented 0 mutants for every package (RD-24255).
+negation and instrumented 0 mutants for every package.
 
 ## Survivors
 

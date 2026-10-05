@@ -4,7 +4,7 @@
     "Nothing else in this repo may name a model; scripts/check-agent-skills.sh fails on drift.",
     "",
     "`claude` and `cursor` name REAL VENDOR TIERS on purpose. Both tools bill against the",
-    "developer's seat rather than through LiteLLM, so these phases should use the capacity the",
+    "developer's seat rather than through a metered API, so these phases should use the capacity the",
     "subscription already includes — it costs nothing marginal. Aliasing them would route",
     "paid-for capacity to a metered endpoint, which is strictly worse.",
     "",
@@ -16,12 +16,12 @@
     "The two columns are chosen PER TOOL and deliberately NOT derived from one another:",
     "keying Cursor off the Claude tier means a Claude-side bump silently retargets Cursor.",
     "",
-    "`opencode` holds LiteLLM ROLE ALIASES (litellm/<role>), never a vendor model id. This is",
-    "the metered fall-through you take when the seat runs dry — same repo, same harness, same",
-    "five phases, different meter, no tool-hop and no lost context. The alias is repointed",
-    "centrally in litellm.internal.stg.versatile.ai (Models + Endpoints -> Model Group Alias),",
-    "so following the frontier never costs a repo edit. The `vn-` prefix namespaces them in",
-    "the shared gateway.",
+    "`opencode` holds OpenCode provider/model ids (`<provider>/<model>`): xAI Grok through a",
+    "SuperGrok login (`/connect` in OpenCode, then `opencode models xai` to see what the login",
+    "exposes). It is the fall-through when a Claude or Cursor seat runs dry — same repo, same",
+    "harness, same five phases, no tool-hop and no lost context. `opencode_variant` is the",
+    "reasoning variant every OpenCode agent runs at. OpenCode reads it as a SEPARATE `variant`",
+    "field; never write `xai/grok-4.7#xhigh`, which OpenCode looks up as one catalog key and fails.",
     "",
     "A phase MAY deliberately pin a different tier from its siblings — see test-author below.",
     "The manifest exists so that such a choice is STATED and reviewable, not so that every",
@@ -40,41 +40,42 @@
     "test-author.claude": "Deliberately claude-opus-4-8, NOT the current opus. Opus 4.8 translates a SPEC into tests with tighter scope discipline: it covers the stated scenarios without inventing adjacent ones. Newer tiers enlarge test scope unprompted, and an over-broad test suite is itself a slop generator — phase 3 then implements behaviour nobody specified. Do not 'upgrade' this to follow the other four phases without re-measuring scope creep."
   },
   "orchestrator": {
-    "opencode": "litellm/vn-spec"
+    "opencode": "xai/grok-4.7"
   },
+  "opencode_variant": "xhigh",
   "agents": {
     "spec-author": {
       "claude": "opus",
-      "cursor": "cursor-grok-4.6-xhigh",
-      "opencode": "litellm/vn-spec",
+      "cursor": "cursor-grok-4.7-xhigh",
+      "opencode": "xai/grok-4.7",
       "readonly": false,
       "phase": 1
     },
     "test-author": {
       "claude": "claude-opus-4-8",
-      "cursor": "cursor-grok-4.6-xhigh",
-      "opencode": "litellm/vn-test",
+      "cursor": "cursor-grok-4.7-xhigh",
+      "opencode": "xai/grok-4.7",
       "readonly": false,
       "phase": 2
     },
     "coder": {
       "claude": "opus",
-      "cursor": "cursor-grok-4.6-xhigh",
-      "opencode": "litellm/vn-coding",
+      "cursor": "cursor-grok-4.7-xhigh",
+      "opencode": "xai/grok-4.7",
       "readonly": false,
       "phase": 3
     },
     "reviewer": {
       "claude": "opus",
-      "cursor": "cursor-grok-4.6-xhigh",
-      "opencode": "litellm/vn-review",
+      "cursor": "cursor-grok-4.7-xhigh",
+      "opencode": "xai/grok-4.7",
       "readonly": true,
       "phase": 4
     },
     "verifier": {
       "claude": "opus",
-      "cursor": "cursor-grok-4.6-xhigh",
-      "opencode": "litellm/vn-verify",
+      "cursor": "cursor-grok-4.7-xhigh",
+      "opencode": "xai/grok-4.7",
       "readonly": true,
       "phase": 5
     }

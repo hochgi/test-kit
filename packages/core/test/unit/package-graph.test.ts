@@ -15,8 +15,8 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..', '..');
 const packagesDir = path.join(repoRoot, 'packages');
 
-const CORE = '@vnatures/test-kit';
-const SIBLINGS = ['@vnatures/test-kit-sql', '@vnatures/test-kit-pglite-driver'] as const;
+const CORE = '@hochgi/test-kit';
+const SIBLINGS = ['@hochgi/test-kit-sql', '@hochgi/test-kit-pglite-driver'] as const;
 
 /** The 11 packages the delta names as consumers of core. */
 const CORE_CONSUMERS = [
@@ -56,12 +56,10 @@ const dirs = packageDirs();
 const manifests = new Map(dirs.map((dir) => [dir, manifest(dir)] as const));
 
 /**
- * The semantic guarantee is the MAJOR digit, not the exact patch. `vn-ci/init`
- * bumps the patch from the manifest on every merge to main
- * (`NEW_VERSION=$1.$2.($3+1)`, then commits "chore: bump version to vX [skip ci]"),
- * so the first published 2.x is 2.0.1 and main's manifests move on from there.
- * Asserting an exact "2.0.0" here would turn main red on the very next commit
- * while proving nothing extra: what stops a consumer on ^1.x auto-pulling the
+ * The semantic guarantee is the MAJOR digit, not the exact patch. Each package
+ * bumps its own patch independently in the PR that changes it, so the
+ * manifests drift apart within 2.x. Asserting an exact "2.0.0" here would turn
+ * main red on the next release while proving nothing extra: what stops a consumer on ^1.x auto-pulling the
  * rename is major 2, and what satisfies the siblings' ^2.0.0 peer range is any
  * 2.x. So pin the major and require a valid semver, not a frozen string.
  */
@@ -83,11 +81,11 @@ describe('Scenario: all manifests are on major 2', () => {
 });
 
 describe('Scenario: core is a peer, never a direct dependency', () => {
-    it.each(dirs)('packages/%s does not declare @vnatures/test-kit in dependencies', (dir) => {
+    it.each(dirs)('packages/%s does not declare @hochgi/test-kit in dependencies', (dir) => {
         expect(Object.keys(manifests.get(dir)?.dependencies ?? {})).not.toContain(CORE);
     });
 
-    it.each(CORE_CONSUMERS)('packages/%s declares @vnatures/test-kit in peerDependencies at ^2.0.0', (dir) => {
+    it.each(CORE_CONSUMERS)('packages/%s declares @hochgi/test-kit in peerDependencies at ^2.0.0', (dir) => {
         expect(manifests.get(dir)?.peerDependencies?.[CORE]).toBe('^2.0.0');
     });
 
@@ -96,7 +94,7 @@ describe('Scenario: core is a peer, never a direct dependency', () => {
         expect(peers).toEqual([...CORE_CONSUMERS].sort());
     });
 
-    it('pglite-driver declares @vnatures/test-kit nowhere', () => {
+    it('pglite-driver declares @hochgi/test-kit nowhere', () => {
         const pglite = manifests.get('pglite-driver');
         expect(pglite?.dependencies?.[CORE]).toBeUndefined();
         expect(pglite?.peerDependencies?.[CORE]).toBeUndefined();
@@ -105,7 +103,7 @@ describe('Scenario: core is a peer, never a direct dependency', () => {
 });
 
 describe('Scenario: internal sibling ranges admit 2.0.0', () => {
-    it('every @vnatures/test-kit-sql / @vnatures/test-kit-pglite-driver range is ^2.0.0', () => {
+    it('every @hochgi/test-kit-sql / @hochgi/test-kit-pglite-driver range is ^2.0.0', () => {
         const offenders: string[] = [];
         for (const dir of dirs) {
             const parsed = manifests.get(dir);

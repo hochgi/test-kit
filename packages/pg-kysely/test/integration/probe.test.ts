@@ -10,8 +10,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { ColumnType, JSONColumnType, Kysely } from 'kysely';
 import { sql } from 'kysely';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@hochgi/test-kit-pg-kysely';
 
 interface OrderTable {
     id: number;

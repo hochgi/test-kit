@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, /^@aws-sdk\//, 'mock-aws-s3-v3'],
+            external: [/^node:/, /^@hochgi\//, /^@aws-sdk\//, 'mock-aws-s3-v3'],
         },
         sourcemap: true,
         minify: false,

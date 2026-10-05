@@ -20,14 +20,14 @@
  *   pendingCount()                    → (dropped)
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, milliseconds, type Rig, type ProbeRoot } from '@vnatures/test-kit';
+import { createRig, milliseconds, type Rig, type ProbeRoot } from '@hochgi/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
     type QueryPendingCall,
     type QueryProbe,
     type SqlDriver,
-} from '@vnatures/test-kit-sql';
+} from '@hochgi/test-kit-sql';
 
 const selectUsers: QueryCall = { sql: 'SELECT * FROM users', parameters: [] };
 const insertOrder: QueryCall = {

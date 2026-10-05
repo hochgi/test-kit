@@ -1,4 +1,0 @@
-{
-  "//": "Policy: bots this repo wants reviewed. Not capability. See .cursor/skills/summon-review-panel/SKILL.md",
-  "wanted": ["copilot", "bugbot"]
-}

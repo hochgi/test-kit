@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, /^testcontainers/, /^@testcontainers\//, 'mysql2', 'mysql2/promise'],
+            external: [/^node:/, /^@hochgi\//, /^testcontainers/, /^@testcontainers\//, 'mysql2', 'mysql2/promise'],
         },
         sourcemap: true,
         minify: false,

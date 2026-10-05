@@ -21,8 +21,10 @@ Folded from the RD-24169 delta, preserved at
 Folded from the P08 delta (RD-24149), preserved at
 `docs/internal/archive/2026-09-10-P08-add-adapter-steering/delta.md`.
 
-Folded from the P11 delta (RD-24152), preserved at
-`docs/internal/archive/2026-09-10-P11-summon-review-panel/delta.md`.
+The P11 delta (RD-24152, `summon-review-panel`) is preserved at
+`docs/internal/archive/2026-09-10-P11-summon-review-panel/delta.md`; its
+requirements were removed when the repository went public, because the review
+panel assumed one organization's bot seats.
 
 Folded from the P09 delta (RD-24150), preserved at
 `docs/internal/archive/2026-09-10-P09-blinker-ratchet/delta.md`.
@@ -190,7 +192,7 @@ which already allows `question`).
 `.cursor/skills/` SHALL contain a `SKILL.md` in each of these
 directories: `engineering-principles`, `regression-dog`,
 `pr-review-style`, `hotspot-expansion-review`, `mutation-testing`,
-`component-testing`, `add-adapter`, and `summon-review-panel`, and in
+`component-testing`, and `add-adapter`, and in
 each of these phase-skill directories:
 `spec-to-ship`, `write-spec`, `write-failing-tests`, `code-to-green`,
 `review-changes`, `verify-changes`.
@@ -202,14 +204,14 @@ It SHALL NOT contain skill directories named `slack-driven-sessions`,
 Donor service names SHALL NOT leak into the ported skills: none of
 `engineering-principles`, `regression-dog`, `pr-review-style`,
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
-`@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
+`pnpm verify` or `lefthook`.
 
-#### Scenario: eight support skills are present
+#### Scenario: seven support skills are present
 - **WHEN** `.cursor/skills/` is listed
 - **THEN** it contains directories named `engineering-principles`,
   `regression-dog`, `pr-review-style`, `hotspot-expansion-review`,
-  `mutation-testing`, `component-testing`, `add-adapter`, and
-  `summon-review-panel`, each with a `SKILL.md`
+  `mutation-testing`, `component-testing`, and `add-adapter`, each with a
+  `SKILL.md`
 
 #### Scenario: six phase skills are present
 - **WHEN** `.cursor/skills/` is listed
@@ -226,12 +228,11 @@ Donor service names SHALL NOT leak into the ported skills: none of
 #### Scenario: ported support skills do not name donor service machinery
 - **WHEN** the five newly ported support `SKILL.md` files other than
   `component-testing` are read
-- **THEN** none of them contains `@cycle-processing/contracts`,
-  `pnpm verify`, or `lefthook`
+- **THEN** none of them contains `pnpm verify` or `lefthook`
 
 ### Requirement: add-adapter skill is the in-repo extender contract
 `.cursor/skills/add-adapter/SKILL.md` SHALL exist. It is the in-repo
-authoring guide that cycle-processing's `extend-test-kit` lacked: the
+authoring guide that the donor repository's `extend-test-kit` lacked: the
 seven-step walkthrough from `docs/architecture.md` ("Adding a New Domain
 Package: Walkthrough") plus `examples/grpc-client` as the extender
 contract guard.
@@ -239,8 +240,8 @@ contract guard.
 The skill SHALL tell the agent to inventory current coverage from
 `packages/` rather than from a hardcoded missing list. It SHALL contain
 `npm` and `workspaces`. It SHALL NOT contain `pnpm workspaces`,
-`pnpm link`, `Missing (author these)`, or
-`/Users/giladhoch/dev/test-kit`.
+`pnpm link`, `Missing (author these)`, or a hardcoded `/Users/`
+checkout path.
 
 The skill SHALL name these decision topics so the command can ask them
 without rediscovering the tree:
@@ -259,7 +260,7 @@ without rediscovering the tree:
 - SQL family via the `SqlDriver` seam in `packages/sql`, versus
   standalone
 - factory naming `createProbed` and package naming
-  `@vnatures/test-kit-`
+  `@hochgi/test-kit-`
 
 The skill SHALL include a packet skeleton for `docs/internal/packets/PNN-*.md`
 that contains `Depends on:`, a Goldilocks ruling, adapter category,
@@ -277,7 +278,7 @@ a spec (behaviour).
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
 - **THEN** it contains `npm` and `workspaces` and `packages/`, and it
   does not contain `pnpm workspaces`, `pnpm link`,
-  `Missing (author these)`, or `/Users/giladhoch/dev/test-kit`
+  `Missing (author these)`, or a hardcoded `/Users/` checkout path
 
 #### Scenario: skill teaches the seven-step walkthrough and contract guard
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
@@ -293,178 +294,13 @@ a spec (behaviour).
   `function boundary`, `PGlite`, `testcontainers`,
   `@testcontainers/mysql`, `ProbedResource`, `reset`, `close`,
   `probe.always().forward()`, `park`, `strictly optional`,
-  `SqlDriver`, `createProbed`, and `@vnatures/test-kit-`
+  `SqlDriver`, `createProbed`, and `@hochgi/test-kit-`
 
 #### Scenario: skill packet skeleton owns scope not behaviour
 - **WHEN** `.cursor/skills/add-adapter/SKILL.md` is read
 - **THEN** it contains `docs/internal/packets/`, `Depends on:`,
   `Goldilocks`, `40`, and states that the packet owns scope and the spec
   owns behaviour
-
-### Requirement: summon-review-panel skill summons the policy/capability intersection
-`.cursor/skills/summon-review-panel/SKILL.md` SHALL exist. It is the
-skill that summons the review panel on an open PR.
-
-**Policy** is what this repository wants reviewed. It is committed at
-`.harness/review-panel.json`. **Capability** is what the current
-account can actually reach. Capability SHALL NOT be committed.
-
-The skill SHALL summon the intersection: each bot in the policy that the
-current account can invoke. For each policy bot it cannot invoke, it
-SHALL state a gap that names the bot and that capability is missing
-(no seat, unreachable). It SHALL NOT treat an unticked or omitted bot as
-the same signal as a missing seat.
-
-Known bot ids SHALL be exactly `copilot`, `bugbot`, and `baz`.
-
-The skill SHALL summon those ids as:
-
-- `copilot` — add `copilot` as a reviewer on the PR
-- `bugbot` — comment `@cursor review` on the PR (that trigger string is
-  the comment body; it SHALL NOT require the `🤖:` prefix used for
-  review replies)
-- `baz` — org-automatic if present; the skill SHALL NOT add Baz config,
-  `CODEOWNERS`, or anything under `.github/`
-
-The skill SHALL state that this does **not** contradict `no GitHub
-Actions`: Copilot-as-reviewer and `@cursor review` are per-PR actions
-needing zero CI.
-
-Findings SHALL hand off to `pr-review-style`. The skill SHALL NOT
-instruct triaging, applying, or rejecting review comments. It SHALL be
-invokable after a later push without running triage.
-
-There SHALL NOT be a `.claude/commands/summon-review-panel.md`. This
-packet SHALL NOT add a sixth pipeline agent.
-
-#### Scenario: summon-review-panel skill exists under the Cursor canonical tree
-- **WHEN** `.cursor/skills/summon-review-panel/` is listed
-- **THEN** it contains `SKILL.md`
-
-#### Scenario: skill separates policy from capability
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `policy`, `capability`, and
-  `.harness/review-panel.json`
-
-#### Scenario: skill summons copilot as a reviewer and comments @cursor review
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `copilot` as a reviewer and contains
-  `@cursor review`
-
-#### Scenario: skill names baz and does not add GitHub Actions or Baz config
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `baz`, contains `no GitHub Actions`, and does
-  not contain `.github/workflows`
-
-#### Scenario: skill hands findings to pr-review-style
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `pr-review-style` and does not contain
-  `Each finding is either actionable or noise`
-
-#### Scenario: skill can be re-run without triage
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it states that summoning can run again after a push without
-  running triage
-
-#### Scenario: no summon-review-panel command
-- **WHEN** `.claude/commands/` is listed
-- **THEN** it does not contain `summon-review-panel.md`
-
-### Requirement: first-run records policy; later runs re-prompt only on failure
-When `.harness/review-panel.json` is absent, the skill SHALL ask via
-`AskUserQuestion` multi-select which of the known bot ids this
-repository wants, write that answer as the `wanted` array in
-`.harness/review-panel.json`, and SHALL NOT ask again on a later run
-while that file exists.
-
-After recording (or when the file already exists), the skill SHALL
-summon the intersection.
-
-When a summon fails, or a declared bot has gone unreachable, the skill
-SHALL re-prompt via `AskUserQuestion` for this run. It SHALL NOT edit
-`.harness/review-panel.json` to drop that bot: that would conflate
-policy with capability. Changing `wanted` is an explicit committed edit.
-
-#### Scenario: skill bootstraps missing policy via AskUserQuestion
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `AskUserQuestion`, `multi-select`, and
-  `review-panel.json`
-
-#### Scenario: later runs use recorded policy without asking
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it states that a later run does not ask while
-  `review-panel.json` exists
-
-#### Scenario: skill states a capability gap without editing policy
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `policy wants` and `seat`, and it does not
-  instruct removing a bot from `wanted` because a summon failed
-
-#### Scenario: skill re-prompts when a summon fails or a bot is unreachable
-- **WHEN** `.cursor/skills/summon-review-panel/SKILL.md` is read
-- **THEN** it contains `AskUserQuestion` and `unreachable`
-
-### Requirement: review-panel.json is committed policy without capability
-The tracked file `.harness/review-panel.json` SHALL exist alongside
-`.harness/models.json`. It SHALL be a JSON object with a `wanted` array
-of bot id strings. Every entry SHALL be one of `copilot`, `bugbot`,
-`baz`. This repository's committed `wanted` SHALL include `copilot`
-and `bugbot`.
-
-The object SHALL NOT contain a `capability` or `seats` key.
-
-A `//` documentation key MAY exist. If present, it SHALL mention
-`policy`.
-
-#### Scenario: review-panel.json exists alongside models.json
-- **WHEN** `.harness/` is listed
-- **THEN** it contains `review-panel.json` and `models.json`
-
-#### Scenario: review-panel.json wanted lists copilot and bugbot and no capability key
-- **WHEN** `.harness/review-panel.json` is parsed
-- **THEN** `wanted` is an array that includes `copilot` and `bugbot`,
-  every entry is one of `copilot`, `bugbot`, or `baz`, and the object
-  has no `capability` or `seats` key
-
-### Requirement: spec-to-ship PR loop names summon-review-panel
-`.claude/commands/spec-to-ship.md` and
-`.cursor/skills/spec-to-ship/SKILL.md` SHALL name `summon-review-panel`
-as the way to summon review bots after a PR is opened and after a later
-push. They SHALL NOT inline the Copilot-reviewer or `@cursor review`
-recipe in the PR loop.
-
-#### Scenario: spec-to-ship command names summon-review-panel
-- **WHEN** `.claude/commands/spec-to-ship.md` is read
-- **THEN** it contains `summon-review-panel`
-
-#### Scenario: spec-to-ship skill names summon-review-panel
-- **WHEN** `.cursor/skills/spec-to-ship/SKILL.md` is read
-- **THEN** it contains `summon-review-panel`
-
-### Requirement: pr-review-style defers summoning to summon-review-panel
-`.cursor/skills/pr-review-style/SKILL.md` SHALL name
-`summon-review-panel` as the skill that assembles the panel. It SHALL
-NOT contain the heading `Assembling the review panel`. Triage of
-findings that have already landed stays in `pr-review-style`. GitHub-facing
-comments SHALL use the `🤖:` prefix except the Bugbot trigger that
-`summon-review-panel` posts (`@cursor review` as the whole body).
-
-#### Scenario: pr-review-style names summon-review-panel and does not assemble the panel
-- **WHEN** `.cursor/skills/pr-review-style/SKILL.md` is read
-- **THEN** it contains `summon-review-panel` and `@cursor review` and does
-  not contain `Assembling the review panel`
-
-### Requirement: OSS.md tracks versatile-internal harness pieces
-`docs/internal/OSS.md` SHALL exist. It SHALL name
-`summon-review-panel` and `.harness/review-panel.json` as
-`versatile-internal`. It SHALL name the LiteLLM role aliases in
-`.harness/models.json` (`litellm/vn-`) as `versatile-internal`. It SHALL
-NOT introduce a skill-frontmatter marking convention.
-
-#### Scenario: OSS.md tracks summon-review-panel as versatile-internal
-- **WHEN** `docs/internal/OSS.md` is read
-- **THEN** it contains `summon-review-panel`, `litellm`, and
-  `versatile-internal`
 
 ### Requirement: component-testing teaches this repo's current API in Vitest
 `.cursor/skills/component-testing/SKILL.md` SHALL be written for this
@@ -564,7 +400,7 @@ or `expect.none()` with no second-argument options object.
 not only in prose:
 
 - `observation(` wrapping a selection passed to `rig.expect.sequence`,
-  imported from `@vnatures/test-kit`
+  imported from `@hochgi/test-kit`
 - `rig.expect.allOf(`
 - `drain(`, `drainAndReject(`, and `drainAndForward(`
 - `expect.calledTimes(`, `expect.neverCalled(`, and `expect.called(`
@@ -590,7 +426,7 @@ inherit `filter()`.
 - **WHEN** fenced `typescript` or `ts` blocks in
   `.cursor/skills/component-testing/SKILL.md` are read
 - **THEN** at least one block contains `observation(` and
-  `rig.expect.sequence`, and the file contains `from '@vnatures/test-kit'`
+  `rig.expect.sequence`, and the file contains `from '@hochgi/test-kit'`
   together with `observation`
 
 #### Scenario: allOf is demonstrated
@@ -681,8 +517,7 @@ that a zero-mutant report is a failure. It SHALL name
 and tell phase 5 to hand-apply survivors before treating them as missing
 tests. It SHALL name [stryker-js#6183](https://github.com/stryker-mutator/stryker-js/issues/6183)
 and tell the agent to treat a zero-mutant success as that failure mode.
-It SHALL NOT mention `@cycle-processing/contracts`, `pnpm verify`,
-`lefthook`, or `pnpm crap`. Canonical path remains `.cursor/skills/`;
+It SHALL NOT mention `pnpm verify`, `lefthook`, or `pnpm crap`. Canonical path remains `.cursor/skills/`;
 `sync-agent-skills` must run after the edit.
 
 #### Scenario: mutation-testing instructs the current Stryker how-to
@@ -696,8 +531,7 @@ It SHALL NOT mention `@cycle-processing/contracts`, `pnpm verify`,
 
 #### Scenario: mutation-testing does not import donor service machinery
 - **WHEN** `.cursor/skills/mutation-testing/SKILL.md` is read
-- **THEN** it does not contain `pnpm crap`, `pnpm verify`, `lefthook`,
-  or `@cycle-processing/contracts`
+- **THEN** it does not contain `pnpm crap`, `pnpm verify`, or `lefthook`
 
 ### Requirement: Glob-scoped blinkers live under .cursor/rules
 `.cursor/rules/` SHALL contain these Cursor `.mdc` files:
@@ -787,7 +621,7 @@ instruct running `test:mutation`, `stryker run`, or `pnpm crap`.
 `.claude/agents/reviewer.md` SHALL name `review-changes` and
 `pr-review-style`, and SHALL NOT instruct running `test:mutation`,
 `stryker run`, or `pnpm crap`.
-`.claude/agents/verifier.md` SHALL name `verify-changes` and `RD-24153`,
+`.claude/agents/verifier.md` SHALL name `verify-changes` and `mutation-testing`,
 and SHALL NOT contain the phrase `no mutation testing`. It SHALL tell
 the verifier to run the mutation and CRAP scripts named in
 `verify-changes`. `.cursor/skills/verify-changes/SKILL.md` SHALL tell
@@ -812,9 +646,9 @@ a zero-mutant Stryker success is a defect.
 - **WHEN** `.claude/agents/reviewer.md` is read
 - **THEN** it contains `pr-review-style`
 
-#### Scenario: verifier agent names RD-24153 and does not claim the gate is missing
+#### Scenario: verifier agent names mutation-testing and does not claim the gate is missing
 - **WHEN** `.claude/agents/verifier.md` is read
-- **THEN** it contains `verify-changes` and `RD-24153`, and does not
+- **THEN** it contains `verify-changes` and `mutation-testing`, and does not
   contain the phrase `no mutation testing`
 
 #### Scenario: verify-changes runs the coverage-quality scripts
@@ -900,7 +734,7 @@ as names for the successful settlement verb.
 
 `CONTEXT.md` SHALL NOT ban the word `digest`. This repository's
 `write-spec` skill does not list digest as vocabulary; importing
-reports_service's ban would invent a contradiction that is not present
+a donor glossary's ban would invent a contradiction that is not present
 here.
 
 `CONTEXT.md` SHALL NOT present `createHarness` as a current factory.
@@ -933,7 +767,7 @@ Repository-root `AGENTS.md` SHALL exist. It SHALL be tool-agnostic
 headings for: what the repo is, layout, commands, blinkers, testing,
 workflow, and model targeting.
 
-It SHALL state that this repository is the `@vnatures/test-kit` npm
+It SHALL state that this repository is the `@hochgi/test-kit` npm
 workspace of published packages.
 
 It SHALL name these layout paths: `packages/`, `examples/`, `docs/`,
@@ -953,9 +787,9 @@ It SHALL state these testing facts:
 - There are no git hooks (no husky, no lefthook).
 - `packages/mysql` needs Docker.
 
-It SHALL state these git conventions: remote `vn` (there is no
-`origin`), base branch `main`, squash-only history, branches
-`RD-NNNNN_slug`, Conventional Commits with a package scope.
+It SHALL state these git conventions: remote `origin`, base branch
+`main`, squash-only history, branches `<type>/<slug>`, Conventional
+Commits with a package scope.
 
 It SHALL name `/spec-to-ship` and the five phases `spec-author`,
 `test-author`, `coder`, `reviewer`, `verifier`. It SHALL name
@@ -964,8 +798,8 @@ before `/spec-to-ship`. It SHALL NOT instruct merging onto `main` or
 moving files into `docs/internal/archive/` while a PR is open.
 
 It SHALL name `.harness/models.json` as the source of per-phase model
-targeting. It SHALL NOT contain `cursor-grok-4.6-xhigh`,
-`claude-opus-4-8`, or `litellm/vn-`.
+targeting. It SHALL NOT contain `cursor-grok-4.7-xhigh`,
+`claude-opus-4-8`, or `xai/`.
 
 It SHALL name `CONTEXT.md`.
 
@@ -994,7 +828,7 @@ as the current S3 backing. It SHALL NOT contain `no Docker needed`.
 
 #### Scenario: AGENTS.md states git conventions
 - **WHEN** `AGENTS.md` is read
-- **THEN** it contains `vn`, `origin`, `main`, `squash`, `RD-`, and
+- **THEN** it contains `origin`, `main`, `squash`, `<type>/<slug>`, and
   `Conventional Commits`
 
 #### Scenario: AGENTS.md summarises spec-to-ship without merging an open PR
@@ -1011,7 +845,7 @@ as the current S3 backing. It SHALL NOT contain `no Docker needed`.
 #### Scenario: AGENTS.md defers model ids to the manifest
 - **WHEN** `AGENTS.md` is read
 - **THEN** it contains `.harness/models.json` and does not contain
-  `cursor-grok-4.6-xhigh`, `claude-opus-4-8`, or `litellm/vn-`
+  `cursor-grok-4.7-xhigh`, `claude-opus-4-8`, or `xai/`
 
 #### Scenario: AGENTS.md points at the glossary and blinkers
 - **WHEN** `AGENTS.md` is read
@@ -1036,8 +870,8 @@ canonical-source table that states:
 
 It SHALL NOT define library domain vocabulary: it SHALL NOT contain
 `createRig`, `createHarness`, `Goldilocks`, `Pending Call`, `once()`,
-or `always()`. It SHALL NOT contain `cursor-grok-4.6-xhigh`,
-`claude-opus-4-8`, or `litellm/vn-`.
+or `always()`. It SHALL NOT contain `cursor-grok-4.7-xhigh`,
+`claude-opus-4-8`, or `xai/`.
 
 #### Scenario: CLAUDE.md exists at the repository root
 - **WHEN** the repository root is listed
@@ -1060,7 +894,7 @@ or `always()`. It SHALL NOT contain `cursor-grok-4.6-xhigh`,
 - **WHEN** `CLAUDE.md` is read
 - **THEN** it does not contain `createRig`, `createHarness`,
   `Goldilocks`, `Pending Call`, `once()`, `always()`,
-  `cursor-grok-4.6-xhigh`, `claude-opus-4-8`, or `litellm/vn-`
+  `cursor-grok-4.7-xhigh`, `claude-opus-4-8`, or `xai/`
 
 ### Requirement: New TypeScript for this capability is on the root test and format paths
 Tests that encode these scenarios SHALL run as part of the root `npm test`
@@ -1156,34 +990,6 @@ sequenceDiagram
   end
 ```
 
-```mermaid
-sequenceDiagram
-  participant Orch as spec-to-ship
-  participant Skill as summon-review-panel
-  participant Policy as review-panel.json
-  participant Human
-  participant GH as GitHub PR
-  participant Style as pr-review-style
-  Orch->>Skill: PR opened or later push
-  alt policy file missing
-    Skill->>Human: AskUserQuestion multi-select
-    Human->>Skill: wanted bot ids
-    Skill->>Policy: write wanted
-  else policy file exists
-    Skill->>Policy: read wanted
-  end
-  loop each wanted bot
-    alt capable
-      Skill->>GH: add copilot / comment @cursor review / note baz
-    else missing seat or unreachable
-      Skill->>Human: state gap#59; AskUserQuestion for this run
-      Note over Policy: do not drop the bot from wanted
-    end
-  end
-  Skill->>Orch: intersection summoned#59; gaps named
-  Orch->>Style: triage findings that landed
-```
-
 ## Decisions (rung recorded)
 
 | Decision | Outcome | Rung |
@@ -1193,10 +999,10 @@ sequenceDiagram
 | Inverse of the existing populated-mirror scenario: perturbing a generated `.cursor/agents` file fails the check | `check-agent-skills` exiting 0 is not proof until the comparison actually runs | Ticket (phase 5 instruction) |
 | Canonical agents/commands stay Claude-shaped (`tools:`, `model:` = claude column); Cursor/OpenCode mirrors are generated | Matches P05 canonical direction | Source (`scripts/agent-sync-lib.sh`) + ticket |
 | Add `**Model selection.**` to the Claude command so Cursor translation injects `generalPurpose` | Donor command translator requires that paragraph; bootstrap Cursor command lacked it | Source (`translate_cursor_command`) + donor precedent |
-| Command still stops on an open PR — no squash-merge, no archive | This repo's merge is a human action via `vn`; donors ff-merge | Ticket comments + source (bootstrap `.cursor/commands/spec-to-ship.md`) |
+| Command still stops on an open PR — no squash-merge, no archive | This repo's merge is a human action on `origin`; donors ff-merge | Ticket comments + source (bootstrap `.cursor/commands/spec-to-ship.md`) |
 | Rewrite `component-testing` for this repo: `createRig` / Vitest / no v1.0.0 pin; keep `harness:` option key | Three defects (consumer-perspective, Jest, removed API). Option key is a deliberate keep | Ticket + source (`core-public-api.md`, `createProbedMock({ harness })`) |
 | Delete the write-failing-tests "ignore this skill" warning once the rewrite is true; lifecycle close is `rig.close()` | Stopgap becomes a lie the moment the skill is current | Ticket |
-| `mutation-testing` is the Stryker how-to for this repository | RD-24153 landed: `vitest.mutation.config.ts` aliases `@vnatures/*` to `src`, `npm test` still uses `dist/` | Spike measurement + ticket |
+| `mutation-testing` is the Stryker how-to for this repository | RD-24153 landed: `vitest.mutation.config.ts` aliases `@hochgi/*` to `src`, `npm test` still uses `dist/` | Spike measurement + ticket |
 | Port blinkers `12`, `13`, `15`, plus adapted ratchet, BSSN, and complexity-budget; re-anchor globs to `packages/**/*.ts` | Ticket named those three as nearly-as-is; coder allocation also names ratchet, BSSN, and the budget. P06's ESLint did not enforce complexity, and there are no git hooks — the budget file must not claim a hook. P09 (RD-24150) then turned the budget numbers on in ESLint as a ratchet (`npm run lint`); the blinker still must not claim a git hook | Ticket + source (`.eslintrc.json`; `ci-gate.md`) + RD-24150 |
 | Call `.cursor/rules/` contents blinkers in agent/skill prose | `Rule` is a published API concept; RD-24143 spent a major version killing the collision | Ticket |
 | Do not port `10-http-boundaries`, hexagonal refactor, `component-testing.mdc`, Slack/post-deploy/help-docs, `extend-test-kit`, `add-module` | Service-shaped; dead in a library monorepo. P08 (RD-24149) then inverted `extend-test-kit` into the in-repo `add-adapter` skill rather than porting it; the donor directory names stay banned | Ticket + RD-24149 |
@@ -1205,15 +1011,14 @@ sequenceDiagram
 | Close the core-public-api known-gap row about `createHarness` in component-testing | This packet owns that rewrite | Source (`core-public-api.md` known gaps) + ticket |
 | No public API / version bump | Harness markdown and repo tests only | Source |
 | Apply the P07 delta to `harness-prose.md`, not a new capability file | P06 deferred these three files from that capability; they are agent-facing prose, not scaffold machinery | Source (`harness-prose.md` out of scope) + ticket |
-| Copy reports_service glossary *shape* (term, definition, `_Avoid_:`), not its content | Donor `CONTEXT.md` is not on `reports_service` default-branch root today; the ticket named the shape | Ticket + sibling lookup (file absent on default branch) |
+| Copy a donor glossary *shape* (term, definition, `_Avoid_:`), not its content | The donor `CONTEXT.md` was not on its default-branch root; the ticket named the shape | Ticket + sibling lookup (file absent on default branch) |
 | Sixteen glossary terms, including Porcelain / Plumbing / Goldilocks boundary | Ticket listed them as taken from `docs/concepts.md`. Those three live in root `README.md` and `component-testing`, not in `concepts.md`. Include them anyway — published usage wins over the ticket's path claim | Ticket + source (`README.md`, `docs/concepts.md` headings) |
-| Do not ban `digest` | This repo's `write-spec` does not list digest; reports_service's ban would invent a contradiction the ticket told us not to import | Source (`.cursor/skills/write-spec/SKILL.md`) + ticket |
+| Do not ban `digest` | This repo's `write-spec` does not list digest; a donor glossary's ban would invent a contradiction the ticket told us not to import | Source (`.cursor/skills/write-spec/SKILL.md`) + ticket |
 | Harness/Rig collision is one sentence plus the P02 ADR path | Ticket required that sentence and named the ADR; the ADR exists at `docs/adr/0001-…` | Ticket + source (ADR file) |
 | Settlement Avoid list bans `return` / `reply` / `respond` | Design Rule 2 already owns that grammar; the glossary must not reintroduce the synonyms | Source (`docs/concepts.md` Design Rules) |
-| AGENTS.md sections are the ticket's list (repo, layout, commands, blinkers, testing, workflow, model targeting) | cycle-processing has no root `AGENTS.md` on default branch; the ticket's heading list is the shape | Ticket + sibling lookup |
+| AGENTS.md sections are the ticket's list (repo, layout, commands, blinkers, testing, workflow, model targeting) | the donor repository has no root `AGENTS.md` on its default branch; the ticket's heading list is the shape | Ticket + sibling lookup |
 | AGENTS.md states `npm run check` exists | Ticket said "no single check script until P00". P00 landed; `package.json` scripts.check is the contract | Source (`package.json`, `ci-gate.md`) |
 | AGENTS.md names mysql + Docker | Ticket forbade the stale "no Docker needed" line because mysql now needs Docker | Ticket + source (`packages/mysql`) |
-| Ignore `vn/cursor/env-setup-agents-md-025f` | Ticket: that draft is wrong on `prettify`, `mock-aws-s3-v3`, and Docker | Ticket |
 | Model ids stay out of AGENTS.md and CLAUDE.md | `harness-scaffold.md` already makes `.harness/models.json` the only targeting table; entrypoints point at it | Source (`harness-scaffold.md`) |
 | CLAUDE.md is `@AGENTS.md` plus Claude inventory plus the canonical-source table | Ticket: thin, nothing about the domain | Ticket + source (`harness-scaffold.md` canonical directions) |
 | Do not map the three root files onto CircleCI `build_workspace` in P07 | `test/` and `docs/` already map; an AGENTS.md-only later PR can still miss CI | Sibling (`ci-gate.md` / P13) — deferred |
@@ -1240,19 +1045,7 @@ sequenceDiagram
 | Factory pattern is `createProbed…` as siblings actually export | Donor said `createProbedMySql*Adapter`; the tree says `createProbedMysqlAdapter`, `createProbedKafkaProducer` | Source (`packages/*/src/factory.ts`) |
 | No sixth pipeline agent; the OpenCode `add-adapter` command keeps `agent: spec-to-ship` | The primary orchestrator already has `question: allow`; the translator hardcodes that agent field | Source (`.opencode/opencode.json`, `translate_opencode_command`) |
 | `/spec-to-ship` names `/add-adapter` but does not absorb its questions | Fills the drawn step 0 without collapsing the phases into one command | Ticket |
-| Cycle-processing's `extend-test-kit` copy is not edited from this repo | Different repo, different allowlists; P07 also stayed in-repo | Source (this repo) + sibling (P07) |
-| Policy vs capability are different files/signals; a checkbox conflates them | Policy is committed `wanted`; capability is runtime; gaps are stated, not stored | Ticket (RD-24152) |
-| `.harness/review-panel.json` with a `wanted` array of known ids | Sits next to `models.json`; no `capability` / `seats` keys | Ticket + source (`.harness/models.json`) |
-| Known ids are `copilot`, `bugbot`, `baz` | Matches the ticket and the inline panel `pr-review-style` already named | Ticket + source (`pr-review-style`) |
-| This repo's committed `wanted` is `copilot` and `bugbot`, not `baz` | Baz org-wide install could not be confirmed (`admin:org` missing); this repo has no `.github/`, no Baz config, no CODEOWNERS | Ticket (open facts) + source (no `.github/`) |
-| First run asks, writes `wanted`, then summons; later runs skip the ask | "Stops asking" is not "stops summoning" | Ticket |
-| Re-prompt on fail/unreachable; do not edit `wanted` to match capability | That edit would recreate the checkbox | Ticket |
-| Skill only — no `/summon-review-panel` command, no sixth agent | Packet is a skill; re-summon by re-reading it; fan-out is existing Cursor→Claude rsync | Ticket (title) + source (`harness-scaffold.md`) |
-| spec-to-ship PR loop names the skill instead of "let the bots run" | Makes summoning part of the harness | Ticket |
-| `pr-review-style` drops `Assembling the review panel` and names this skill | Summoning and triage stay separate | Ticket |
-| Bugbot comment body is exactly `@cursor review`, not `🤖: @cursor review` | Ticket's trigger string; `🤖:` stays the prefix for review replies | Ticket + source (`pr-review-style`) |
-| No GitHub Actions, no CODEOWNERS, no Baz repo config | Per-PR Copilot reviewer and `@cursor review` need zero CI | Ticket + source (no `.github/`) |
-| Track versatile-internal in `docs/internal/OSS.md`, no frontmatter mark | Ticket forbade a marking convention; `docs/internal/` is already the OSS-ignore tree | Ticket |
+| A donor repository's `extend-test-kit` copy is not edited from this repo | Different repo, different allowlists; P07 also stayed in-repo | Source (this repo) + sibling (P07) |
 | Two-document P09 fold | `ci-gate.md` owns `.eslintrc.json` / `npm run lint`; `harness-prose.md` owns `complexity-budget.mdc` and the engineering-principles lint-enforcer claim | User + current-truth ownership (RD-24150) |
 
 ## Out of scope (deferred)
@@ -1261,18 +1054,11 @@ sequenceDiagram
 | --- | --- |
 | Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via tests inside `npm test` |
 | husky / lefthook / `prepare` / `core.hooksPath` | Still no git hooks |
-| Confirming Baz org-wide install on `vnatures`, or Copilot PR-review seats on private repos | Capability stays a runtime gap statement; this repo's committed `wanted` omits `baz` until someone adds it |
-| A `/summon-review-panel` slash command | Re-summon by invoking the skill; no Cursor/Claude/OpenCode command mirror |
-| An unattended PR-watching review orchestrator | Ticket: that agent has nobody to ask; this skill's recorded policy is the file it will need |
-| Installing Baz or changing org seat policy | Out of this repository |
-| GitHub Actions, CODEOWNERS, or Baz repo config | test-kit still has no `.github/` |
-| A skill-frontmatter `oss:` / `versatile-internal` mark | `docs/internal/OSS.md` is the list |
 | Renaming the `harness` option key, `origin: 'harness'`, or `errors.harnessClosed()` texts | Deliberate keeps from RD-24143 |
-| CircleCI path-filter lines for root `CONTEXT.md` / `AGENTS.md` / `CLAUDE.md` | A later PR that touches only those files can skip `build_workspace` |
 | Extending ci-gate's gate-prose scan to root `AGENTS.md` | Gate facts are asserted by AGENTS.md scenarios instead |
 | Adding `CONTEXT.md` to the docs-truth library-docs corpus | Phantom-API scans still skip the glossary |
 | Adding Porcelain / Plumbing / Goldilocks headings to `docs/concepts.md` | `write-spec` still cites those terms as if they lived there |
-| Updating cycle-processing's `extend-test-kit` skill | That copy stays stale (pnpm, hardcoded checkout path, SQS/Kafka/MySQL listed as missing) until a follow-up in that repo |
+| Updating the donor repository's `extend-test-kit` skill | That copy stays stale (pnpm, hardcoded checkout path, SQS/Kafka/MySQL listed as missing) until a follow-up in that repo |
 | Porting a grilling skill into this repo | Novel work still falls back to grilling, and there is no in-repo grilling skill to fall back to |
 | A second phase-0 command if one branch grows past a third of the questions | `/add-adapter` carries both branches until that happens |
 | Changing `translate_opencode_command` to set `agent:` from the command stem | OpenCode `/add-adapter` keeps `agent: spec-to-ship` |
@@ -1291,19 +1077,19 @@ sequenceDiagram
 2. `.claude/commands/spec-to-ship.md` exists, contains `**Model selection.**`, and does not merge or archive on an open PR.
 3. After sync, Cursor agent `readonly` is false/false/false/true/true; OpenCode reviewer and verifier deny edit; OpenCode agents and commands trees are populated.
 4. Editing a generated `.cursor/agents` file makes `check-agent-skills` exit non-zero.
-5. `.cursor/skills/` has the eight support skills (including `add-adapter` and `summon-review-panel`) plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
+5. `.cursor/skills/` has the seven support skills (including `add-adapter`) plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name a donor service / pnpm verify / lefthook.
 6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`, states the two clocks separately, tells Jest consumers to `await jest.advanceTimersByTimeAsync` when continuations must drain, and every `typescript`/`ts` fence that uses `rig` (including CommonMark-indented fences) declares `rig` in the same fence.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
 8. `mutation-testing` is the Stryker how-to: `test:mutation`, `crap:changed`, `vitest.mutation.config.ts`, `dist`, `6192`, `6183`; not donor `pnpm crap` machinery.
 9. `.cursor/rules/` has the six blinker files with the stated globs / alwaysApply, including `packages/` globs on the two architecture blinkers; dropped donor blinkers are absent; complexity-budget names 12 / 4 / 80 / 5 and `npm run lint` and does not claim a hook; agent/skill prose that mentions `.cursor/rules` says blinker.
-10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names `verify-changes` and RD-24153 and runs the mutation/CRAP scripts.
+10. Each canonical agent names its phase skill; coder and reviewer do not run Stryker/CRAP; reviewer names `pr-review-style`; verifier names `verify-changes` and `mutation-testing` and runs the mutation/CRAP scripts.
 11. Empty-canonical skip still holds on fixtures; the live `.claude/agents` and `.claude/commands` trees each contain `*.md`.
 12. Gate-describing markdown under `.cursor/rules/` is in the ci-gate scan.
 13. The component-testing known-gap row is gone from `core-public-api.md`.
 14. Tests for these scenarios run under root `npm test` and are in the root `format:check` glob.
 15. Root `CONTEXT.md` exists; each of the sixteen terms is a heading with `_Avoid_:`; the file has no `typescript`/`ts`/`bash`/`sh` fences, no `npm run`, no `SHALL`, no `TODO`.
 16. Rule vs Blinker vs Design Rules are split in Avoid lists; Harness is the agent pipeline; Rig is the lifecycle owner; the ADR path is present; Settlement bans `return`/`reply`/`respond`; `digest` is not banned; `createHarness` is absent.
-17. Root `AGENTS.md` exists with the seven section themes; names layout paths and `npm run check` / `build` / `test`; states pretest/`dist`, no husky/lefthook, mysql+Docker; states vn/main/squash/`RD-`/Conventional Commits; names spec-to-ship and the five phases without merge/archive-on-open-PR; points at `.harness/models.json` and `CONTEXT.md`; says blinker; contains none of `prettify`, `mock-aws-s3-v3`, `no Docker needed`, or the distinctive model ids.
+17. Root `AGENTS.md` exists with the seven section themes; names layout paths and `npm run check` / `build` / `test`; states pretest/`dist`, no husky/lefthook, mysql+Docker; states origin/main/squash/`<type>/<slug>`/Conventional Commits; names spec-to-ship and the five phases without merge/archive-on-open-PR; points at `.harness/models.json` and `CONTEXT.md`; says blinker; contains none of `prettify`, `mock-aws-s3-v3`, `no Docker needed`, or the distinctive model ids.
 18. Root `CLAUDE.md` exists, includes `@AGENTS.md` first, inventories `.claude/{agents,commands,skills}` and the canonical paths, and contains none of the library-domain strings or distinctive model ids.
 19. Every fenced `expect.exactly(` in the canonical skill includes `within`; at least one call is `expect.exactly(3, { within: … })`; the skill states that `exactly` and `none` require `within` and `atLeast` may omit it.
 20. The skill demonstrates `observation(` inside `rig.expect.sequence`, `rig.expect.allOf(`, `drain(` / `drainAndReject(` / `drainAndForward(`, and `expect.calledTimes(` / `expect.neverCalled(` / `expect.called(`.
@@ -1316,15 +1102,9 @@ sequenceDiagram
 27. That command writes under `docs/internal/packets/` with `Depends on:`, does not write a spec delta, and does not run `/spec-to-ship`.
 28. That command stops without a packet on novel work and names grilling as the fallback.
 29. `.cursor/skills/add-adapter/SKILL.md` exists, contains `npm` / `workspaces` / `packages/`, and contains none of `pnpm workspaces`, `pnpm link`, `Missing (author these)`, or a hardcoded checkout path.
-30. That skill names the architecture walkthrough heading, the seven-step topics, `examples/grpc-client`, and the known question set (Goldilocks trio, three call shapes, four categories, PGlite, testcontainers, `ProbedResource` lifecycle, default-forward vs park, strictly optional sugars, `SqlDriver`, `createProbed`, `@vnatures/test-kit-`).
+30. That skill names the architecture walkthrough heading, the seven-step topics, `examples/grpc-client`, and the known question set (Goldilocks trio, three call shapes, four categories, PGlite, testcontainers, `ProbedResource` lifecycle, default-forward vs park, strictly optional sugars, `SqlDriver`, `createProbed`, `@hochgi/test-kit-`).
 31. That skill's packet skeleton includes `docs/internal/packets/`, `Depends on:`, Goldilocks, and `40`, and states packet-owns-scope / spec-owns-behaviour.
 32. After sync, `.cursor/commands/add-adapter.md` and `.opencode/commands/add-adapter.md` exist; `.opencode/agents/add-adapter.md` does not.
 33. `.claude/commands/spec-to-ship.md`, `.cursor/skills/spec-to-ship/SKILL.md`, `AGENTS.md`, and `CLAUDE.md` each name `add-adapter`.
-34. `.cursor/skills/summon-review-panel/SKILL.md` exists; names policy vs capability and `.harness/review-panel.json`; adds `copilot` as a reviewer and comments `@cursor review`; names `baz` and `no GitHub Actions` and does not contain `.github/workflows`; names `pr-review-style` and does not contain the triage sentence `Each finding is either actionable or noise`; states re-summon after a push without triage.
-35. `.claude/commands/` has no `summon-review-panel.md`.
-36. The skill contains `AskUserQuestion`, `multi-select`, and `review-panel.json`, and states that a later run does not ask while the file exists; it contains `policy wants` and `seat`, does not drop a bot from `wanted` on summon failure, and re-prompts on `unreachable`.
-37. `.harness/review-panel.json` exists; `wanted` includes `copilot` and `bugbot`; every entry is a known id; no `capability` or `seats` key.
-38. `.claude/commands/spec-to-ship.md` and `.cursor/skills/spec-to-ship/SKILL.md` contain `summon-review-panel`.
-39. `.cursor/skills/pr-review-style/SKILL.md` contains `summon-review-panel` and `@cursor review` and does not contain `Assembling the review panel`.
-40. `docs/internal/OSS.md` contains `summon-review-panel`, `litellm`, and `versatile-internal`.
+34–40. Removed when the repository went public: the `summon-review-panel` skill, `.harness/review-panel.json`, and `docs/internal/OSS.md` no longer exist.
 41. `engineering-principles` SKILL.md contains `npm run lint` and `no git hooks`, and contains none of `@typescript-eslint/no-explicit-any` is off, `not an ESLint error`, or `does not currently enforce`.

@@ -91,7 +91,7 @@ as names for the successful settlement verb.
 
 `CONTEXT.md` SHALL NOT ban the word `digest`. This repository's
 `write-spec` skill does not list digest as vocabulary; importing
-reports_service's ban would invent a contradiction that is not present
+a-consumer-service's ban would invent a contradiction that is not present
 here.
 
 `CONTEXT.md` SHALL NOT present `createHarness` as a current factory.
@@ -124,7 +124,7 @@ Repository-root `AGENTS.md` SHALL exist. It SHALL be tool-agnostic
 headings for: what the repo is, layout, commands, blinkers, testing,
 workflow, and model targeting.
 
-It SHALL state that this repository is the `@vnatures/test-kit` npm
+It SHALL state that this repository is the `@hochgi/test-kit` npm
 workspace of published packages.
 
 It SHALL name these layout paths: `packages/`, `examples/`, `docs/`,
@@ -275,12 +275,12 @@ sequenceDiagram
 | Decision | Outcome | Rung |
 | --- | --- | --- |
 | Apply the delta to `harness-prose.md`, not a new capability file | P06 deferred these three files from that capability; they are agent-facing prose, not scaffold machinery | Source (`harness-prose.md` out of scope) + ticket |
-| Copy reports_service glossary *shape* (term, definition, `_Avoid_:`), not its content | Donor `CONTEXT.md` is not on `reports_service` default-branch root today; the ticket named the shape | Ticket + sibling lookup (file absent on default branch) |
+| Copy a-consumer-service glossary *shape* (term, definition, `_Avoid_:`), not its content | Donor `CONTEXT.md` is not on `a-consumer-service` default-branch root today; the ticket named the shape | Ticket + sibling lookup (file absent on default branch) |
 | Sixteen glossary terms, including Porcelain / Plumbing / Goldilocks boundary | Ticket listed them as taken from `docs/concepts.md`. Those three live in root `README.md` and `component-testing`, not in `concepts.md`. Include them anyway — published usage wins over the ticket's path claim | Ticket + source (`README.md`, `docs/concepts.md` headings) |
-| Do not ban `digest` | This repo's `write-spec` does not list digest; reports_service's ban would invent a contradiction the ticket told us not to import | Source (`.cursor/skills/write-spec/SKILL.md`) + ticket |
+| Do not ban `digest` | This repo's `write-spec` does not list digest; a-consumer-service's ban would invent a contradiction the ticket told us not to import | Source (`.cursor/skills/write-spec/SKILL.md`) + ticket |
 | Harness/Rig collision is one sentence plus the P02 ADR path | Ticket required that sentence and named the ADR; the ADR exists at `docs/adr/0001-…` | Ticket + source (ADR file) |
 | Settlement Avoid list bans `return` / `reply` / `respond` | Design Rule 2 already owns that grammar; the glossary must not reintroduce the synonyms | Source (`docs/concepts.md` Design Rules) |
-| AGENTS.md sections are the ticket's list (repo, layout, commands, blinkers, testing, workflow, model targeting) | cycle-processing has no root `AGENTS.md` on default branch; the ticket's heading list is the shape | Ticket + sibling lookup |
+| AGENTS.md sections are the ticket's list (repo, layout, commands, blinkers, testing, workflow, model targeting) | donor-service-repo has no root `AGENTS.md` on default branch; the ticket's heading list is the shape | Ticket + sibling lookup |
 | AGENTS.md states `npm run check` exists | Ticket said "no single check script until P00". P00 landed; `package.json` scripts.check is the contract | Source (`package.json`, `ci-gate.md`) |
 | AGENTS.md names mysql + Docker | Ticket forbade the stale "no Docker needed" line because mysql now needs Docker | Ticket + source (`packages/mysql`) |
 | Ignore `vn/cursor/env-setup-agents-md-025f` | Ticket: that draft is wrong on `prettify`, `mock-aws-s3-v3`, and Docker | Ticket |

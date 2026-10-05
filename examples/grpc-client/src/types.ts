@@ -1,13 +1,13 @@
 /**
  * Worked extender example: a probe-driven gRPC client adapter built on
- * @vnatures/test-kit.
+ * @hochgi/test-kit.
  *
  * Step 1 — define the call shape.
  *
  * A gRPC unary call has a service name, method name, and a request payload.
  * The shape is captured as a plain inspectable object — no SDK references.
  */
-import type { PendingCallBase, Probe, ProbedAdapter, ProbedResource, Selection } from '@vnatures/test-kit';
+import type { PendingCallBase, Probe, ProbedAdapter, ProbedResource, Selection } from '@hochgi/test-kit';
 
 /**
  * One recorded gRPC call.

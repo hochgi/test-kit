@@ -9,8 +9,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Sequelize } from 'sequelize';
 import { QueryTypes } from 'sequelize';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedSequelizeAdapter, type ProbedSequelizeAdapter } from '@vnatures/test-kit-pg-sequelize';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedSequelizeAdapter, type ProbedSequelizeAdapter } from '@hochgi/test-kit-pg-sequelize';
 
 async function bootstrap(sequelize: Sequelize): Promise<void> {
     await sequelize.query(`

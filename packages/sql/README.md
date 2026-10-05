@@ -1,16 +1,16 @@
-# @vnatures/test-kit-sql
+# @hochgi/test-kit-sql
 
 Shared probe surface and `SqlDriver` seam for SQL-family adapters. This
 package is the foundation that the per-ORM packages
-(`@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`,
-`@vnatures/test-kit-pg-sequelize`) plug into.
+(`@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`,
+`@hochgi/test-kit-pg-sequelize`) plug into.
 
 You typically do **not** install this directly. Install the per-ORM
 package matching your database boundary:
 
-- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md)
-- [`@vnatures/test-kit-pg-knex`](../pg-knex/README.md)
-- [`@vnatures/test-kit-pg-sequelize`](../pg-sequelize/README.md)
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md)
+- [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md)
+- [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md)
 
 ## What lives here
 
@@ -32,7 +32,7 @@ To add a new SQL ORM (e.g. Drizzle, TypeORM):
 
 1. Implement a `SqlDriver` for it.
 2. Construct your ORM's adapter atop
-   [`@vnatures/test-kit-pglite-driver`](../pglite-driver/README.md) (or
+   [`@hochgi/test-kit-pglite-driver`](../pglite-driver/README.md) (or
    another Postgres-compatible store).
 3. Wire them with `createProbedSqlAdapter`.
 

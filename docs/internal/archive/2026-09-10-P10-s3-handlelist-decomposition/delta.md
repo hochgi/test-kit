@@ -20,8 +20,8 @@ is `packages/s3/test/integration/list-pagination.test.ts` — this packet
 SHALL NOT edit that file.
 
 **Spec home.** Not `core-public-api.md`: that file is the published
-`@vnatures/test-kit` surface (Rig, peers, major 2) and uses
-`## Known gaps`. This is `@vnatures/test-kit-s3` backing behaviour plus
+`@hochgi/test-kit` surface (Rig, peers, major 2) and uses
+`## Known gaps`. This is `@hochgi/test-kit-s3` backing behaviour plus
 closing a P09 deferral. New capability `s3-backing.md` owns the list
 contract. `ci-gate.md` owns the ratchet disable (it uses
 `## Out of scope (deferred)`).
@@ -160,7 +160,7 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Spec home is `s3-backing.md` + `ci-gate.md`, not `core-public-api.md` | `core-public-api.md` is the published `@vnatures/test-kit` surface and uses `## Known gaps`. This is s3 backing list behaviour (new capability file) plus closing P09's handleList deferral (`ci-gate.md` / `## Out of scope (deferred)`) | Source (`core-public-api.md`, `ci-gate.md`) + user prompt to check |
+| Spec home is `s3-backing.md` + `ci-gate.md`, not `core-public-api.md` | `core-public-api.md` is the published `@hochgi/test-kit` surface and uses `## Known gaps`. This is s3 backing list behaviour (new capability file) plus closing P09's handleList deferral (`ci-gate.md` / `## Out of scope (deferred)`) | Source (`core-public-api.md`, `ci-gate.md`) + user prompt to check |
 | `dispatch` is out of scope | Ticket title, estimate, and decomposition are ListObjectsV2 semantics inside `handleList`. `dispatch` is a command-name switch at complexity 14. Its comment says extract on next touch **of that method**; this packet does not edit `dispatch`. Same-file adjacency is not a touch | Ticket + source |
 | Do not edit `list-pagination.test.ts` | It is the behaviour lock (356 lines over exactly this list). Any edit is a signal the extract changed semantics | Ticket + user |
 | Existing list `it`s are the scenarios; phase 2 writes only the two **new** disable tests | Re-authoring passing list tests would be a green bar for the wrong reason. Duplicating them would also require editing or paralleling the lock file | Ticket + write-failing-tests (red for missing behaviour) |

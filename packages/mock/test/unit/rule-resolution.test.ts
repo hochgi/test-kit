@@ -11,8 +11,8 @@
  * behaviors that emerge from the tiered model.
  */
 import { describe, expect, it } from 'vitest';
-import { milliseconds } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { milliseconds } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Service {
     charge(amount: number): Promise<{ ok: boolean }>;

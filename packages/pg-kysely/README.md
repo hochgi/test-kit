@@ -1,4 +1,4 @@
-# @vnatures/test-kit-pg-kysely
+# @hochgi/test-kit-pg-kysely
 
 PGlite-backed Kysely adapter for component tests. Provides an in-memory
 Postgres instance that boots instantly and resets cheaply — no Docker,
@@ -18,13 +18,13 @@ window functions, and CTEs behave exactly like a real Postgres.
 If your boundary is a different ORM, install the matching package
 instead:
 
-- [`@vnatures/test-kit-pg-knex`](../pg-knex/README.md)
-- [`@vnatures/test-kit-pg-sequelize`](../pg-sequelize/README.md)
+- [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md)
+- [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md)
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-pg-kysely
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-pg-kysely
 ```
 
 If your test runner needs a flag for ESM dynamic imports (Jest), set:
@@ -42,8 +42,8 @@ Vitest handles this transparently.
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedKyselyAdapter } from "@hochgi/test-kit-pg-kysely";
 import { sql } from "kysely";
 
 interface MyDatabase {
@@ -95,7 +95,7 @@ const { adapter, probe, seed, reset, close } =
 - `close()` — disposes Kysely + PGlite. Handled automatically by
   `rig.close()` if attached.
 - `pglite` — the underlying `PgliteHandle` (see
-  `@vnatures/test-kit-pglite-driver`), shared with the probed Kysely.
+  `@hochgi/test-kit-pglite-driver`), shared with the probed Kysely.
   Exposed so consumers can reach the SAME PGlite instance without
   constructing a disconnected listener.
 - `notifications` — narrow LISTEN/NOTIFY façade over that same PGlite
@@ -104,7 +104,7 @@ const { adapter, probe, seed, reset, close } =
 ## Programming queries
 
 ```typescript
-import { milliseconds } from "@vnatures/test-kit";
+import { milliseconds } from "@hochgi/test-kit";
 
 // Reject every query — useful for failure-mode tests.
 db.probe.always().reject(new Error("connection lost"));
@@ -194,9 +194,9 @@ const db = await rig.attach(
 ## Component-test wiring
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedMock } from "@vnatures/test-kit-mock";
-import { createProbedKyselyAdapter } from "@vnatures/test-kit-pg-kysely";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedMock } from "@hochgi/test-kit-mock";
+import { createProbedKyselyAdapter } from "@hochgi/test-kit-pg-kysely";
 import { Test } from "@nestjs/testing";
 
 async function createTestHarness() {
@@ -226,7 +226,7 @@ order is preserved.
 
 ## See also
 
-- [`@vnatures/test-kit-mock`](../mock/README.md) for non-SQL boundaries.
+- [`@hochgi/test-kit-mock`](../mock/README.md) for non-SQL boundaries.
 - [`docs/concepts.md`](../../docs/concepts.md) for the mental model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full
   `QueryProbe` API.

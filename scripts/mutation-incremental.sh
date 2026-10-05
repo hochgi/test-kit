@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Incremental Stryker: mutate each published package whose packages/<name>/src
-# files changed vs merge-base (vn/main, else main). Skip packages with no tests.
+# files changed vs merge-base (origin/main, else main). Skip packages with no tests.
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"

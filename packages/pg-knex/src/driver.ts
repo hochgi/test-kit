@@ -4,8 +4,8 @@ import knex, { type Knex } from 'knex';
 // knex-pglite ships a CJS module with `export = ClientPGLite`. With
 // esModuleInterop:true, the default import IS the class.
 import KnexPGLiteClientImport from 'knex-pglite';
-import type { ProbeRoot } from '@vnatures/test-kit';
-import type { QueryCall, QueryPendingCall } from '@vnatures/test-kit-sql';
+import type { ProbeRoot } from '@hochgi/test-kit';
+import type { QueryCall, QueryPendingCall } from '@hochgi/test-kit-sql';
 
 export const KnexPGLiteClient = KnexPGLiteClientImport;
 

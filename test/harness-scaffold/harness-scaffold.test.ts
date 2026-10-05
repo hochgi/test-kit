@@ -37,11 +37,15 @@ const droppedSurfaces = ['.github/skills', '.agents/skills'] as const;
 const agentOrder = ['spec-author', 'test-author', 'coder', 'reviewer', 'verifier'] as const;
 
 const donorColumns = {
-    'spec-author': { claude: 'opus', cursor: 'cursor-grok-4.6-xhigh', opencode: 'litellm/vn-spec' },
-    'test-author': { claude: 'claude-opus-4-8', cursor: 'cursor-grok-4.6-xhigh', opencode: 'litellm/vn-test' },
-    coder: { claude: 'opus', cursor: 'cursor-grok-4.6-xhigh', opencode: 'litellm/vn-coding' },
-    reviewer: { claude: 'opus', cursor: 'cursor-grok-4.6-xhigh', opencode: 'litellm/vn-review' },
-    verifier: { claude: 'opus', cursor: 'cursor-grok-4.6-xhigh', opencode: 'litellm/vn-verify' },
+    'spec-author': { claude: 'opus', cursor: 'cursor-grok-4.7-xhigh', opencode: 'xai/grok-4.7' },
+    'test-author': {
+        claude: 'claude-opus-4-8',
+        cursor: 'cursor-grok-4.7-xhigh',
+        opencode: 'xai/grok-4.7',
+    },
+    coder: { claude: 'opus', cursor: 'cursor-grok-4.7-xhigh', opencode: 'xai/grok-4.7' },
+    reviewer: { claude: 'opus', cursor: 'cursor-grok-4.7-xhigh', opencode: 'xai/grok-4.7' },
+    verifier: { claude: 'opus', cursor: 'cursor-grok-4.7-xhigh', opencode: 'xai/grok-4.7' },
 } as const;
 
 const donorReadonly = {
@@ -67,7 +71,7 @@ const conventionalPrograms = {
 
 const skillFixtureRelative = 'write-spec/SKILL.md';
 const skillFixtureBody = 'canonical skill body\n';
-const cursorAgentBody = '---\nname: spec-author\nmodel: cursor-grok-4.6-xhigh\n---\n\nCursor bootstrap agent.\n';
+const cursorAgentBody = '---\nname: spec-author\nmodel: cursor-grok-4.7-xhigh\n---\n\nCursor bootstrap agent.\n';
 const cursorCommandBody = '---\ndescription: spec to ship\n---\n\nCursor bootstrap command.\n';
 const claudeAgentBody =
     '---\nname: spec-author\ndescription: Spec author\nmodel: opus\n---\n\nCanonical Claude agent.\n';
@@ -103,6 +107,7 @@ type AgentColumns = {
 type ModelsManifest = {
     agents: Record<(typeof agentOrder)[number], AgentColumns>;
     orchestrator: { opencode: string };
+    opencode_variant: string;
     rationale: Record<string, string>;
 };
 
@@ -160,22 +165,23 @@ function readRootScripts(): Record<string, string> {
 }
 
 function validManifest(): ModelsManifest {
-    const cursor = 'cursor-grok-4.6-xhigh';
+    const cursor = 'cursor-grok-4.7-xhigh';
     return {
         agents: {
-            'spec-author': { claude: 'opus', cursor, opencode: 'litellm/vn-spec', readonly: false, phase: 1 },
+            'spec-author': { claude: 'opus', cursor, opencode: 'gateway/spec', readonly: false, phase: 1 },
             'test-author': {
                 claude: 'claude-opus-4-8',
                 cursor,
-                opencode: 'litellm/vn-test',
+                opencode: 'gateway/test',
                 readonly: false,
                 phase: 2,
             },
-            coder: { claude: 'opus', cursor, opencode: 'litellm/vn-coding', readonly: false, phase: 3 },
-            reviewer: { claude: 'opus', cursor, opencode: 'litellm/vn-review', readonly: true, phase: 4 },
-            verifier: { claude: 'opus', cursor, opencode: 'litellm/vn-verify', readonly: true, phase: 5 },
+            coder: { claude: 'opus', cursor, opencode: 'gateway/coding', readonly: false, phase: 3 },
+            reviewer: { claude: 'opus', cursor, opencode: 'gateway/review', readonly: true, phase: 4 },
+            verifier: { claude: 'opus', cursor, opencode: 'gateway/verify', readonly: true, phase: 5 },
         },
-        orchestrator: { opencode: 'litellm/vn-spec' },
+        orchestrator: { opencode: 'gateway/spec' },
+        opencode_variant: 'xhigh',
         rationale: {
             'test-author.claude': 'Opus 4.8 keeps test scope tight; newer tiers invent adjacent scenarios.',
         },
@@ -184,10 +190,10 @@ function validManifest(): ModelsManifest {
 
 function validOpencodeJson(): Record<string, unknown> {
     return {
-        model: 'litellm/vn-coding',
+        model: 'gateway/coding',
         agent: {
-            build: { model: 'litellm/vn-coding' },
-            'spec-to-ship': { model: 'litellm/vn-spec' },
+            build: { model: 'gateway/coding', variant: 'xhigh' },
+            'spec-to-ship': { model: 'gateway/spec', variant: 'xhigh' },
         },
         skills: {
             paths: ['./.cursor/skills'],
@@ -351,7 +357,7 @@ function applyHarnessTreeMarkers(root: string, options: FixtureOptions): void {
         writeRelativeFile(root, '.harness/fixture', '');
     }
     if (options.corePackageJson === true) {
-        writeRelativeFile(root, 'packages/core/package.json', jsonFile({ name: '@vnatures/test-kit', private: true }));
+        writeRelativeFile(root, 'packages/core/package.json', jsonFile({ name: '@hochgi/test-kit', private: true }));
     }
 }
 
@@ -552,7 +558,8 @@ describe('Model manifest is the single source of per-phase targeting', () => {
         const agents = asRecord(root['agents'], 'agents');
         const orchestrator = asRecord(root['orchestrator'], 'orchestrator');
 
-        expect(orchestrator['opencode'], 'orchestrator.opencode must be litellm/vn-spec').toBe('litellm/vn-spec');
+        expect(orchestrator['opencode'], 'orchestrator.opencode must be xai/grok-4.7').toBe('xai/grok-4.7');
+        expect(root['opencode_variant'], 'opencode_variant must be xhigh').toBe('xhigh');
 
         for (const name of agentOrder) {
             const entry = asRecord(agents[name], `agents['${name}']`);
@@ -560,8 +567,8 @@ describe('Model manifest is the single source of per-phase targeting', () => {
             expect(entry['cursor'], `agents['${name}'].cursor`).toBe(donorColumns[name].cursor);
             expect(entry['opencode'], `agents['${name}'].opencode`).toBe(donorColumns[name].opencode);
             expect(
-                typeof entry['opencode'] === 'string' && entry['opencode'].startsWith('litellm/vn-'),
-                `agents['${name}'].opencode must start with litellm/vn-`,
+                typeof entry['opencode'] === 'string' && /^[a-z0-9][a-z0-9._-]*\/[^\s#]+$/.test(entry['opencode']),
+                `agents['${name}'].opencode must be a <provider>/<model> id`,
             ).toBe(true);
             expect(typeof entry['readonly'] === 'boolean', `agents['${name}'].readonly must be a JSON boolean`).toBe(
                 true,
@@ -758,7 +765,7 @@ describe('Agents and commands generate from Claude when canonical files exist', 
         const commandPath = path.join(root, '.opencode/commands/spec-to-ship.md');
         expect(existsSync(commandPath), 'sync-agent-skills must write .opencode/commands/spec-to-ship.md').toBe(true);
         const trackedCommand = readUtf8(commandPath);
-        const driftedAlias = 'litellm/vn-review-drifted';
+        const driftedAlias = 'gateway/review-drifted';
         expect(
             trackedCommand.includes(driftedAlias),
             'precondition: tracked OpenCode command must not already list the drifted alias',
@@ -990,15 +997,43 @@ describe('OpenCode config tracks the manifest', () => {
         const agent = asRecord(parsed['agent'], 'agent');
         const build = asRecord(agent['build'], 'agent.build');
         const specToShip = asRecord(agent['spec-to-ship'], 'agent["spec-to-ship"]');
-        expect(parsed['model'], 'opencode.json model must be litellm/vn-coding').toBe('litellm/vn-coding');
-        expect(build['model'], 'agent.build.model must be litellm/vn-coding').toBe('litellm/vn-coding');
-        expect(specToShip['model'], 'agent["spec-to-ship"].model must be litellm/vn-spec').toBe('litellm/vn-spec');
+        expect(parsed['model'], 'opencode.json model must be xai/grok-4.7').toBe('xai/grok-4.7');
+        expect(build['model'], 'agent.build.model must be xai/grok-4.7').toBe('xai/grok-4.7');
+        expect(specToShip['model'], 'agent["spec-to-ship"].model must be xai/grok-4.7').toBe('xai/grok-4.7');
+        expect(build['variant'], 'agent.build.variant must be xhigh').toBe('xhigh');
+        expect(specToShip['variant'], 'agent["spec-to-ship"].variant must be xhigh').toBe('xhigh');
+        const provider = asRecord(asRecord(parsed['provider'], 'provider')['xai'], 'provider.xai');
+        const grok = asRecord(asRecord(provider['models'], 'provider.xai.models')['grok-4.7'], 'grok-4.7');
+        expect(Object.keys(asRecord(grok['variants'], 'grok-4.7.variants')), 'grok-4.7 must declare xhigh').toContain(
+            'xhigh',
+        );
+    });
+
+    it('generated OpenCode agents carry the variant', () => {
+        for (const name of agentOrder) {
+            const content = readUtf8(path.join(repoRoot, '.opencode/agents', `${name}.md`));
+            const frontmatter = content.split('---')[1] ?? '';
+            expect(frontmatter, `.opencode/agents/${name}.md model`).toMatch(/^model: xai\/grok-4\.7$/m);
+            expect(frontmatter, `.opencode/agents/${name}.md variant`).toMatch(/^variant: xhigh$/m);
+        }
+    });
+
+    it('opencode.json variant drift fails the check', () => {
+        assertProgramExists('check');
+        const drifted = validOpencodeJson();
+        drifted['agent'] = {
+            build: { model: 'gateway/coding', variant: 'xhigh' },
+            'spec-to-ship': { model: 'gateway/spec', variant: 'high' },
+        };
+        const root = createTempHarnessRepo({ opencode: drifted });
+        const result = runNpm(root, 'check-agent-skills');
+        expect(result.code, 'check-agent-skills must exit non-zero when opencode.json variant drifts').not.toBe(0);
     });
 
     it('opencode.json drift fails the check', () => {
         assertProgramExists('check');
         const drifted = validOpencodeJson();
-        drifted['model'] = 'litellm/vn-spec';
+        drifted['model'] = 'gateway/spec';
         const root = createTempHarnessRepo({ opencode: drifted });
         const result = runNpm(root, 'check-agent-skills');
         expect(result.code, 'check-agent-skills must exit non-zero when opencode.json model drifts').not.toBe(0);
@@ -1024,6 +1059,7 @@ describe('Manifest validation is fail-closed', () => {
                 verifier: base.agents.verifier,
             },
             orchestrator: base.orchestrator,
+            opencode_variant: base.opencode_variant,
             rationale: base.rationale,
         };
         const root = createTempHarnessRepo({ models: manifest });
@@ -1041,6 +1077,23 @@ describe('Manifest validation is fail-closed', () => {
             result.code,
             'check-agent-skills must exit non-zero when coder.claude differs without a rationale entry',
         ).not.toBe(0);
+    });
+
+    it('missing opencode_variant fails validation', () => {
+        assertProgramExists('check');
+        const { opencode_variant: _dropped, ...manifest } = validManifest();
+        const root = createTempHarnessRepo({ models: manifest });
+        const result = runNpm(root, 'check-agent-skills');
+        expect(result.code, 'check-agent-skills must exit non-zero without opencode_variant').not.toBe(0);
+    });
+
+    it('a #variant suffix on an opencode id fails validation', () => {
+        assertProgramExists('check');
+        const manifest = validManifest();
+        manifest.agents.coder = { ...manifest.agents.coder, opencode: 'gateway/coding#xhigh' };
+        const root = createTempHarnessRepo({ models: manifest });
+        const result = runNpm(root, 'check-agent-skills');
+        expect(result.code, 'check-agent-skills must exit non-zero for a #variant opencode id').not.toBe(0);
     });
 
     it('symlink under canonical skills fails the check', () => {

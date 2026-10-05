@@ -1,4 +1,4 @@
-# @vnatures/test-kit-s3
+# @hochgi/test-kit-s3
 
 S3 client and presigner adapters for component tests, with an
 in-memory backing — no disk, no network, no module-global state. The
@@ -24,7 +24,7 @@ wires the real SDK; tests wire the probes via DI.
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-s3
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-s3
 ```
 
 Peer dependencies (consumer must provide): `@aws-sdk/client-s3`.
@@ -37,11 +37,11 @@ package (erased at runtime), so S3-only consumers can omit it; it's marked
 
 ```typescript
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { createRig } from "@vnatures/test-kit";
+import { createRig } from "@hochgi/test-kit";
 import {
     createProbedS3Adapter,
     createProbedPresignerAdapter,
-} from "@vnatures/test-kit-s3";
+} from "@hochgi/test-kit-s3";
 
 const rig = createRig();
 const s3 = rig.attach(

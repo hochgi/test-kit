@@ -9,8 +9,9 @@ const repoRoot = path.join(fileURLToPath(new URL('.', import.meta.url)), '..', '
 const localSettingsPath = path.join(repoRoot, '.claude', 'settings.local.json');
 const launchJsonPath = path.join(repoRoot, '.claude', 'launch.json');
 const gitignorePath = path.join(repoRoot, '.gitignore');
-const circleConfigPath = path.join(repoRoot, '.circleci', 'config.yml');
-const circleCiPath = path.join(repoRoot, '.circleci', 'ci.yml');
+const ciWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
+const releaseWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'release.yml');
+const rootLicensePath = path.join(repoRoot, 'LICENSE');
 const vitestConfigPath = path.join(repoRoot, 'vitest.config.ts');
 const componentTestingSkillPath = path.join(repoRoot, '.cursor', 'skills', 'component-testing', 'SKILL.md');
 
@@ -22,24 +23,6 @@ const harnessMarkdownDirs = [
     '.claude/agents',
     '.claude/skills',
     '.claude/commands',
-] as const;
-
-const workspaceWideSamplePaths = [
-    'package.json',
-    'package-lock.json',
-    '.prettierrc',
-    'tsconfig.json',
-    'tsconfig.base.json',
-    '.eslintrc.json',
-    'vitest.config.ts',
-    'docs/internal/spec/ci-gate.md',
-    '.circleci/ci.yml',
-    '.circleci/config.yml',
-    '.cursor/commands/spec-to-ship.md',
-    '.claude/agents/spec-author.md',
-    '.harness/models.json',
-    '.opencode/opencode.json',
-    'test/ci-gate/ci-gate.test.ts',
 ] as const;
 
 const specToShipSkillPath = path.join(repoRoot, '.cursor', 'skills', 'spec-to-ship', 'SKILL.md');
@@ -62,9 +45,7 @@ const publishedPackages = [
 
 const checkSteps = ['format:check', 'lint', 'typecheck', 'build', 'test'] as const;
 
-const forbiddenPermissionStrings = ['Bash(git push *)', 'Bash(gh pr *)', 'Read(//Users/giladhoch/dev/**)'] as const;
-
-type MappingLine = readonly [regex: string, param: string, value: string];
+const forbiddenPermissionStrings = ['Bash(git push *)', 'Bash(gh pr *)'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -72,6 +53,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readUtf8(filePath: string): string {
     return readFileSync(filePath, 'utf8');
+}
+
+function readRootManifest(): Record<string, unknown> {
+    const parsed: unknown = JSON.parse(readUtf8(path.join(repoRoot, 'package.json')));
+    return isRecord(parsed) ? parsed : {};
 }
 
 function readRootScripts(): Record<string, string> {
@@ -119,48 +105,6 @@ function ignoresEntireClaudeDirectory(pattern: string): boolean {
     );
 }
 
-function parseMappingBlock(configYml: string): MappingLine[] {
-    const lines = configYml.split('\n');
-    let mappingIndent: number | undefined;
-    const entries: MappingLine[] = [];
-    for (const line of lines) {
-        if (mappingIndent === undefined) {
-            const header = line.match(/^(\s*)mapping:\s*\|?\s*$/);
-            if (header?.[1] !== undefined) {
-                mappingIndent = header[1].length;
-            }
-            continue;
-        }
-        if (line.trim() === '') {
-            continue;
-        }
-        const indent = line.match(/^(\s*)/)?.[1]?.length ?? 0;
-        if (indent <= mappingIndent) {
-            break;
-        }
-        const parts = line.trim().split(/\s+/);
-        const regex = parts[0];
-        const param = parts[1];
-        const value = parts.slice(2).join(' ');
-        if (regex === undefined || param === undefined || value === '') {
-            continue;
-        }
-        entries.push([regex, param, value]);
-    }
-    return entries;
-}
-
-function pathMatchesMapping(regex: string, samplePath: string): boolean {
-    return new RegExp(`^${regex}$`).test(samplePath);
-}
-
-function mappingsSetting(mappings: MappingLine[], samplePath: string, param: string, value: string): MappingLine[] {
-    return mappings.filter(
-        ([regex, mappedParam, mappedValue]) =>
-            pathMatchesMapping(regex, samplePath) && mappedParam === param && mappedValue === value,
-    );
-}
-
 function topLevelSection(yaml: string, name: string): string | undefined {
     const lines = yaml.split('\n');
     const start = lines.findIndex((line) => line === `${name}:` || line.startsWith(`${name}: `));
@@ -205,57 +149,21 @@ function namedBlocks(section: string, indent: number): Array<{ name: string; bod
     return blocks;
 }
 
-function declaresBooleanParamDefaultFalse(ciYml: string, param: string): boolean {
-    const parameters = topLevelSection(ciYml, 'parameters');
-    if (parameters === undefined) {
-        return false;
-    }
-    const block = namedBlocks(parameters, 2).find((entry) => entry.name === param);
-    if (block === undefined) {
-        return false;
-    }
-    return /^\s*type:\s*boolean\s*$/m.test(block.body) && /^\s*default:\s*false\s*$/m.test(block.body);
+function workflowTriggers(workflow: string): string[] {
+    return namedBlocks(topLevelSection(workflow, 'on') ?? '', 2).map((block) => block.name);
 }
 
-function workflows(ciYml: string): Array<{ name: string; body: string }> {
-    const section = topLevelSection(ciYml, 'workflows');
-    if (section === undefined) {
-        return [];
-    }
-    return namedBlocks(section, 2);
+function runSteps(workflow: string): string[] {
+    return workflow
+        .split('\n')
+        .map((line) => line.match(/^\s*-?\s*run:\s*(.+?)\s*$/)?.[1])
+        .filter((command): command is string => command !== undefined);
 }
 
-function jobs(ciYml: string): Map<string, string> {
-    const section = topLevelSection(ciYml, 'jobs');
-    const map = new Map<string, string>();
-    if (section === undefined) {
-        return map;
-    }
-    for (const job of namedBlocks(section, 2)) {
-        map.set(job.name, job.body);
-    }
-    return map;
-}
-
-function isGatedOn(workflowBody: string, param: string): boolean {
-    return new RegExp(`pipeline\\.parameters\\.${param}>>`).test(workflowBody);
-}
-
-function referencedJobNames(workflowBody: string): string[] {
-    const names: string[] = [];
-    for (const line of workflowBody.split('\n')) {
-        const match = line.match(/^\s+-\s+(\S+?)(?::\s*)?$/);
-        if (match?.[1] !== undefined) {
-            names.push(match[1]);
-        }
-    }
-    return names;
-}
-
-function workflowAndJobText(ciYml: string, workflowBody: string): string {
-    const jobMap = jobs(ciYml);
-    const referenced = referencedJobNames(workflowBody).map((name) => jobMap.get(name) ?? '');
-    return [workflowBody, ...referenced].join('\n');
+function readPackageManifest(name: string): Record<string, unknown> {
+    const parsed: unknown = JSON.parse(readUtf8(path.join(repoRoot, 'packages', name, 'package.json')));
+    expect(isRecord(parsed), `packages/${name}/package.json must be an object`).toBe(true);
+    return isRecord(parsed) ? parsed : {};
 }
 
 function trackedMarkdownUnder(dirs: readonly string[]): string[] {
@@ -312,23 +220,6 @@ describe('Root check script', () => {
     });
 });
 
-describe('Stale Claude worktree is unregistered', () => {
-    it('gallant-ritchie worktree is absent', () => {
-        const porcelain = execFileSync('git', ['worktree', 'list', '--porcelain'], {
-            cwd: repoRoot,
-            encoding: 'utf8',
-        });
-        const worktreePaths = porcelain
-            .split('\n')
-            .filter((line) => line.startsWith('worktree '))
-            .map((line) => line.slice('worktree '.length));
-        const stale = worktreePaths.filter((worktreePath) =>
-            worktreePath.endsWith('.claude/worktrees/gallant-ritchie-e7507a'),
-        );
-        expect(stale, 'no worktree path may end with .claude/worktrees/gallant-ritchie-e7507a').toEqual([]);
-    });
-});
-
 describe('No cross-repo Claude launch config', () => {
     it('launch.json is absent', () => {
         expect(existsSync(launchJsonPath), '.claude/launch.json must not exist').toBe(false);
@@ -348,16 +239,6 @@ describe('Local Claude settings do not undercut read-only phases', () => {
             (grant) => grant.startsWith('Read(//Users/') && grant.includes('/dev/**'),
         );
         expect(crossRepoHomeRead, 'must not Read(//Users/.../dev/**)').toEqual([]);
-        const raw = readUtf8(localSettingsPath);
-        const corpus = `${raw}\n${JSON.stringify(parsed)}`;
-        const hasCircleCiPoll =
-            grants.some((grant) => /circleci/i.test(grant) && grant.includes('docs/v2-probed-adapters')) ||
-            (/circleci/i.test(corpus) && corpus.includes('docs/v2-probed-adapters'));
-        expect(hasCircleCiPoll, 'must not poll CircleCI for docs/v2-probed-adapters').toBe(false);
-        const hasGitCIntoReports =
-            grants.some((grant) => /git\s+-C\b/.test(grant) && grant.includes('reports_service')) ||
-            (/git\s+-C\b/.test(corpus) && corpus.includes('reports_service'));
-        expect(hasGitCIntoReports, 'must not git -C into reports_service').toBe(false);
     });
 
     it('missing local settings file is allowed', () => {
@@ -393,96 +274,6 @@ describe('gitignore tracks harness, ignores local Claude state', () => {
         ] as const) {
             expect(gitignore.includes(token), `.gitignore must contain ${token}`).toBe(true);
         }
-    });
-});
-
-describe('Workspace-wide path changes run the root check in CI', () => {
-    it('workspace-wide paths are mapped', () => {
-        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
-        for (const samplePath of workspaceWideSamplePaths) {
-            expect(
-                mappingsSetting(mappings, samplePath, 'build_workspace', 'true').length,
-                `${samplePath} must match a mapping that sets build_workspace true`,
-            ).toBeGreaterThan(0);
-        }
-        const rootOnlyNegatives = [
-            ['package.json', 'packages/core/package.json'],
-            ['package-lock.json', 'packages/core/package-lock.json'],
-            ['.prettierrc', 'packages/core/.prettierrc'],
-        ] as const;
-        for (const [rootPath, nestedPath] of rootOnlyNegatives) {
-            const rootMappings = mappingsSetting(mappings, rootPath, 'build_workspace', 'true');
-            expect(rootMappings.length, `root ${rootPath} must have a build_workspace mapping`).toBeGreaterThan(0);
-            for (const [regex] of rootMappings) {
-                expect(
-                    pathMatchesMapping(regex, nestedPath),
-                    `root ${rootPath} mapping ${regex} must not match ${nestedPath}`,
-                ).toBe(false);
-            }
-        }
-        const rootTestMappings = mappingsSetting(mappings, 'test/ci-gate/ci-gate.test.ts', 'build_workspace', 'true');
-        expect(
-            rootTestMappings.length,
-            'repository-root test/ path must have a build_workspace mapping',
-        ).toBeGreaterThan(0);
-        for (const [regex] of rootTestMappings) {
-            expect(
-                pathMatchesMapping(regex, 'packages/core/test/unit/duration.test.ts'),
-                `repository-root test/ mapping ${regex} must not match packages/core/test/unit/duration.test.ts`,
-            ).toBe(false);
-        }
-        expect(
-            mappingsSetting(mappings, 'scripts/crap-report.js', 'build_workspace', 'true').length,
-            'scripts/crap-report.js must match a mapping that sets build_workspace true',
-        ).toBeGreaterThan(0);
-        expect(
-            mappingsSetting(mappings, 'vitest.mutation.config.ts', 'build_workspace', 'true').length,
-            'vitest.mutation.config.ts must match a mapping that sets build_workspace true',
-        ).toBeGreaterThan(0);
-        expect(
-            mappings.filter(([regex]) => pathMatchesMapping(regex, 'vitest.workspace.ts')),
-            'vitest.workspace.ts is not a mapped path',
-        ).toEqual([]);
-    });
-
-    it('workspace-wide workflow runs check', () => {
-        const ciYml = readUtf8(circleCiPath);
-        expect(
-            declaresBooleanParamDefaultFalse(ciYml, 'build_workspace'),
-            'ci.yml must declare build_workspace as boolean default false',
-        ).toBe(true);
-        const gated = workflows(ciYml).filter((workflow) => isGatedOn(workflow.body, 'build_workspace'));
-        expect(gated.length, 'a workflow must be gated on build_workspace').toBeGreaterThan(0);
-        const runsCheck = gated.some((workflow) => workflowAndJobText(ciYml, workflow.body).includes('npm run check'));
-        expect(runsCheck, 'the build_workspace workflow must invoke npm run check').toBe(true);
-    });
-});
-
-describe('grpc-client is a CI-checked extender guard', () => {
-    it('grpc-client path is mapped', () => {
-        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
-        expect(
-            mappingsSetting(mappings, 'examples/grpc-client/src/index.ts', 'build_grpc_client', 'true').length,
-            'a path under examples/grpc-client/ must set build_grpc_client true',
-        ).toBeGreaterThan(0);
-    });
-
-    it('grpc-client workflow lints and tests without publishing', () => {
-        const ciYml = readUtf8(circleCiPath);
-        expect(
-            declaresBooleanParamDefaultFalse(ciYml, 'build_grpc_client'),
-            'ci.yml must declare build_grpc_client as boolean default false',
-        ).toBe(true);
-        const gated = workflows(ciYml).filter((workflow) => isGatedOn(workflow.body, 'build_grpc_client'));
-        expect(gated.length, 'a workflow must be gated on build_grpc_client').toBeGreaterThan(0);
-        const combined = gated.map((workflow) => workflowAndJobText(ciYml, workflow.body)).join('\n');
-        expect(combined.includes('examples/grpc-client'), 'workflow must target examples/grpc-client').toBe(true);
-        expect(/\blint\b/.test(combined), 'grpc-client workflow must run lint').toBe(true);
-        expect(/\btest\b/.test(combined), 'grpc-client workflow must run test').toBe(true);
-        expect(
-            combined.includes('vn-ci/build-publish'),
-            'grpc-client workflow must not invoke vn-ci/build-publish',
-        ).toBe(false);
     });
 });
 
@@ -601,7 +392,7 @@ describe('Vitest projects live in vitest.config.ts', () => {
         );
     });
 
-    it('root scripts and path-filter name vitest.config.ts', () => {
+    it('root scripts name vitest.config.ts', () => {
         const scripts = readRootScripts();
         const lint = scripts['lint'] ?? '';
         const formatCheck = scripts['format:check'] ?? '';
@@ -611,15 +402,6 @@ describe('Vitest projects live in vitest.config.ts', () => {
         expect(formatCheck.includes('vitest.workspace.ts'), 'format:check must not name vitest.workspace.ts').toBe(
             false,
         );
-        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
-        expect(
-            mappingsSetting(mappings, 'vitest.config.ts', 'build_workspace', 'true').length,
-            'path-filtering must map vitest.config.ts onto build_workspace true',
-        ).toBeGreaterThan(0);
-        expect(
-            mappings.filter(([regex]) => pathMatchesMapping(regex, 'vitest.workspace.ts')),
-            'path-filtering must not map vitest.workspace.ts',
-        ).toEqual([]);
     });
 });
 
@@ -638,39 +420,102 @@ describe('Mutation scripts are defined and stay off check', () => {
     });
 });
 
-describe('scripts and mutation configs map to the workspace-wide CI path', () => {
-    it('scripts and mutation configs map to build_workspace', () => {
-        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
-        expect(
-            mappingsSetting(mappings, 'scripts/mutation-package.sh', 'build_workspace', 'true').length,
-            'scripts/** must map onto build_workspace true',
-        ).toBeGreaterThan(0);
-        expect(
-            mappingsSetting(mappings, 'vitest.mutation.config.ts', 'build_workspace', 'true').length,
-            'vitest.mutation.config.ts must map onto build_workspace true',
-        ).toBeGreaterThan(0);
-        const strykerMapped = [
-            'stryker.config.mjs',
-            'stryker.config.js',
-            'stryker.config.ts',
-            'stryker.config.json',
-        ].some((name) => mappingsSetting(mappings, name, 'build_workspace', 'true').length > 0);
-        expect(strykerMapped, 'a Stryker config filename must map onto build_workspace true').toBe(true);
+describe('Pull-request CI runs the whole gate without secrets', () => {
+    it('ci workflow runs on every pull request and on main, with no path filter', () => {
+        const workflow = readUtf8(ciWorkflowPath);
+        expect(workflowTriggers(workflow), 'ci.yml must trigger on pull_request and push').toEqual([
+            'pull_request',
+            'push',
+        ]);
+        expect(/^\s+branches:\s*\[main\]\s*$/m.test(workflow), 'ci.yml push must be limited to main').toBe(true);
+        for (const filter of ['paths:', 'paths-ignore:', 'pull_request_target'] as const) {
+            expect(workflow.includes(filter), `ci.yml must not contain ${filter}`).toBe(false);
+        }
+    });
+
+    it('ci workflow runs npm run check after npm ci', () => {
+        const steps = runSteps(readUtf8(ciWorkflowPath));
+        const install = steps.indexOf('npm ci');
+        const check = steps.indexOf('npm run check');
+        expect(install, 'ci.yml must run npm ci').toBeGreaterThanOrEqual(0);
+        expect(check, 'ci.yml must run npm run check after npm ci').toBeGreaterThan(install);
+    });
+
+    it('ci workflow holds no secrets and only read permission', () => {
+        const workflow = readUtf8(ciWorkflowPath);
+        expect(workflow.includes('secrets.'), 'ci.yml must not reference secrets').toBe(false);
+        expect(workflow.includes('id-token'), 'ci.yml must not request id-token').toBe(false);
+        expect(topLevelSection(workflow, 'permissions')?.trim(), 'ci.yml permissions must be contents: read').toBe(
+            'contents: read',
+        );
+    });
+
+    it('ci workflow tests the minimum Node major from engines', () => {
+        const engines = readRootManifest()['engines'];
+        const node = isRecord(engines) && typeof engines['node'] === 'string' ? engines['node'] : '';
+        const minimum = node.match(/^>=(\d+)$/)?.[1];
+        expect(minimum, 'root engines.node must be >=<major>').toEqual(expect.any(String));
+        const matrix = readUtf8(ciWorkflowPath).match(/^\s+node:\s*\[([^\]]+)\]\s*$/m)?.[1] ?? '';
+        const majors = matrix.split(',').map((entry) => entry.trim());
+        expect(majors, `ci.yml node matrix must include ${minimum ?? '?'}`).toContain(minimum);
+    });
+
+    it('ci workflow dry-runs the release', () => {
+        expect(runSteps(readUtf8(ciWorkflowPath)), 'ci.yml must dry-run the publish script').toContain(
+            'node scripts/publish-unpublished.mjs --dry-run',
+        );
+    });
+
+    it('CircleCI is gone', () => {
+        expect(existsSync(path.join(repoRoot, '.circleci')), '.circleci/ must not exist').toBe(false);
     });
 });
 
-describe('Per-package CircleCI workflows', () => {
-    it('each published package has a path-filter mapping', () => {
-        const mappings = parseMappingBlock(readUtf8(circleConfigPath));
+describe('Releases are manual and isolated', () => {
+    it('release workflow only runs on manual dispatch', () => {
+        expect(workflowTriggers(readUtf8(releaseWorkflowPath)), 'release.yml must trigger only on dispatch').toEqual([
+            'workflow_dispatch',
+        ]);
+    });
+
+    it('release workflow runs the gate before publishing', () => {
+        const steps = runSteps(readUtf8(releaseWorkflowPath));
+        const check = steps.indexOf('npm run check');
+        const publish = steps.indexOf('node scripts/publish-unpublished.mjs');
+        expect(check, 'release.yml must run npm run check').toBeGreaterThanOrEqual(0);
+        expect(publish, 'release.yml must publish after npm run check').toBeGreaterThan(check);
+    });
+
+    it('release workflow uses OIDC in a protected environment and no other secret', () => {
+        const workflow = readUtf8(releaseWorkflowPath);
+        expect(/^\s+id-token:\s*write\s*$/m.test(workflow), 'release.yml must request id-token: write').toBe(true);
+        expect(/^\s+environment:\s*npm\s*$/m.test(workflow), 'release.yml must run in the npm environment').toBe(true);
+        const secrets = [...workflow.matchAll(/secrets\.([A-Z_]+)/g)].map((match) => match[1]);
+        expect([...new Set(secrets)], 'release.yml may only reference secrets.NPM_TOKEN').toEqual(['NPM_TOKEN']);
+    });
+});
+
+describe('Every published package is publicly publishable', () => {
+    it('each package is MIT, public, provenance-signed, and ships the license', () => {
+        const rootLicense = readUtf8(rootLicensePath);
+        expect(rootLicense.startsWith('MIT License'), 'root LICENSE must be the MIT license').toBe(true);
         for (const name of publishedPackages) {
-            const regex = `packages/${name}/.*`;
-            const param = `build_${name.replaceAll('-', '_')}`;
-            const found = mappings.some(
-                ([mappedRegex, mappedParam, mappedValue]) =>
-                    mappedRegex === regex && mappedParam === param && mappedValue === 'true',
-            );
-            expect(found, `mapping must contain ${regex} ${param} true`).toBe(true);
+            const manifest = readPackageManifest(name);
+            expect(manifest['license'], `packages/${name} license`).toBe('MIT');
+            expect(manifest['publishConfig'], `packages/${name} publishConfig`).toEqual({
+                access: 'public',
+                provenance: true,
+            });
+            expect(manifest['files'], `packages/${name} files must include LICENSE`).toContain('LICENSE');
+            expect(
+                readUtf8(path.join(repoRoot, 'packages', name, 'LICENSE')),
+                `packages/${name}/LICENSE must match the root LICENSE`,
+            ).toBe(rootLicense);
         }
+    });
+
+    it('no committed npmrc points the scope at a private registry', () => {
+        expect(existsSync(path.join(repoRoot, '.npmrc')), 'root .npmrc must not exist').toBe(false);
     });
 });
 

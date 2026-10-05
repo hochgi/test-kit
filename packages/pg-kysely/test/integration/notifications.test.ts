@@ -1,7 +1,7 @@
 /**
  * Notification (LISTEN/NOTIFY) capability for the probed Kysely adapter.
  *
- * Consumer pain (cycle-processing `packages/coordination-pg/test/_wakeup-harness.ts`):
+ * Consumer pain (a downstream service's wake-up test rig):
  * a NOTIFY issued through the probed Kysely could not be observed because the
  * adapter did not expose its underlying PGlite instance, and a separately
  * created listener is a different database. These tests prove the probed pair
@@ -20,8 +20,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@vnatures/test-kit-pg-kysely';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedKyselyAdapter, type ProbedKyselyAdapter } from '@hochgi/test-kit-pg-kysely';
 
 interface TestDatabase {
     notes: { id: number; body: string };

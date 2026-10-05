@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Resolve merge-base with vn/main (fallback: main).
+# Resolve merge-base with origin/main (fallback: main).
 # Sourced by mutation-incremental.sh and crap-changed.sh — do not `set -e` here.
 resolve_patch_base() {
-  if git rev-parse --verify --quiet vn/main >/dev/null; then
-    git merge-base vn/main HEAD
+  if git rev-parse --verify --quiet origin/main >/dev/null; then
+    git merge-base origin/main HEAD
   elif git rev-parse --verify --quiet main >/dev/null; then
     git merge-base main HEAD
   else
-    echo "Could not find vn/main or main to diff against." >&2
+    echo "Could not find origin/main or main to diff against." >&2
     return 1
   fi
 }

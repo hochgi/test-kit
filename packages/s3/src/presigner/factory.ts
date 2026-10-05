@@ -9,7 +9,7 @@ import {
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
     type Selection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { RequestPresigningArguments } from '@aws-sdk/types';
 import type {
     PresignCall,

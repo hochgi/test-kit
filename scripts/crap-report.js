@@ -21,7 +21,7 @@
 //   CRAP_FAIL         when "1", exit 1 if any flagged function exceeds a threshold
 //                     (unset by default — not a CI/pre-push gate)
 //   CRAP_FILES        comma/newline list of relative paths to score (optional)
-//   CRAP_PATCH_BASE   git ref to diff against (e.g. merge-base with vn/main). When
+//   CRAP_PATCH_BASE   git ref to diff against (e.g. merge-base with origin/main). When
 //                     set, only functions whose line range overlaps the patch are
 //                     flagged as new violations. Untracked files are treated as
 //                     fully new.

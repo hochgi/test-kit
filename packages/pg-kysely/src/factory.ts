@@ -1,7 +1,7 @@
 import { Kysely } from 'kysely';
-import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
-import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type QueryProbe } from '@vnatures/test-kit-sql';
-import { createPgliteHandle, type PgliteHandle } from '@vnatures/test-kit-pglite-driver';
+import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@hochgi/test-kit';
+import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type QueryProbe } from '@hochgi/test-kit-sql';
+import { createPgliteHandle, type PgliteHandle } from '@hochgi/test-kit-pglite-driver';
 import { ProbedKyselyDialect, createKyselySqlDriver } from './driver.js';
 
 export interface CreateProbedKyselyAdapterOptions<DB> {

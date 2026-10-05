@@ -13,56 +13,56 @@ contracts (function signatures, file layouts, etc.) are described in
 ## Package Graph
 
 ```
-@vnatures/test-kit                   ← probe engine, Clock, Rig, shared types
+@hochgi/test-kit                   ← probe engine, Clock, Rig, shared types
        ▲
        │
-       ├── @vnatures/test-kit-mock                ← createProbedMock + MethodProbe
+       ├── @hochgi/test-kit-mock                ← createProbedMock + MethodProbe
        │
-       ├── @vnatures/test-kit-sql                 ← shared QueryProbe + SqlDriver seam
+       ├── @hochgi/test-kit-sql                 ← shared QueryProbe + SqlDriver seam
        │      ▲
        │      │
-       │      ├── @vnatures/test-kit-pglite-driver  (published helper, shared by pg-*)
+       │      ├── @hochgi/test-kit-pglite-driver  (published helper, shared by pg-*)
        │      │       ▲
        │      │       │
-       │      │       ├── @vnatures/test-kit-pg-kysely     ← KyselySqlDriver + Kysely typing
-       │      │       ├── @vnatures/test-kit-pg-knex       ← KnexSqlDriver + Knex typing
-       │      │       └── @vnatures/test-kit-pg-sequelize  ← SequelizeSqlDriver + Sequelize typing
+       │      │       ├── @hochgi/test-kit-pg-kysely     ← KyselySqlDriver + Kysely typing
+       │      │       ├── @hochgi/test-kit-pg-knex       ← KnexSqlDriver + Knex typing
+       │      │       └── @hochgi/test-kit-pg-sequelize  ← SequelizeSqlDriver + Sequelize typing
        │      │
-       │      ├── @vnatures/test-kit-mysql         ← real MySQL 8 via Testcontainers
+       │      ├── @hochgi/test-kit-mysql         ← real MySQL 8 via Testcontainers
        │      └── (future SQL ORMs slot in here, e.g. drizzle, typeorm)
        │
-       ├── @vnatures/test-kit-redis               ← createProbedCacheAdapter
+       ├── @hochgi/test-kit-redis               ← createProbedCacheAdapter
        │
-       ├── @vnatures/test-kit-bull                ← createProbedBullQueue
+       ├── @hochgi/test-kit-bull                ← createProbedBullQueue
        │
-       ├── @vnatures/test-kit-s3                  ← createProbedS3Adapter + createProbedPresignerAdapter
+       ├── @hochgi/test-kit-s3                  ← createProbedS3Adapter + createProbedPresignerAdapter
        │
-       ├── @vnatures/test-kit-sqs                 ← createProbedSqsAdapter
+       ├── @hochgi/test-kit-sqs                 ← createProbedSqsAdapter
        │
-       └── @vnatures/test-kit-kafka               ← createProbedKafkaProducer
+       └── @hochgi/test-kit-kafka               ← createProbedKafkaProducer
 ```
 
 Two horizontal layers:
 
-- **Core layer** (`@vnatures/test-kit`): generic probe engine, lifecycle,
+- **Core layer** (`@hochgi/test-kit`): generic probe engine, lifecycle,
   time abstraction, shared types. No domain knowledge.
-- **Domain layer** (`@vnatures/test-kit-mock`, `@vnatures/test-kit-sql`,
-  `@vnatures/test-kit-pglite-driver`, `@vnatures/test-kit-pg-kysely`,
-  `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`,
-  `@vnatures/test-kit-mysql`, `@vnatures/test-kit-redis`,
-  `@vnatures/test-kit-bull`, `@vnatures/test-kit-s3`,
-  `@vnatures/test-kit-sqs`, `@vnatures/test-kit-kafka`): per-boundary
+- **Domain layer** (`@hochgi/test-kit-mock`, `@hochgi/test-kit-sql`,
+  `@hochgi/test-kit-pglite-driver`, `@hochgi/test-kit-pg-kysely`,
+  `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`,
+  `@hochgi/test-kit-mysql`, `@hochgi/test-kit-redis`,
+  `@hochgi/test-kit-bull`, `@hochgi/test-kit-s3`,
+  `@hochgi/test-kit-sqs`, `@hochgi/test-kit-kafka`): per-boundary
   packages that wrap the core engine with domain-specific call shapes,
   filter sugars, and adapter factories.
 
-Within the SQL family, a third sub-layer exists: `@vnatures/test-kit-sql`
+Within the SQL family, a third sub-layer exists: `@hochgi/test-kit-sql`
 is a shared *abstraction* that the per-ORM packages plug into via a
 `SqlDriver` interface. This is where the pg-* packages share more than
 just types.
 
 ## What Each Package Owns
 
-### `@vnatures/test-kit` — the probe engine
+### `@hochgi/test-kit` — the probe engine
 
 This package is the single source of truth for everything that is not
 domain-specific. It exports both the public API surface (Probe,
@@ -102,13 +102,13 @@ adapters.
 **What core does NOT contain:**
 
 - No knowledge of any specific boundary (no SQL, no S3, no HTTP).
-- No proxy implementation (that lives in `@vnatures/test-kit-mock`).
+- No proxy implementation (that lives in `@hochgi/test-kit-mock`).
 - No backing implementations (PGlite, ioredis-mock, in-memory S3 live
   in their respective domain packages).
 - No framework integration (Jest matchers, Vitest matchers — these are
   optional add-on packages that may ship later).
 
-### `@vnatures/test-kit-mock` — programmable mock adapters
+### `@hochgi/test-kit-mock` — programmable mock adapters
 
 Owns the proxy-based programmable mock adapter. Imports `core`'s
 internal-facing API to construct the underlying probe.
@@ -138,7 +138,7 @@ stream sibling roughly doubles that, but stays in the same package since
 both serve the same "fake any interface" concern, just for two method
 shapes).
 
-### `@vnatures/test-kit-sql` — shared SQL probe surface and driver seam
+### `@hochgi/test-kit-sql` — shared SQL probe surface and driver seam
 
 This is the abstraction that the three pg-* packages plug into. It owns
 the shared probe API and the `SqlDriver` interface; it does NOT own any
@@ -153,10 +153,10 @@ ORM-specific code or any PGlite startup logic.
   install the default forward rule, and return `{ probe, probeRoot }`.
 - `index.ts`: re-exports.
 
-`@vnatures/test-kit-sql` has no PGlite or ORM dependencies. It's pure types and
+`@hochgi/test-kit-sql` has no PGlite or ORM dependencies. It's pure types and
 glue.
 
-### `@vnatures/test-kit-pglite-driver` — shared PGlite lifecycle helper
+### `@hochgi/test-kit-pglite-driver` — shared PGlite lifecycle helper
 
 A small internal-facing package shared across all pg-* packages. It
 encapsulates:
@@ -172,23 +172,23 @@ It does NOT know anything about Kysely/Knex/Sequelize. Each pg-* package
 plugs its ORM into the PGlite-backed connection and translates the ORM's
 query stream into `QueryCall` shapes for the probe.
 
-This package is published (`@vnatures/test-kit-pglite-driver`) so
+This package is published (`@hochgi/test-kit-pglite-driver`) so
 community ORM packages can reuse the same PGlite lifecycle. Direct
 consumption is still uncommon; pg-* factories are the usual entry.
 
-### `@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`
+### `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`
 
 Each is a thin wrapper that:
 
 1. Builds a `SqlDriver` implementation specific to its ORM.
-2. Constructs the ORM's adapter object atop `@vnatures/test-kit-pglite-driver`'s
+2. Constructs the ORM's adapter object atop `@hochgi/test-kit-pglite-driver`'s
    PGlite connection.
 3. Provides the typed `bootstrap` callback signature, the typed `seed`
    helper, and the typed factory function.
 
 Each package's public API is small: one factory function plus the
 package-specific types. The shared probe behavior comes for free from
-`@vnatures/test-kit-sql`.
+`@hochgi/test-kit-sql`.
 
 **Module layout (per pg-* package):**
 
@@ -199,10 +199,10 @@ package-specific types. The shared probe behavior comes for free from
 - `index.ts`: re-exports.
 
 The total per-package code should be under 500 lines including types.
-Most of the heavy lifting is in `@vnatures/test-kit-sql` and
-`@vnatures/test-kit-pglite-driver`.
+Most of the heavy lifting is in `@hochgi/test-kit-sql` and
+`@hochgi/test-kit-pglite-driver`.
 
-### `@vnatures/test-kit-redis` — cache adapter
+### `@hochgi/test-kit-redis` — cache adapter
 
 Owns the cache boundary and the in-memory Redis-compatible backing
 (`ioredis-mock`).
@@ -217,12 +217,12 @@ Owns the cache boundary and the in-memory Redis-compatible backing
 - `index.ts`: re-exports.
 
 Single-package, single-backing. No abstraction layer like
-`@vnatures/test-kit-sql` because there's only one cache implementation in the
+`@hochgi/test-kit-sql` because there's only one cache implementation in the
 test-kit family today; if a Memcached or other variant is added later,
-introduce a `@vnatures/test-kit-cache` shared abstraction at that point (premature
+introduce a `@hochgi/test-kit-cache` shared abstraction at that point (premature
 to do it now).
 
-### `@vnatures/test-kit-s3` — S3 client and presigner adapters
+### `@hochgi/test-kit-s3` — S3 client and presigner adapters
 
 Owns both the S3Client adapter (in-memory backing) and the
 presigner adapter (no backing).
@@ -242,13 +242,13 @@ Two factories live in one package because they share the `S3Call`
 shape, command type machinery, and AWS SDK type imports. Splitting into
 two packages would duplicate the AWS SDK dep with no real boundary.
 
-`@vnatures/test-kit-http` is not shipped.
+`@hochgi/test-kit-http` is not shipped.
 
 ## The SqlDriver Seam
 
 The single most important "shared more than just types" decision in v2:
 the three pg-* packages share a `SqlDriver` abstraction in
-`@vnatures/test-kit-sql`. This is what lets each ORM package stay under 500
+`@hochgi/test-kit-sql`. This is what lets each ORM package stay under 500
 lines while still benefiting from the full probe-engine machinery.
 
 **SqlDriver interface (sketch — exact shape TBD in tech design):**
@@ -291,7 +291,7 @@ has to:
 1. Translate the ORM's internal query representation to `QueryCall`.
 2. Wire the application-facing query path through `onApplicationQuery`.
 3. Wire the maintenance path (bootstrap, seed, reset) directly to PGlite
-   via `@vnatures/test-kit-pglite-driver`, bypassing the probe.
+   via `@hochgi/test-kit-pglite-driver`, bypassing the probe.
 
 **Why a driver seam (vs. each pg-* package owning its own probe wiring):**
 
@@ -303,7 +303,7 @@ has to:
   abstraction, expose the typed factory.
 - If a behavioral change is needed across all pg-* packages (e.g., a
   bug fix in rule resolution or a new feature like query-timing
-  capture), it lives in `@vnatures/test-kit-sql` and benefits all ORMs at
+  capture), it lives in `@hochgi/test-kit-sql` and benefits all ORMs at
   once.
 
 **Why not a similar abstraction for cache, S3:**
@@ -324,10 +324,10 @@ The TypeScript machinery is non-trivial: `CheckedMethods<T, M>`,
 `SequenceResult<S>`, the conditional-presence of `forward()` on backed
 selections, etc. To keep this manageable:
 
-- **All shared type primitives live in `@vnatures/test-kit`.** Domain
+- **All shared type primitives live in `@hochgi/test-kit`.** Domain
   packages import them; they do not redefine.
 - **Per-domain type narrowing lives in the domain package.** E.g.,
-  `MethodSelection<T, K>` lives in `@vnatures/test-kit-mock`, not in core.
+  `MethodSelection<T, K>` lives in `@hochgi/test-kit-mock`, not in core.
 - **Type-level tests** (using `expect-type`) live in each
   package's `test/types/` folder. These test that the type machinery
   produces the expected diagnostics for both correct and incorrect
@@ -341,7 +341,7 @@ selections, etc. To keep this manageable:
 ### Error messages
 
 Error message formats are specified in `api-surface.md`. They are
-constructed in `@vnatures/test-kit` from templates parameterized by domain-
+constructed in `@hochgi/test-kit` from templates parameterized by domain-
 specific labels:
 
 - The core engine knows how to produce `"Timed out after Xms waiting
@@ -369,7 +369,7 @@ the probe anyway, so this is belt-and-suspenders).
 
 ### Clock integration
 
-The Clock is in `@vnatures/test-kit` and is purely user-facing. Probe
+The Clock is in `@hochgi/test-kit` and is purely user-facing. Probe
 internal timers (waiter deadlines, safety timeout) use `globalThis.setTimeout`
 directly. Domain packages do not need to touch the Clock; they just
 respect the rig-supplied configuration (e.g., the `defaultTimeout`
@@ -393,8 +393,7 @@ test-kit/
 │   ├── architecture.md          (THIS document)
 │   └── internal/
 │       ├── README.md
-│       ├── tech-design.md
-│       └── migration-from-v1.md
+│       └── tech-design.md
 ├── packages/
 │   ├── core/
 │   │   ├── package.json
@@ -519,7 +518,7 @@ test-kit/
 │           └── index.ts
 │
 └── examples/                                 (extender's-guide worked example)
-    └── grpc-client/                         (sample @vnatures/test-kit-grpc-client impl)
+    └── grpc-client/                         (sample @hochgi/test-kit-grpc-client impl)
 ```
 
 ## Build, Test, and Distribution
@@ -594,7 +593,7 @@ Existing v1 setup (eslint + prettier) carried over.
 Shipped 1.x already resolved the implementation-phase questions recorded
 in [`internal/tech-design.md`](internal/tech-design.md): the probe-root
 factory, storage model, published PGlite helper, plain `Error` /
-`RangeError`, and `@vnatures/test-kit-*` package names at 1.x.
+`RangeError`, and `@hochgi/test-kit-*` package names at 1.x.
 
 Items that were decided in this document and remain true:
 
@@ -610,7 +609,7 @@ No further open decisions block adding a domain package.
 ## Adding a New Domain Package: Walkthrough
 
 For the extender's guide (mandated by `api-surface.md`), the
-walkthrough for adding a hypothetical `@vnatures/test-kit-grpc-client` package
+walkthrough for adding a hypothetical `@hochgi/test-kit-grpc-client` package
 looks like:
 
 1. **Define the call shape.** What does a gRPC unary/stream call look
@@ -646,6 +645,6 @@ The total package is expected to be 200-500 lines including types and
 tests. If it grows substantially larger, the implementer is duplicating
 core behavior and should refactor.
 
-A worked `@vnatures/test-kit-grpc-client` example will live in `examples/` and
+A worked `@hochgi/test-kit-grpc-client` example will live in `examples/` and
 must compile and pass tests in CI as a smoke test for the extender
 contract.

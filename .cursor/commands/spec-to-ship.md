@@ -1,14 +1,14 @@
 ---
 description: Orchestrate the full spec→ship pipeline (spec → red tests → green → review → verify), then open a PR and iterate on review feedback.
-argument-hint: <RD-NNNNN, or a path to a packet / spec input>
+argument-hint: <GitHub issue number or URL, or a path to a packet / spec input>
 ---
 
 # /spec-to-ship
 
 Drive a packet all the way to a shippable PR. Phase 1 runs in the **main thread**;
 phases 2–5 are delegated to their dedicated subagents.
-After the five phases, open a PR, run `summon-review-panel` to summon review
-bots, and iterate until every thread is addressed.
+After the five phases, open a PR and iterate on review feedback until every
+thread is addressed.
 **Do not merge, fold, or archive until the PR is merged onto `main`.** Archive is
 a follow-up on updated `main`, owned by this orchestrator after merge — not by
 the verifier, and not by the PR loop.
@@ -18,7 +18,7 @@ to proceed, do not present finished work for sign-off. Halt only for a
 *behavioural* decision that the ladder in phase 1 cannot settle. Everything
 technical is yours to resolve.
 
-The input to work from: `$ARGUMENTS` — a Jira key (`RD-NNNNN`) or a path to a
+The input to work from: `$ARGUMENTS` — a GitHub issue (number or URL) or a path to a
 packet under `docs/internal/packets/`.
 
 If the work is a new domain adapter or an extension of an existing probe and
@@ -62,21 +62,21 @@ npm run build --workspace=packages/<name> && npm test --workspace=packages/<name
                   # always build first; pglite-driver has no pretest
 ```
 
-Tests import by **package name** (`@vnatures/test-kit`), which resolves through a
+Tests import by **package name** (`@hochgi/test-kit`), which resolves through a
 workspace symlink into `packages/*/dist`. A stale build silently tests old code.
 
-The full gate is `npm run check` (added by RD-24141), which is exactly:
+The full gate is `npm run check`, which is exactly:
 
 ```bash
 npm run format:check && npm run lint && npm run typecheck && npm run build && npm test
 ```
 
-There are **no git hooks** — no husky, no lefthook (RD-24141 kept it that way on
-purpose; see `docs/internal/spec/ci-gate.md`). CircleCI path-filtering was closed
-by RD-24141, but it still only *builds* what changed — running the gate locally
-is on you. Remote is **`vn`** (there is no `origin`), base branch is
-**`main`**, history is squash-only, branches are `RD-NNNNN_slug`, commits are
-Conventional Commits with a package scope. Never run `gh auth login`.
+There are **no git hooks** — no husky, no lefthook (kept that way on
+purpose; see `docs/internal/spec/ci-gate.md`). GitHub Actions runs the same
+`npm run check` on every pull request, but only after you push — running the
+gate locally is on you. Remote is **`origin`**, base branch is
+**`main`**, history is squash-only, branches are `<type>/<slug>`, commits are
+Conventional Commits with a package scope.
 
 ## Phase 1 — Specify (role: `spec-author`, skill: `write-spec`, main thread)
 
@@ -91,13 +91,13 @@ Resolve behavioural questions with the ladder before considering a question:
 2. **Precedent in a sibling package.** Twelve adapters already solve most shapes.
    Consistency across the family is itself a requirement — see the Design Rules
    in `docs/concepts.md`.
-3. **Only what was explicitly requested** — the Jira ticket (`RD-*`).
+3. **Only what was explicitly requested** — the GitHub issue.
 4. **Ask.** One sharp behavioural question with each option's consequence stated.
 
 Record the rung each decision came from. **Never ask about mechanism** — naming,
 decomposition, file layout are yours.
 
-> **Docs follow the code.** RD-24142 reconciled published docs with
+> **Docs follow the code.** Published docs were reconciled with
 > `packages/*/src`. Where a doc and the code disagree, **the code wins** — and
 > note the discrepancy.
 
@@ -112,7 +112,7 @@ which proves nothing and will later pass for the wrong reason.
 
 Delegate to **coder**. It grinds red→green→refactor until `format:check`, `lint`,
 `typecheck`, `build` and `test` are all clean. It does **not** measure coverage
-quality — that is phase 5 (RD-24153).
+quality — that is phase 5.
 
 ## Phase 4 — Review (agent: `reviewer`, skill: `review-changes`)
 
@@ -127,26 +127,25 @@ Delegate to **verifier**, read-only. It re-runs the whole gate independently of
 phase 3, audits every suppression added on the patch, sweeps for regressions,
 and runs `npm run test:mutation:changed` and `npm run crap:changed`. A
 zero-mutant Stryker success is a defect. See `verify-changes` and
-`mutation-testing` (RD-24153).
+`mutation-testing`.
 
 ## PR loop
 
-1. Open the PR against `main` on remote `vn`.
-2. Run `summon-review-panel` to summon review bots. After a later push, run
-   `summon-review-panel` again. Fix actionable findings, push, reply to each
-   thread.
+1. Open the PR against `main` on remote `origin`.
+2. Wait for CI and for review (human or bot). Fix actionable findings, push,
+   reply to each thread.
 3. Decline with reasoning when a finding is a false positive or out of scope.
 4. Repeat until every thread is addressed.
 5. **Stop.** Do not squash-merge, fold the delta, or move files into
    `docs/internal/archive/`. Merge is a human action in this repo (squash onto
-   `main` via `vn`). The packet is not archived on an open PR.
+   `main` via `origin`). The packet is not archived on an open PR.
 
 ## Archive — after the PR is merged
 
 The owner is this orchestrator (main thread), **after** you observe `merged:
 true` on the PR or the user confirms merge. The verifier never archives.
 
-On a new branch from updated `main` (`RD-NNNNN_archive-<packet>`):
+On a new branch from updated `main` (`docs/archive-<packet>`):
 
 1. If `docs/internal/spec/<capability>.md` does not exist, create it from the
    applied delta: ADDED requirement bodies become the file; include Flow,
@@ -160,7 +159,7 @@ On a new branch from updated `main` (`RD-NNNNN_archive-<packet>`):
    `docs/internal/archive/YYYY-MM-DD-<stem>/delta.md`.
    If `docs/internal/packets/<stem>.md` exists, `git mv` it to
    `docs/internal/archive/YYYY-MM-DD-<stem>/packet.md`. Skip that move when
-   the run started from a Jira key and no packet file was written.
+   the run started from an issue and no packet file was written.
 4. `git status` must show the folded current-truth file, the delta move, and
    the packet move if it happened.
 5. Commit, push, and open a follow-up PR. The packet is done when that PR
@@ -170,5 +169,5 @@ On a new branch from updated `main` (`RD-NNNNN_archive-<packet>`):
 
 Typo fixes, doc-only PRs, mechanical refactors with no observable delta, and
 dependency bumps **skip the pipeline** — ship a small PR with a one-line scope
-note. Most of the `tests infra` epic (RD-24140) is exactly this shape. Forcing a
+note. Forcing a
 version bump through a behaviour-spec pipeline is ceremony, not rigour.

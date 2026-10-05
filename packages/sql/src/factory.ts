@@ -8,7 +8,7 @@ import {
     type ForwardableSelection,
     type Rig,
     type ProbeRoot,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { QueryCall, QueryPendingCall, QueryProbe, SqlDriver } from './types.js';
 
 export interface CreateProbedSqlAdapterOptions {

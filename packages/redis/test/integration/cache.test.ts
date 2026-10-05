@@ -18,8 +18,8 @@
  *                                       or probe.on(method).expect.intercept(...)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@vnatures/test-kit-redis';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@hochgi/test-kit-redis';
 
 // eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedCacheAdapter', () => {

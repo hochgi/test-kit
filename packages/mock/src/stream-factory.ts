@@ -8,7 +8,7 @@ import {
     type StreamProbeRoot,
     type StreamRecord,
     type StreamSelection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type {
     CheckedStreamMethods,
     StreamMethodCall,

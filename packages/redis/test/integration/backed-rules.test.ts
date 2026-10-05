@@ -8,8 +8,8 @@
  * Per docs/concepts.md §"Default Rules" and §"Rule Resolution".
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { milliseconds, createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@vnatures/test-kit-redis';
+import { milliseconds, createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedCacheAdapter, type ProbedCacheAdapter } from '@hochgi/test-kit-redis';
 
 describe('Backed adapter — default forward + LIFO permanent overrides', () => {
     let rig: Rig;

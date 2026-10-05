@@ -4,7 +4,7 @@ Tool-agnostic instructions for Cursor, Claude Code, and OpenCode. Canonical term
 
 ## What this repo is
 
-This repository is the `@vnatures/test-kit` npm workspace of published packages: probe-driven component testing for TypeScript services. The public surface of those packages is the product.
+This repository is the `@hochgi/test-kit` npm workspace of published packages: probe-driven component testing for TypeScript services. The public surface of those packages is the product.
 
 ## Layout
 
@@ -30,7 +30,7 @@ Files under `.cursor/rules/` are blinkers. Call them blinkers, not rules — the
 
 ## Testing
 
-Root `npm test` does not run per-package `pretest` builds. Always run `npm run build` first, or specifier resolution (`@vnatures/test-kit` and siblings) hits a stale `dist/`.
+Root `npm test` does not run per-package `pretest` builds. Always run `npm run build` first, or specifier resolution (`@hochgi/test-kit` and siblings) hits a stale `dist/`.
 
 The full gate is `npm run check`.
 
@@ -48,10 +48,10 @@ Stop when every review thread is addressed. Do not merge while a PR is open.
 
 Git conventions:
 
-- Remote `vn` (there is no `origin`)
+- Remote `origin`
 - Base branch `main`
 - History is squash-only
-- Branches are `RD-NNNNN_slug`
+- Branches are `<type>/<slug>`
 - Commits are Conventional Commits with a package scope
 
 ## Model targeting

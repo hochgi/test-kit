@@ -6,8 +6,8 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Knex } from 'knex';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedKnexAdapter, type ProbedKnexAdapter } from '@vnatures/test-kit-pg-knex';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedKnexAdapter, type ProbedKnexAdapter } from '@hochgi/test-kit-pg-knex';
 
 async function bootstrap(db: Knex): Promise<void> {
     await db.raw(`

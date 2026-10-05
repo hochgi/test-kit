@@ -263,8 +263,8 @@ function firstFence(section: string): string {
 }
 
 function namesPublishedPackage(text: string, pkg: string): boolean {
-    if (pkg === '@vnatures/test-kit') {
-        return /@vnatures\/test-kit(?!-)/.test(text);
+    if (pkg === '@hochgi/test-kit') {
+        return /@hochgi\/test-kit(?!-)/.test(text);
     }
     return text.includes(pkg);
 }
@@ -433,7 +433,6 @@ const redisReadme = readUtf8(path.join(repoRoot, 'packages/redis/README.md'));
 const sqlReadme = readUtf8(path.join(repoRoot, 'packages/sql/README.md'));
 const s3Readme = readUtf8(path.join(repoRoot, 'packages/s3/README.md'));
 const concepts = readUtf8(path.join(repoRoot, 'docs/concepts.md'));
-const migration = readUtf8(path.join(repoRoot, 'docs/internal/migration-from-v1.md'));
 const vitestConfigPath = path.join(repoRoot, 'vitest.config.ts');
 
 describe('Phantom public APIs are absent from library docs', () => {
@@ -689,9 +688,9 @@ describe('Package inventories list every published workspace package', () => {
 
     it('architecture package graph is complete', () => {
         const graph = markdownSection(architecture, '## Package Graph');
-        expect(graph.includes('kafka') || namesPublishedPackage(graph, '@vnatures/test-kit-kafka')).toBe(true);
-        expect(graph.includes('sqs') || namesPublishedPackage(graph, '@vnatures/test-kit-sqs')).toBe(true);
-        expect(graph.includes('mysql') || namesPublishedPackage(graph, '@vnatures/test-kit-mysql')).toBe(true);
+        expect(graph.includes('kafka') || namesPublishedPackage(graph, '@hochgi/test-kit-kafka')).toBe(true);
+        expect(graph.includes('sqs') || namesPublishedPackage(graph, '@hochgi/test-kit-sqs')).toBe(true);
+        expect(graph.includes('mysql') || namesPublishedPackage(graph, '@hochgi/test-kit-mysql')).toBe(true);
         expect(
             missingPublishedPackages(graph),
             'Package Graph and domain-layer list must name all thirteen packages',
@@ -700,8 +699,8 @@ describe('Package inventories list every published workspace package', () => {
 
     it('api-surface package names list is complete', () => {
         const names = markdownSection(apiSurface, '## Package Names');
-        expect(names.includes('@vnatures/test-kit-sql')).toBe(true);
-        expect(names.includes('@vnatures/test-kit-pglite-driver')).toBe(true);
+        expect(names.includes('@hochgi/test-kit-sql')).toBe(true);
+        expect(names.includes('@hochgi/test-kit-pglite-driver')).toBe(true);
         expect(missingPublishedPackages(names), 'Package Names must list all thirteen published packages').toEqual([]);
     });
 });
@@ -814,7 +813,7 @@ describe('Resolved design decisions are not listed as open', () => {
 
     it('QueryProbe package location is not hedged', () => {
         expect(apiSurface).toMatch(/QueryProbe/);
-        expect(apiSurface).toMatch(/@vnatures\/test-kit-sql/);
+        expect(apiSurface).toMatch(/@hochgi\/test-kit-sql/);
         expect(apiSurface).not.toMatch(/or a sibling/);
     });
 });
@@ -856,10 +855,6 @@ describe('api-surface type sketches match source aliases', () => {
 });
 
 describe('v1/v2 framing matches shipped 1.x', () => {
-    it('migration tables are not headed v1 vs v2', () => {
-        expect(migration).not.toMatch(/\|\s*v1\s*\|\s*v2\s*\|/);
-    });
-
     it('concepts.md does not describe the shipped API as v2', () => {
         expect(concepts).not.toContain('v2 uses');
         expect(concepts).not.toContain('A v2 adapter');

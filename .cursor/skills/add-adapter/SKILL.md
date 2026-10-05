@@ -9,9 +9,9 @@ description: >-
 
 # add-adapter — packet for a new adapter or probe extension
 
-This is the in-repo authoring guide. Cycle-processing's consumer skill pointed
-*at* this repo and went stale; this skill is inverted: it tells an agent
-working **in** `@vnatures/test-kit` how to add a domain package or extend a
+This is the in-repo authoring guide. A consumer-side skill that pointed *at*
+this repo went stale; this skill is inverted: it tells an agent
+working **in** `@hochgi/test-kit` how to add a domain package or extend a
 probe that already ships.
 
 **Output is a packet** under `docs/internal/packets/` (`PNN-*.md`). The
@@ -42,7 +42,7 @@ Look up, do not ask the human:
 
 Two in-scope shapes, one command:
 
-1. **New** `packages/<domain>/` — a new published `@vnatures/test-kit-<domain>`
+1. **New** `packages/<domain>/` — a new published `@hochgi/test-kit-<domain>`
    package.
 2. **Extend** an existing probe's surface — more methods, sugars, or call
    fields on a package that already exists.
@@ -121,7 +121,7 @@ Standalone domains (redis, kafka, sqs, s3, bull, mock) do not use
 
 - Factory: `createProbed…` matching siblings (`createProbedMysqlAdapter`,
   not `createProbedMySql*Adapter`).
-- Package: `@vnatures/test-kit-<domain>`.
+- Package: `@hochgi/test-kit-<domain>`.
 
 ## Adding a New Domain Package: Walkthrough
 
@@ -150,7 +150,7 @@ usually means duplicated core.
 ## Contract guard: `examples/grpc-client`
 
 `examples/grpc-client` is the extender contract: a worked
-`@vnatures/test-kit-grpc-client`-shaped package that must compile and pass
+`@hochgi/test-kit-grpc-client`-shaped package that must compile and pass
 in CI. Read it before inventing a new layout. Match its factory / types /
 probe split unless a sibling domain package is a closer precedent.
 
@@ -176,7 +176,7 @@ Filter sugars: none beyond filter() | <named sugars>
 Default rule: probe.always().forward() | park
 SqlDriver: yes (packages/sql) | standalone
 Factory: createProbed…
-Package: @vnatures/test-kit-…
+Package: @hochgi/test-kit-…
 
 Out: <explicitly not this packet>
 Size: ~N tests against a ~40-test split

@@ -1,7 +1,7 @@
 /**
  * Internal PGlite lifecycle helper shared across pg-* packages.
  *
- * Per docs/architecture.md §"@vnatures/test-kit-pglite-driver — shared PGlite
+ * Per docs/architecture.md §"@hochgi/test-kit-pglite-driver — shared PGlite
  * lifecycle helper". This package is published; pg-* packages depend on it
  * directly.
  */

@@ -89,7 +89,7 @@ export default defineConfig({
         },
         server: {
             deps: {
-                inline: [/^@vnatures\//], // transform @vnatures/ workspace packages
+                inline: [/^@hochgi\//], // transform @hochgi/ workspace packages
             },
         },
     },

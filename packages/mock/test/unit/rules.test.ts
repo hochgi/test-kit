@@ -12,7 +12,7 @@
  * one-shots beat permanents unconditionally.
  */
 import { describe, expect, it } from 'vitest';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface DemoService {
     getById(id: number): Promise<{ id: number }>;

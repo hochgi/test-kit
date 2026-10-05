@@ -11,7 +11,7 @@
  * `packages/mock/test/unit/stream-lifecycle.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { createChannel } from '@vnatures/test-kit';
+import { createChannel } from '@hochgi/test-kit';
 
 describe('createChannel — waker queue', () => {
     it('wakes every parked pull, not just the most recent one', async () => {

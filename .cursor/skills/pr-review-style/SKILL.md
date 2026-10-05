@@ -9,13 +9,10 @@ description: >-
 
 # PR review style
 
-This is a single library repository (`@vnatures/test-kit` and its workspace
-packages). Remote is **`vn`**. Prefix every GitHub-facing comment with `🤖: `,
-except the Bugbot trigger posted by `summon-review-panel` — that comment
-body is exactly `@cursor review` with no prefix.
+This is a single library repository (`@hochgi/test-kit` and its workspace
+packages). Remote is **`origin`**. Prefix every GitHub-facing comment with `🤖: `.
 
-`summon-review-panel` is the skill that assembles and summons the panel.
-This skill triages findings that have already landed.
+This skill triages review findings that have already landed.
 
 ## Defaults
 
@@ -58,8 +55,7 @@ A good review comment includes:
 (1) and (3) without (2) feels prescriptive. (2) without (3) feels handwavy. All
 three together is a good comment.
 
-GitHub-facing text starts with `🤖: `. The `@cursor review` trigger is
-the exception; `summon-review-panel` owns that comment.
+GitHub-facing text starts with `🤖: `.
 
 ## Anti-patterns
 

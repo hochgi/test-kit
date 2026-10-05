@@ -1,13 +1,13 @@
 import type { Knex } from 'knex';
-import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
+import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@hochgi/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
     type QueryPendingCall,
     type QueryProbe,
     type SqlDriver,
-} from '@vnatures/test-kit-sql';
-import { createPgliteHandle } from '@vnatures/test-kit-pglite-driver';
+} from '@hochgi/test-kit-sql';
+import { createPgliteHandle } from '@hochgi/test-kit-pglite-driver';
 import { createPgliteKnex, createProbedPgliteKnex } from './driver.js';
 
 export interface CreateProbedKnexAdapterOptions {

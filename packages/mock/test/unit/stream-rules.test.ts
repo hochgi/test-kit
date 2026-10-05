@@ -5,7 +5,7 @@
  * closes" cases that a Promise-settled mock has no equivalent for.
  */
 import { describe, expect, it } from 'vitest';
-import { createProbedStreamMock } from '@vnatures/test-kit-mock';
+import { createProbedStreamMock } from '@hochgi/test-kit-mock';
 
 interface StreamService {
     stream(id: number): AsyncIterable<string>;

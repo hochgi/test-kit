@@ -103,7 +103,7 @@ It SHALL NOT contain skill directories named `slack-driven-sessions`,
 Donor service names SHALL NOT leak into the ported skills: none of
 `engineering-principles`, `regression-dog`, `pr-review-style`,
 `hotspot-expansion-review`, or `mutation-testing` SHALL mention
-`@cycle-processing/contracts`, `pnpm verify`, or `lefthook`.
+`@donor-service/contracts`, `pnpm verify`, or `lefthook`.
 
 #### Scenario: six support skills are present
 - **WHEN** `.cursor/skills/` is listed
@@ -120,7 +120,7 @@ Donor service names SHALL NOT leak into the ported skills: none of
 #### Scenario: ported support skills do not name donor service machinery
 - **WHEN** the five newly ported support `SKILL.md` files other than
   `component-testing` are read
-- **THEN** none of them contains `@cycle-processing/contracts`,
+- **THEN** none of them contains `@donor-service/contracts`,
   `pnpm verify`, or `lefthook`
 
 ### Requirement: component-testing teaches this repo's current API in Vitest
@@ -462,7 +462,7 @@ sequenceDiagram
 2. `.claude/commands/spec-to-ship.md` exists, contains `**Model selection.**`, and does not merge or archive on an open PR.
 3. After sync, Cursor agent `readonly` is false/false/false/true/true; OpenCode reviewer and verifier deny edit; OpenCode agents and commands trees are populated.
 4. Editing a generated `.cursor/agents` file makes `check-agent-skills` exit non-zero.
-5. `.cursor/skills/` has the six support skills plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name cycle-processing / pnpm verify / lefthook.
+5. `.cursor/skills/` has the six support skills plus the six phase skills, and does not have the listed service-shaped donor skills; ported support skills do not name donor-service-repo / pnpm verify / lefthook.
 6. `component-testing` names `createRig` (not `createHarness`), shows `harness: rig`, uses `vi.useFakeTimers`, does not pin `v1.0.0`.
 7. `write-failing-tests` has no ignore-this-skill warning and says `rig.close()`.
 8. `mutation-testing` names RD-24153 and `dist/` and does not instruct running Stryker as a current gate.

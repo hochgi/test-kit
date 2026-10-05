@@ -1,7 +1,7 @@
 ---
 name: spec-to-ship
 description: >-
-  Orchestrator overview of the 5-phase delivery pipeline for @vnatures/test-kit:
+  Orchestrator overview of the 5-phase delivery pipeline for @hochgi/test-kit:
   spec-author → test-author → coder → reviewer → verifier, run gate-free. Use as
   the entry point when starting ANY non-trivial change, and to understand how the
   /spec-to-ship command, the five agents and the phase skills fit together.
@@ -9,7 +9,7 @@ description: >-
 
 # spec-to-ship — the pipeline
 
-The delivery workflow for every non-trivial change in `@vnatures/test-kit`. It
+The delivery workflow for every non-trivial change in `@hochgi/test-kit`. It
 exists because plausible-looking-but-wrong code is the dominant failure mode in
 agent-driven development. The loop kills it by forcing the spec before tests,
 tests before code, correctness review before verification, and by never letting
@@ -49,7 +49,7 @@ PHASE 5 — VERIFY        verifier       delegated, READ-ONLY
   independent re-run of the whole gate + suppression audit + mutation/CRAP
   skill: verify-changes
         │
-   PR → summon-review-panel → fix → threads clean → STOP
+   PR → CI + review → fix → threads clean → STOP
         human squash-merges onto main
         then FOLD THE DELTA → ARCHIVE (follow-up PR on updated main)
 ```
@@ -62,7 +62,7 @@ and 5 have no such goal and cannot write production code, so they judge honestly
 That is the whole of "nobody grades their own homework", and it is the one part of
 this pipeline that must not be collapsed to save a step.
 
-## Phase 5 runs coverage quality (RD-24153)
+## Phase 5 runs coverage quality
 
 Phase 5 verifies that green is *real* (independent re-run, suppression audit,
 regression sweep) and that green *means something*: it runs
@@ -73,7 +73,7 @@ scripts. See `verify-changes` and `mutation-testing`.
 
 ## Autonomy: no human gates
 
-Run 1 → 2 → 3 → 4 → 5, fix findings, open the PR, run `summon-review-panel`,
+Run 1 → 2 → 3 → 4 → 5, fix findings, open the PR,
 iterate review. Do not merge or archive until the PR is on `main`. Do not stop
 to ask whether to proceed between phases and do not present finished work for
 approval.
@@ -96,24 +96,22 @@ requested (the `RD-*` ticket) → ask. Record the rung in the spec.
   do not wave it through to keep momentum.
 
 Harness markdown under `.cursor/` and `.claude/` is not format-checked or linted by
-`npm run check` (that script is TypeScript-focused). Changes there still run the
-workspace-wide `check` job in CI via the `.cursor/**` and `.claude/**`
-path-filter mappings. That job's `npm test` includes the suites that invoke
+`npm run check` (that script is TypeScript-focused). Changes there (`.cursor/**`,
+`.claude/**`) still run the full `check` job in CI, because every pull request
+does. That job's `npm test` includes the suites that invoke
 `check-agent-skills`. Do not invent a markdown or frontmatter linter.
 
 ## PR loop
 
-After the five phases, open a PR against `main` on remote `vn`, then run
-`summon-review-panel` to summon review bots. After a later push, run
-`summon-review-panel` again. Do not inline the summoning recipe here.
+After the five phases, open a PR against `main` on remote `origin`, then wait
+for CI and review.
 Triage findings with `pr-review-style`. Iterate until every thread is
 addressed, then **stop**. Do not merge or archive while the PR is open.
 
 ## When NOT to run the pipeline
 
 Typo fixes, doc-only PRs, mechanical refactors with no observable delta, and
-dependency bumps **skip it** — ship a small PR with a one-line scope note. Most of
-the `tests infra` epic (RD-24140) is exactly that shape.
+dependency bumps **skip it** — ship a small PR with a one-line scope note.
 
 ## References
 

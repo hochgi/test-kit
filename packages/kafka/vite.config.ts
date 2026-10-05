@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, 'kafkajs'],
+            external: [/^node:/, /^@hochgi\//, 'kafkajs'],
         },
         sourcemap: true,
         minify: false,

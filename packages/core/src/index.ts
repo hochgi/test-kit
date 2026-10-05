@@ -1,4 +1,4 @@
-// Public API of @vnatures/test-kit core.
+// Public API of @hochgi/test-kit core.
 
 // ── Duration ────────────────────────────────────────────────────────────────
 export type { Duration } from './duration.js';

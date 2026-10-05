@@ -305,8 +305,8 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Take van-damme-slack-app sync/check lib, not cycle-processing | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation | Ticket |
-| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale | Copy vn-server / cycle-processing manifest table, not van-damme's all-`opus` column | Ticket (explicit, including the rationale that over-broad tests spec unasked API) |
+| Take donor-bot-repo sync/check lib, not donor-service-repo | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation | Ticket |
+| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale | Copy donor-server-repo / donor-service-repo manifest table, not donor-bot-repo's all-`opus` column | Ticket (explicit, including the rationale that over-broad tests spec unasked API) |
 | LiteLLM aliases stay `litellm/vn-*` | `vn-spec`, `vn-test`, `vn-coding`, `vn-review`, `vn-verify` | Ticket |
 | `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree | Ticket + donor precedent |
 | `.github/skills` and `.agents/skills` are not created | Ticket called them droppable | Ticket |
@@ -326,7 +326,7 @@ sequenceDiagram
 | Adding `check-agent-skills` to `npm run check` | A human who runs only `check` still hits the script via this packet's tests inside `npm test`; a test skip would hide drift |
 | husky / lefthook / `prepare` / `core.hooksPath` | Drift is a script the agent runs (and CI runs via tests), not a pre-push hook |
 | `.github/skills`, `.agents/skills` | Those tools are not in the three-surface set |
-| `validate-skills.sh` (Anthropic Skills API lint in van-damme) | Ticket did not ask for a third script |
+| `validate-skills.sh` (Anthropic Skills API lint in donor-bot-repo) | Ticket did not ask for a third script |
 | Mutation testing / CRAP (RD-24153) | Phase 5 still cannot tell whether green means anything |
 
 ## Acceptance mapping

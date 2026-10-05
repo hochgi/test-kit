@@ -1,7 +1,7 @@
 import { createPool, type Pool as Mysql2Pool } from 'mysql2/promise';
 import { MySqlContainer } from '@testcontainers/mysql';
-import { type ProbeRoot } from '@vnatures/test-kit';
-import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type SqlDriver } from '@vnatures/test-kit-sql';
+import { type ProbeRoot } from '@hochgi/test-kit';
+import { createProbedSqlAdapter, type QueryCall, type QueryPendingCall, type SqlDriver } from '@hochgi/test-kit-sql';
 import type {
     CreateProbedMysqlAdapterOptions,
     MaintenancePool,

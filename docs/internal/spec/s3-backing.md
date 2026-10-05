@@ -4,14 +4,14 @@ Current truth for ListObjects / ListObjectsV2 on the in-memory S3 **backing**
 (`packages/s3/src/s3-client/in-memory-backing.ts`). The adapter forwards those
 commands; this file is the list contract, not the probe.
 
-Not a semver event: the public `@vnatures/test-kit-s3` surface is unchanged.
+Not a semver event: the public `@hochgi/test-kit-s3` surface is unchanged.
 Published list prose lives in `packages/s3/README.md`.
 
 Folded from the P10 delta (RD-24151), preserved at
 `docs/internal/archive/2026-09-10-P10-s3-handlelist-decomposition/delta.md`.
 
 This is not `core-public-api.md` (that file is the published
-`@vnatures/test-kit` surface and uses `## Known gaps`). The complexity-disable
+`@hochgi/test-kit` surface and uses `## Known gaps`). The complexity-disable
 close is also recorded in `docs/internal/spec/ci-gate.md`.
 
 ## Requirements
@@ -113,7 +113,7 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Spec home is `s3-backing.md` + `ci-gate.md`, not `core-public-api.md` | `core-public-api.md` is the published `@vnatures/test-kit` surface and uses `## Known gaps`. This file owns list behaviour. `ci-gate.md` records the closed P09 handleList deferral (`## Out of scope (deferred)`) | Source (`core-public-api.md`, `ci-gate.md`) + user prompt to check |
+| Spec home is `s3-backing.md` + `ci-gate.md`, not `core-public-api.md` | `core-public-api.md` is the published `@hochgi/test-kit` surface and uses `## Known gaps`. This file owns list behaviour. `ci-gate.md` records the closed P09 handleList deferral (`## Out of scope (deferred)`) | Source (`core-public-api.md`, `ci-gate.md`) + user prompt to check |
 | `dispatch` is out of scope | Ticket title, estimate, and decomposition are ListObjectsV2 semantics inside `handleList`. `dispatch` is a command-name switch at complexity 14. Its comment says extract on next touch **of that method** | Ticket + source |
 | Do not edit `list-pagination.test.ts` | It is the behaviour lock for this extract | Ticket |
 | No dedicated ListObjects v1 pagination tests | v1 shares `handleList` (`Marker` / `NextMarker`, no `KeyCount`). The lock file is v2-only | Source + lock file |

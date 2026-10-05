@@ -1,13 +1,13 @@
 import { Sequelize, type Options as SequelizeOptions } from 'sequelize';
-import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
+import { type Duration, type Rig, type ProbeRoot, type ProbedAdapterWithLifecycle } from '@hochgi/test-kit';
 import {
     createProbedSqlAdapter,
     type QueryCall,
     type QueryPendingCall,
     type QueryProbe,
     type SqlDriver,
-} from '@vnatures/test-kit-sql';
-import { createPgliteHandle } from '@vnatures/test-kit-pglite-driver';
+} from '@hochgi/test-kit-sql';
+import { createPgliteHandle } from '@hochgi/test-kit-pglite-driver';
 import {
     buildMaintenanceDialectModule,
     buildProbedDialectModule,

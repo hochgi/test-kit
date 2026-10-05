@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { manualClock, milliseconds, realClock, seconds, viFakeClock } from '@vnatures/test-kit';
+import { manualClock, milliseconds, realClock, seconds, viFakeClock } from '@hochgi/test-kit';
 
 describe('realClock', () => {
     it('now() returns wall-clock ms', () => {

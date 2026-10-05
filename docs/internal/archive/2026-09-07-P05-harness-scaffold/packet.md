@@ -11,7 +11,7 @@ wraps it with the three-tool layout and donor sync/check scripts.
 Scope: `.harness/models.json` + `models.example.json`, empty/mirrored
 `.claude/{agents,commands,skills}/`, `.cursor/rules/`,
 `.opencode/{agents,commands}/` + `opencode.json`, and `sync-agent-skills` /
-`check-agent-skills` npm scripts taken from van-damme-slack-app. Canonical
+`check-agent-skills` npm scripts taken from donor-bot-repo. Canonical
 directions: skills `.cursor` → `.claude`; agents/commands `.claude` →
 `.cursor` + `.opencode`.
 

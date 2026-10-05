@@ -1,4 +1,4 @@
-import type { PendingCallBase, Probe, ProbedAdapter, ProbedResource, RuleBuilder, Selection } from '@vnatures/test-kit';
+import type { PendingCallBase, Probe, ProbedAdapter, ProbedResource, RuleBuilder, Selection } from '@hochgi/test-kit';
 
 // ── Method call shape ──────────────────────────────────────────────────────
 

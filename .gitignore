@@ -12,3 +12,12 @@ reports/mutation
 coverage
 stryker.log
 .stryker-package
+
+# Local secrets, keys and logs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+.DS_Store

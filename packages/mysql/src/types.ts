@@ -1,5 +1,5 @@
-import type { Duration, Rig, ProbedAdapterWithLifecycle } from '@vnatures/test-kit';
-import type { QueryProbe } from '@vnatures/test-kit-sql';
+import type { Duration, Rig, ProbedAdapterWithLifecycle } from '@hochgi/test-kit';
+import type { QueryProbe } from '@hochgi/test-kit-sql';
 
 /**
  * The application-facing MySQL boundary — a subset of mysql2's promise

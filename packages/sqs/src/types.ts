@@ -1,4 +1,4 @@
-import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
+import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@hochgi/test-kit';
 import type { SQSClient } from '@aws-sdk/client-sqs';
 
 // ── SQS client probe ───────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ export default defineConfig({
             fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
         },
         rollupOptions: {
-            external: [/^node:/, /^@vnatures\//, /^@electric-sql\//, 'kysely', 'kysely-pglite-dialect'],
+            external: [/^node:/, /^@hochgi\//, /^@electric-sql\//, 'kysely', 'kysely-pglite-dialect'],
         },
         sourcemap: true,
         minify: false,

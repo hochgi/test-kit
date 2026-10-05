@@ -2,8 +2,8 @@
   "name": "test-kit-example-grpc-client",
   "version": "1.0.0",
   "private": true,
-  "description": "Worked extender example for the @vnatures/test-kit ecosystem",
-  "license": "UNLICENSED",
+  "description": "Worked extender example for the @hochgi/test-kit ecosystem",
+  "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
@@ -18,7 +18,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@vnatures/test-kit": "^2.0.0"
+    "@hochgi/test-kit": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

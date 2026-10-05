@@ -11,7 +11,7 @@ import {
     type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { SqsCall, SqsCommandConstructor, SqsPendingCall, SqsProbe } from './types.js';
 import { InMemorySqsBacking, SUPPORTED_SQS_COMMANDS } from './in-memory-backing.js';
 

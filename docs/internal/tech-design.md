@@ -41,13 +41,13 @@ positions:
    Distribution."
 4. **Test runner for the kit's own tests** — Vitest. See "Testing
    Strategy."
-5. **`@vnatures/test-kit-pglite-driver` published vs. private** — published.
+5. **`@hochgi/test-kit-pglite-driver` published vs. private** — published.
    Community ORM packages can reuse `createPgliteHandle`. Direct
    consumption is still uncommon; pg-* factories are the usual entry.
 6. **Error class hierarchy** — plain `Error` and `RangeError` only.
    No `TestKitError` base class. Diagnostic information comes from
    the message string, not the type. See "Error Handling."
-7. **Package naming** — shipped as `@vnatures/test-kit-*` at 1.x.
+7. **Package naming** — shipped as `@hochgi/test-kit-*` at 1.x.
 
 ## Internal Storage Model
 
@@ -730,7 +730,7 @@ function makeForwardablePending<TCall, TPending>(
 
 ## Mock Adapter Implementation
 
-The `@vnatures/test-kit-mock` package's `createProbedMock` uses
+The `@hochgi/test-kit-mock` package's `createProbedMock` uses
 `createProbeRoot` to construct the probe, then wraps it in a Proxy.
 
 ```typescript
@@ -809,7 +809,7 @@ defense.
 
 ### `SqlDriver` (final)
 
-The driver interface in `@vnatures/test-kit-sql`:
+The driver interface in `@hochgi/test-kit-sql`:
 
 ```typescript
 export interface SqlDriver {
@@ -847,7 +847,7 @@ constructs the closure once per call and hands it to the probe; the
 probe invokes it from its rule resolution machinery when a forward
 rule fires (or when a `pending.forward()` is called).
 
-### `@vnatures/test-kit-pglite-driver`
+### `@hochgi/test-kit-pglite-driver`
 
 Internal package shared across pg-* packages. Exposes:
 
@@ -950,7 +950,7 @@ export async function createProbedKyselyAdapter<DB>(
 }
 ```
 
-`createProbedSqlAdapter` (in `@vnatures/test-kit-sql`) wraps `createProbeRoot`
+`createProbedSqlAdapter` (in `@hochgi/test-kit-sql`) wraps `createProbeRoot`
 to install the default `always().forward()` rule and return the wired
 probe + the `ProbeRoot` reference for the driver to use:
 
@@ -996,7 +996,7 @@ signatures.
 
 ## Cache, S3, Presigner Implementations
 
-### `@vnatures/test-kit-redis`
+### `@hochgi/test-kit-redis`
 
 Single-package, single-backing. Pattern:
 
@@ -1048,7 +1048,7 @@ export function createProbedCacheAdapter(
 }
 ```
 
-### `@vnatures/test-kit-s3`
+### `@hochgi/test-kit-s3`
 
 S3Client adapter uses an in-memory backing. The S3 client's `send(command)`
 method is intercepted: each command's class name and input are
@@ -1347,7 +1347,7 @@ values). No custom error class hierarchy. Reasons:
 - Optional Jest/Vitest matcher integrations (post-v1) can wrap these
   errors in matcher-friendly types if needed.
 
-Error message templates live in `@vnatures/test-kit/errors.ts` as plain
+Error message templates live in `@hochgi/test-kit/errors.ts` as plain
 functions:
 
 ```typescript
@@ -1597,7 +1597,7 @@ export default defineConfig({
 
 ```json
 {
-  "name": "@vnatures/test-kit",
+  "name": "@hochgi/test-kit",
   "version": "1.0.6",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -1635,7 +1635,7 @@ Notes:
   `.d.ts` per entry. Cleaner than per-source-file `.d.ts` and simpler
   for consumers.
 - `external` declarations are explicit: workspace siblings (matched by
-  the `^@vnatures/test-kit` regex), `node:` built-ins, and any peer
+  the `^@hochgi/test-kit` regex), `node:` built-ins, and any peer
   dependencies. Anything not externalized gets bundled into the output.
   Each package adds its own peer/dep externals (e.g., `'kysely'`,
   `'knex'`, `'@aws-sdk/client-s3'`).
@@ -1725,7 +1725,7 @@ scripts).
 A suggested sequence that lets each layer be tested before the next is
 built on top:
 
-1. **`@vnatures/test-kit` foundations**: `Duration`, `Clock` (all 5
+1. **`@hochgi/test-kit` foundations**: `Duration`, `Clock` (all 5
    variants), `Rig` skeleton without `attach`/`reset`/`close`
    wiring.
 2. **`createProbeRoot` + storage model**: implement the full state
@@ -1739,16 +1739,16 @@ built on top:
    `close`, safety timeout, `rig.expect.sequence`/`allOf`.
 5. **TS POC**: validate the type machinery before building domain
    packages on top.
-6. **`@vnatures/test-kit-mock`**: simplest domain package; validates the
+6. **`@hochgi/test-kit-mock`**: simplest domain package; validates the
    `createProbeRoot` contract end-to-end without backings.
-7. **`@vnatures/test-kit-redis`**: introduces a backing, default forward
+7. **`@hochgi/test-kit-redis`**: introduces a backing, default forward
    rule, lifecycle (`reset`/`close` plumbing).
-8. **`@vnatures/test-kit-s3`**: introduces hybrid behavior (some commands
+8. **`@hochgi/test-kit-s3`**: introduces hybrid behavior (some commands
    forward, others fail loudly), command-class extraction.
-9. **`@vnatures/test-kit-pglite-driver`**: shared PGlite helper.
-10. **`@vnatures/test-kit-sql` + `@vnatures/test-kit-pg-kysely`**: first SQL adapter,
+9. **`@hochgi/test-kit-pglite-driver`**: shared PGlite helper.
+10. **`@hochgi/test-kit-sql` + `@hochgi/test-kit-pg-kysely`**: first SQL adapter,
     establishes the `SqlDriver` pattern.
-11. **`@vnatures/test-kit-pg-knex`, `@vnatures/test-kit-pg-sequelize`**: copy the
+11. **`@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`**: copy the
     Kysely pattern with ORM-specific driver implementations.
 12. **`examples/grpc-client/`**: worked extender example. Compiles
     and tests in CI as a smoke test for the extender contract.
@@ -1758,7 +1758,7 @@ built on top:
     working examples into `examples/` if not already there.
 
 Each step is independently testable. Steps 1-4 form the core engine
-and shipped as `@vnatures/test-kit` 1.x.
+and shipped as `@hochgi/test-kit` 1.x.
 
 ## Performance Considerations
 

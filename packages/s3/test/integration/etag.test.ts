@@ -17,8 +17,8 @@ import {
     PutObjectCommand,
     PutObjectTaggingCommand,
 } from '@aws-sdk/client-s3';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedS3Adapter, type ProbedS3Adapter } from '@vnatures/test-kit-s3';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedS3Adapter, type ProbedS3Adapter } from '@hochgi/test-kit-s3';
 
 const BUCKET = 'test-kit-s3-etag-bucket';
 

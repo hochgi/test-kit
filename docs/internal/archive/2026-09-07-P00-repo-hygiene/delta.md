@@ -41,9 +41,9 @@ The path `.claude/launch.json` SHALL NOT exist on disk.
 
 ### Requirement: Local Claude settings do not undercut read-only phases
 If `.claude/settings.local.json` exists, its `permissions.allow` list SHALL NOT
-contain `Bash(git push *)`, `Bash(gh pr *)`, or `Read(//Users/giladhoch/dev/**)`,
+contain `Bash(git push *)`, `Bash(gh pr *)`, or `Read(//Users/<you>/dev/**)`,
 and the file SHALL NOT contain a CircleCI API poll for branch
-`docs/v2-probed-adapters` or a `git -C` invocation into `reports_service`.
+`docs/v2-probed-adapters` or a `git -C` invocation into `a-consumer-service`.
 
 #### Scenario: forbidden grants are absent when the file exists
 - **WHEN** `.claude/settings.local.json` exists

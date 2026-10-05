@@ -50,27 +50,30 @@ history.
 ### Requirement: Model manifest is the single source of per-phase targeting
 
 The tracked file `.harness/models.json` SHALL be the only committed file that
-names vendor model ids or LiteLLM role aliases for the five pipeline phases.
+names vendor model ids or OpenCode provider/model ids for the five pipeline
+phases.
 It SHALL contain an `agents` object with keys `spec-author`, `test-author`,
 `coder`, `reviewer`, `verifier`, each with non-empty string columns `claude`,
 `cursor`, and `opencode`, a JSON boolean `readonly`, and a distinct positive
 integer `phase` (1 through 5 in that agent order). It SHALL contain
 `orchestrator.opencode`. The `opencode` column and `orchestrator.opencode`
-SHALL be LiteLLM role aliases starting with `litellm/vn-`. `reviewer` and
+SHALL be OpenCode `<provider>/<model>` ids with no `#`. It SHALL contain
+`opencode_variant`, the OpenCode reasoning variant (`xhigh`) every OpenCode
+agent runs at; OpenCode reads it as a separate `variant` field. `reviewer` and
 `verifier` SHALL have `readonly` true; the other three agents SHALL have
 `readonly` false.
 
 The three columns SHALL match the donor table:
 
-| agent       | claude          | cursor                | opencode          |
-| ----------- | --------------- | --------------------- | ----------------- |
-| spec-author | opus            | cursor-grok-4.6-xhigh | litellm/vn-spec   |
-| test-author | claude-opus-4-8 | cursor-grok-4.6-xhigh | litellm/vn-test   |
-| coder       | opus            | cursor-grok-4.6-xhigh | litellm/vn-coding |
-| reviewer    | opus            | cursor-grok-4.6-xhigh | litellm/vn-review |
-| verifier    | opus            | cursor-grok-4.6-xhigh | litellm/vn-verify |
+| agent       | claude          | cursor                | opencode     |
+| ----------- | --------------- | --------------------- | ------------ |
+| spec-author | opus            | cursor-grok-4.7-xhigh | xai/grok-4.7 |
+| test-author | claude-opus-4-8 | cursor-grok-4.7-xhigh | xai/grok-4.7 |
+| coder       | opus            | cursor-grok-4.7-xhigh | xai/grok-4.7 |
+| reviewer    | opus            | cursor-grok-4.7-xhigh | xai/grok-4.7 |
+| verifier    | opus            | cursor-grok-4.7-xhigh | xai/grok-4.7 |
 
-`orchestrator.opencode` SHALL be `litellm/vn-spec`.
+`orchestrator.opencode` SHALL be `xai/grok-4.7`.
 
 `test-author.claude` SHALL be the deliberate pin `claude-opus-4-8` (not
 `opus`). The manifest SHALL include `rationale["test-author.claude"]` whose
@@ -81,8 +84,8 @@ adjacent scenarios. No other `rationale` key SHALL be present.
 
 - **WHEN** `.harness/models.json` is parsed
 - **THEN** each of the five agents has the claude, cursor, and opencode values
-  in the table above, `orchestrator.opencode` is `litellm/vn-spec`, phases are
-  1–5 in agent order, and `readonly` is false, false, false, true, true
+  in the table above, `orchestrator.opencode` is `xai/grok-4.7`,
+  `opencode_variant` is `xhigh`, phases are 1–5 in agent order, and `readonly` is false, false, false, true, true
 
 #### Scenario: test-author claude pin is explained
 
@@ -173,8 +176,8 @@ SHALL fail.
 A generated mirror that no longer matches regeneration SHALL fail the
 check.
 
-When the generated OpenCode command text lists per-phase LiteLLM role
-aliases, those aliases SHALL be the live `agents[name].opencode` values
+When the generated OpenCode command text lists per-phase OpenCode
+model ids, those ids SHALL be the live `agents[name].opencode` values
 from `.harness/models.json` for all five agents. `check-agent-skills`
 SHALL exit non-zero when the tracked OpenCode command omits or
 contradicts any of those live values.
@@ -343,14 +346,30 @@ directories has no `*.md`.
 
 `.opencode/opencode.json` SHALL exist. Its `model` and `agent.build.model`
 SHALL equal `agents.coder.opencode`. Its `agent["spec-to-ship"].model` SHALL
-equal `orchestrator.opencode`. `check-agent-skills` SHALL exit non-zero when
-any of those disagree.
+equal `orchestrator.opencode`. Its `agent.build.variant` and
+`agent["spec-to-ship"].variant` SHALL equal `opencode_variant`. It SHALL
+declare the `xai` provider model it targets with that variant.
+`check-agent-skills` SHALL exit non-zero when any of those disagree. Every
+generated `.opencode/agents/<name>.md` SHALL carry `model:` from
+`agents.<name>.opencode` and `variant:` from `opencode_variant`.
 
 #### Scenario: opencode.json models match the manifest
 
 - **WHEN** `.opencode/opencode.json` and `.harness/models.json` are parsed
-- **THEN** `model` and `agent.build.model` equal `litellm/vn-coding` and
-  `agent["spec-to-ship"].model` equals `litellm/vn-spec`
+- **THEN** `model` and `agent.build.model` equal `xai/grok-4.7`
+  and `agent["spec-to-ship"].model` equals `xai/grok-4.7`, and both agents
+  carry `variant` `xhigh`
+
+#### Scenario: generated OpenCode agents carry the variant
+
+- **WHEN** each `.opencode/agents/<name>.md` frontmatter is read
+- **THEN** it has `model: xai/grok-4.7` and `variant: xhigh`
+
+#### Scenario: opencode.json variant drift fails the check
+
+- **WHEN** `.opencode/opencode.json` `agent["spec-to-ship"].variant` differs
+  from `opencode_variant` and `check-agent-skills` is run
+- **THEN** the process exits non-zero
 
 #### Scenario: opencode.json drift fails the check
 
@@ -364,7 +383,8 @@ any of those disagree.
 `.harness/models.json` is invalid: a non-boolean `readonly`, a missing
 `rationale` for a `claude` or `cursor` value that differs from the column
 majority, a `rationale` key that does not name a live deviation, an
-`opencode` value that does not start with `litellm/`, or a duplicate `phase`.
+`opencode` value that is not a `<provider>/<model>` id (including one with a
+`#variant` suffix), a missing `opencode_variant`, or a duplicate `phase`.
 The `opencode` column differing across phases is not a deviation that needs
 rationale.
 
@@ -440,9 +460,8 @@ sequenceDiagram
 
 | Decision                                                                                                                 | Outcome                                                                                                                                                                                                                                                                                                                                                                                                                 | Rung                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Take van-damme-slack-app sync/check lib, not cycle-processing                                                            | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation                                                                                                                                                                                                                                                                                                                         | Ticket                                                                                          |
-| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale                                               | Copy vn-server / cycle-processing manifest table, not van-damme's all-`opus` column                                                                                                                                                                                                                                                                                                                                     | Ticket (explicit, including the rationale that over-broad tests spec unasked API)               |
-| LiteLLM aliases stay `litellm/vn-*`                                                                                      | `vn-spec`, `vn-test`, `vn-coding`, `vn-review`, `vn-verify`                                                                                                                                                                                                                                                                                                                                                             | Ticket                                                                                          |
+| Take the richer of two donor sync/check libs                                                                          | Shared lib with manifest validation, OpenCode config assert, symlink refusal, staged generation                                                                                                                                                                                                                                                                                                                         | Ticket                                                                                          |
+| Three columns plus `test-author.claude: claude-opus-4-8` and its rationale                                               | Copy the donor manifest table, not an all-`opus` column                                                                                                                                                                                                                                                                                                                                                              | Ticket (explicit, including the rationale that over-broad tests spec unasked API)               |
 | `models.example.json` is tracked and must match `models.json`; missing `models.json` fails loudly and does not auto-copy | Both files committed (donors commit `models.json`; ticket asks for the example and the loud fail). Missing-file behaviour is still required and is tested on a throwaway tree                                                                                                                                                                                                                                           | Ticket + donor precedent                                                                        |
 | `.github/skills` and `.agents/skills` are not created                                                                    | Ticket called them droppable                                                                                                                                                                                                                                                                                                                                                                                            | Ticket                                                                                          |
 | No new agent/skill/command bodies                                                                                        | Superseded by P06 (RD-24147), which wrote the canonical `.claude` bodies and re-synced the mirrors. True only for the P05 window                                                                                                                                                                                                                                                                                        | Ticket + source (`git ls-files .cursor`, commit `a0b9e75`)                                      |
@@ -464,7 +483,7 @@ sequenceDiagram
 | Adding `check-agent-skills` to `npm run check`                                           | A human who runs only `check` still hits the script via this packet's tests inside `npm test`; a test skip would hide drift |
 | husky / lefthook / `prepare` / `core.hooksPath`                                          | Drift is a script the agent runs (and CI runs via tests), not a pre-push hook                                               |
 | `.github/skills`, `.agents/skills`                                                       | Those tools are not in the three-surface set                                                                                |
-| `validate-skills.sh` (Anthropic Skills API lint in van-damme)                            | Ticket did not ask for a third script                                                                                       |
+| `validate-skills.sh` (Anthropic Skills API lint in a donor)                              | Ticket did not ask for a third script                                                                                       |
 | `fileParallelism: false` / Vitest `sequence` for harness projects                        | Unnecessary once live dirs are not wiped; a later suite that mutates live harness files would reintroduce a race            |
 | gitignore for `.harness/fixture`                                                         | Accidental creation on the live tree would classify it as a fixture until removed                                           |
 
@@ -472,13 +491,13 @@ sequenceDiagram
 
 1. The listed `.harness`, `.claude/*`, `.cursor/*`, and `.opencode/*` directories exist; `.github/skills` and `.agents/skills` do not.
 2. `docs/internal/` has `packets/`, `spec/`, and `archive/`.
-3. `.harness/models.json` has the five agents, donor three-column table, `test-author.claude` = `claude-opus-4-8` with that rationale only, LiteLLM `litellm/vn-*` aliases, and boolean `readonly`.
+3. `.harness/models.json` has the five agents, donor three-column table, `test-author.claude` = `claude-opus-4-8` with that rationale only, `<provider>/<model>` OpenCode ids, and boolean `readonly`.
 4. `.harness/models.example.json` matches `agents` / `orchestrator` / `rationale`; a tree without `models.json` fails `check-agent-skills` with a copy instruction and does not create the file.
 5. Root npm scripts `sync-agent-skills` and `check-agent-skills` exist; the check is read-only; no git hooks are added.
 6. After a passing check, `.claude/skills` is byte-identical to `.cursor/skills`; OpenCode `skills.paths` is `["./.cursor/skills"]`.
 7. When `.claude/agents` has `*.md`, sync+check round-trip the Cursor and OpenCode agent mirrors; a disagreeing Claude `model:` fails the check, and a manifest `agents.*.opencode` alias changed without regenerating `.opencode/commands/spec-to-ship.md` fails the check.
 8. When `.claude/agents` or `.claude/commands` have no `*.md`, sync leaves existing Cursor `*.md` in place; on a fixture tree (`.harness/fixture` present) check still exits 0 if skills/manifest/opencode are consistent, while on a live-classified tree empty canonical agents or commands fail the check.
-9. `.opencode/opencode.json` exists; `model` / `agent.build.model` are `litellm/vn-coding`; `agent["spec-to-ship"].model` is `litellm/vn-spec`; drift fails the check.
+9. `.opencode/opencode.json` exists; `model` / `agent.build.model` and `agent["spec-to-ship"].model` are `xai/grok-4.7` with `variant` `xhigh`; generated OpenCode agents carry `variant: xhigh`; model or variant drift fails the check.
 10. Non-boolean `readonly`, unexplained `claude`/`cursor` deviation, and a symlink under canonical skills each fail `check-agent-skills`.
 11. Path-filtering maps `.claude/**`, `.harness/**`, and `.opencode/**` (in addition to the P00 list) onto `build_workspace true`.
 12. The tests for these scenarios run under root `npm test` and are in the root `format:check` glob.

@@ -13,7 +13,7 @@
  *
  * Offsets are per-(topic, partition), monotonic from 0.
  */
-import type { Clock } from '@vnatures/test-kit';
+import type { Clock } from '@hochgi/test-kit';
 import type { KafkaMessageInput, ProducerBatch, RecordMetadata, TopicLogEntry } from './types.js';
 
 interface StoredEntry extends TopicLogEntry {}

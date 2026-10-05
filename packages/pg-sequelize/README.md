@@ -1,8 +1,8 @@
-# @vnatures/test-kit-pg-sequelize
+# @hochgi/test-kit-pg-sequelize
 
 PGlite-backed Sequelize v6 adapter for component tests, with the same
-probe model as [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md)
-and [`@vnatures/test-kit-pg-knex`](../pg-knex/README.md).
+probe model as [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md)
+and [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md).
 
 Bridges Sequelize to PGlite via
 [`@middle-management/pglite-pg-adapter`](https://www.npmjs.com/package/@middle-management/pglite-pg-adapter)
@@ -12,7 +12,7 @@ for the adapter-landscape evaluation that informed this design.
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-pg-sequelize sequelize
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-pg-sequelize sequelize
 ```
 
 If your test runner needs an ESM dynamic-import flag (Jest), set:
@@ -29,8 +29,8 @@ If your test runner needs an ESM dynamic-import flag (Jest), set:
 
 ```typescript
 import { Sequelize } from "sequelize-typescript";
-import { createRig } from "@vnatures/test-kit";
-import { createProbedSequelizeAdapter } from "@vnatures/test-kit-pg-sequelize";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedSequelizeAdapter } from "@hochgi/test-kit-pg-sequelize";
 import Models from "../src/models";
 
 const rig = createRig();
@@ -56,8 +56,8 @@ indexes; it runs after `sync()`.
 
 ```typescript
 import { Sequelize, QueryTypes } from "sequelize";
-import { createRig } from "@vnatures/test-kit";
-import { createProbedSequelizeAdapter } from "@vnatures/test-kit-pg-sequelize";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedSequelizeAdapter } from "@hochgi/test-kit-pg-sequelize";
 
 const rig = createRig();
 const db = await rig.attach(
@@ -181,8 +181,8 @@ await queryPromise;
 
 ## See also
 
-- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md) and
-  [`@vnatures/test-kit-pg-knex`](../pg-knex/README.md) — siblings
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) and
+  [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md) — siblings
   with identical probe semantics.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.

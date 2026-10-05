@@ -3,8 +3,8 @@ import { EventEmitter } from 'node:events';
 import type { PGlite } from '@electric-sql/pglite';
 import { Client, Pool } from '@middle-management/pglite-pg-adapter';
 import type { Options as SequelizeOptions, Sequelize } from 'sequelize';
-import type { ProbeRoot } from '@vnatures/test-kit';
-import type { QueryCall, QueryPendingCall } from '@vnatures/test-kit-sql';
+import type { ProbeRoot } from '@hochgi/test-kit';
+import type { QueryCall, QueryPendingCall } from '@hochgi/test-kit-sql';
 
 /**
  * Strip options that must be owned by test-kit.

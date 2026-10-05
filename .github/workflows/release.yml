@@ -1,0 +1,43 @@
+name: Release
+
+# Manual only. Publishes every workspace package whose package.json version is
+# not yet on npm, in dependency order, with provenance. Versions are bumped by
+# hand in the PR that changes a package; merging to main never publishes.
+#
+# Auth is npm trusted publishing (OIDC): on each package's npmjs.com settings
+# page, add this repository and `release.yml` as the trusted publisher. A
+# package that has never been published cannot have a trusted publisher yet,
+# so a package's first release falls back to the NPM_TOKEN secret on the `npm`
+# environment (a granular, publish-only token). Delete that secret once every
+# package has a trusted publisher.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node scripts/publish-unpublished.mjs
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

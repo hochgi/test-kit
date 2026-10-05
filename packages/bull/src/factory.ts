@@ -10,7 +10,7 @@ import {
     type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { Queue } from 'bull';
 import { InMemoryBullQueue, type AddOptions, type BullProcessor } from './backing.js';
 import type { BullQueueCall, BullQueueMethod, BullQueuePendingCall, BullQueueProbe } from './types.js';

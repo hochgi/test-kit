@@ -1,4 +1,4 @@
-import type { Duration, ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
+import type { Duration, ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@hochgi/test-kit';
 
 export type CacheKeyInput = string | { readonly format: string; readonly args: ReadonlyArray<string | number> };
 

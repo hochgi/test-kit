@@ -18,20 +18,16 @@ check — it is a self-assessment.
 Not the coder's slice — the whole thing, from a clean build:
 
 ```bash
-npm run check   # = format:check && lint && typecheck && build && test (RD-24141)
+npm run check   # = format:check && lint && typecheck && build && test
 ```
 
 **A skipped run is not a clean run.** If you did not run it, do not report it.
-CircleCI path-filtering maps these onto `build_workspace` (which runs
-`npm run check`): root `package.json`, `package-lock.json`, `.prettierrc`,
-`tsconfig.json`, `tsconfig.base.json`, `.eslintrc.json`, `vitest.config.ts`,
-`vitest.mutation.config.ts`, the Stryker config, `scripts/**`, `docs/**`,
-`.circleci/**`, `.cursor/**`, `.claude/**`, `.harness/**`, `.opencode/**`,
-and repository-root `test/**`. Per-package dirs still only *build* that
-package. There are **no git hooks**. You are still the gate for every local
-run.
+GitHub Actions (`.github/workflows/ci.yml`) runs the same `npm run check` on
+every pull request, whatever paths it touches. That is a backstop after the push,
+not a substitute for running it here. There are **no git hooks**. You are
+still the gate for every local run.
 
-## 2. Run the coverage-quality scripts (RD-24153)
+## 2. Run the coverage-quality scripts
 
 After `npm run check`, run the incremental mutation and CRAP scripts:
 
@@ -76,7 +72,7 @@ Surface the delta without judging which side is correct.
 ## 5. Confirm the docs moved with the code
 
 A changed public surface with an unchanged README or `docs/api-surface.md` is a
-defect, not a follow-up. RD-24142 reconciled published docs with
+defect, not a follow-up. Published docs were reconciled with
 `packages/*/src` after that exact failure mode.
 
 ## Kick-back map

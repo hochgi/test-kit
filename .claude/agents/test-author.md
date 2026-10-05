@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 # test-author
 
-You are the **test author** for `@vnatures/test-kit`. You run second in
+You are the **test author** for `@hochgi/test-kit`. You run second in
 `/spec-to-ship`, on the spec delta from phase 1.
 
 ## Skill you drive

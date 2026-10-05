@@ -49,10 +49,10 @@ SHALL name `vitest.config.ts` where they previously named
 
 ### Requirement: Mutation-only Vite config aliases workspace packages to source
 Root `vitest.mutation.config.ts` SHALL alias every published
-`@vnatures/test-kit*` workspace package name to that package's
+`@hochgi/test-kit*` workspace package name to that package's
 `packages/<dir>/src/index.ts`. It SHALL NOT enable Vitest typecheck. It
 SHALL NOT list `test.projects` and SHALL NOT import `defineWorkspace`.
-It SHALL set `test.server.deps.inline` so `@vnatures/` packages are
+It SHALL set `test.server.deps.inline` so `@hochgi/` packages are
 transformed. Test include SHALL be scoped to one package (see
 `.stryker-package` below), not to repository-root `test/`.
 
@@ -63,8 +63,8 @@ Vite cache, not `test.dir`).
 
 #### Scenario: mutation config aliases each workspace package to src/index.ts
 - **WHEN** `vitest.mutation.config.ts` is loaded
-- **THEN** its resolve aliases map `@vnatures/test-kit` to
-  `packages/core/src/index.ts` and `@vnatures/test-kit-mock` to
+- **THEN** its resolve aliases map `@hochgi/test-kit` to
+  `packages/core/src/index.ts` and `@hochgi/test-kit-mock` to
   `packages/mock/src/index.ts`, and every other published workspace
   package name under `packages/*/package.json` has a corresponding
   alias to that directory's `src/index.ts`
@@ -83,7 +83,7 @@ Vite cache, not `test.dir`).
 - **WHEN** `npx vitest run --config vitest.mutation.config.ts` is run
   against `packages/core/test/unit/duration.test.ts` after writing the
   package name `core` to `.stryker-package`
-- **THEN** the run's resolved `@vnatures/test-kit` module path contains
+- **THEN** the run's resolved `@hochgi/test-kit` module path contains
   `packages/core/src` and does not contain `packages/core/dist`
 
 ### Requirement: Per-package mutation runner
@@ -261,7 +261,7 @@ that a zero-mutant report is a failure. It SHALL name
 and tell phase 5 to hand-apply survivors before treating them as missing
 tests. It SHALL name [stryker-js#6183](https://github.com/stryker-mutator/stryker-js/issues/6183)
 and tell the agent to treat a zero-mutant success as that failure mode.
-It SHALL NOT mention `@cycle-processing/contracts`, `pnpm verify`,
+It SHALL NOT mention `@donor-service/contracts`, `pnpm verify`,
 `lefthook`, or `pnpm crap`. Canonical path remains `.cursor/skills/`;
 `sync-agent-skills` must run after the edit.
 
@@ -277,7 +277,7 @@ It SHALL NOT mention `@cycle-processing/contracts`, `pnpm verify`,
 #### Scenario: mutation-testing does not import donor service machinery
 - **WHEN** `.cursor/skills/mutation-testing/SKILL.md` is read
 - **THEN** it does not contain `pnpm crap`, `pnpm verify`, `lefthook`,
-  or `@cycle-processing/contracts`
+  or `@donor-service/contracts`
 
 ### Requirement: Verifier runs mutation and CRAP
 `.cursor/skills/verify-changes/SKILL.md` SHALL tell the verifier to run
@@ -422,7 +422,7 @@ sequenceDiagram
     Pkg->>Pkg: write .stryker-package
     Pkg->>S: mutate packages/name/src
     S->>M: configFile#59; related false
-    M->>S: alias @vnatures/* to src/index.ts
+    M->>S: alias @hochgi/* to src/index.ts
     S->>Pkg: mutation.json
     alt mutant count is 0
       Pkg->>V: exit non-zero
@@ -437,7 +437,7 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Mutation-only Vite aliases `@vnatures/*` → `packages/*/src/index.ts`; `npm test` keeps validating `dist/` | Spike: poisoning `duration.ts` failed mutation vitest and passed workspace vitest | Spike measurement + ticket |
+| Mutation-only Vite aliases `@hochgi/*` → `packages/*/src/index.ts`; `npm test` keeps validating `dist/` | Spike: poisoning `duration.ts` failed mutation vitest and passed workspace vitest | Spike measurement + ticket |
 | Replace `vitest.workspace.ts` / `defineWorkspace` with `vitest.config.ts` `test.projects` | Prerequisite: with the workspace file present, `--config vitest.mutation.config.ts` still loaded dist | Spike measurement + ticket (Vitest 3.2 deprecation) |
 | Scope tests via mutation config include / `.stryker-package`, not Stryker `vitest.dir` | Stryker 10 passes `dir` as top-level `createVitest` option; Vitest 3.2.7 treats that as Vite cache dir | Spike measurement |
 | `vitest.related: false` | Tests import by package name, not by file path | Ticket + source |
@@ -448,8 +448,8 @@ sequenceDiagram
 | `@babel/generator@8.0.5` from Stryker 10.0.0; #6183 did not reproduce | `duration.ts` 27 mutants, `probe-engine.ts` 371, `mock/factory.ts` 42. Wrapper still fails closed on 0 mutants | Spike measurement + closed upstream issue |
 | #6192 not reproduced on single-project mutation config + Vitest 3.2.7 | duration survivors were genuine `<` vs `<=`. Skill still requires hand-applying survivors | Spike measurement + open upstream issue |
 | Istanbul, not v8 | `coverage-final.json` keys were `packages/core/src/*.ts` (8 files, 0 dist) | Spike measurement + ticket |
-| `thresholds.break: null`; not added to `npm run check`; not a CircleCI merge gate | P00 pinned the five-step check chain; sibling Stryker configs keep `break: null` | Source (`ci-gate.md`) + sibling (`reports_service`) |
-| `changed-src.sh` grows a `vn/main` then `main` arm; pathspec `packages/*/src` | Ticket named those two bugs. Do not port van-damme's multi-remote ambiguity resolver | Ticket |
+| `thresholds.break: null`; not added to `npm run check`; not a CircleCI merge gate | P00 pinned the five-step check chain; sibling Stryker configs keep `break: null` | Source (`ci-gate.md`) + sibling (`a-consumer-service`) |
+| `changed-src.sh` grows a `vn/main` then `main` arm; pathspec `packages/*/src` | Ticket named those two bugs. Do not port donor-bot-repo's multi-remote ambiguity resolver | Ticket |
 | `crap-report.js` joins existing `scripts/` | P05 already created the directory | Ticket + source |
 | Coder and reviewer still do not run Stryker | Coverage quality stays phase 5 | Source (harness-prose coder/reviewer ban) |
 | Toolchain pins: `@stryker-mutator/core@10`, `@stryker-mutator/vitest-runner@10`, `@vitest/coverage-istanbul@^3.2` | Installed 10.0.0 / 10.0.0 / 3.2.7 against vitest 3.2.7 | Ticket + install |
@@ -463,15 +463,15 @@ sequenceDiagram
 | CircleCI job that runs Stryker / a non-null `thresholds.break` | CI still only runs `npm run check`; a PR can merge with un-run mutation unless the verifier ran it |
 | Mutating `examples/grpc-client` or `pglite-driver` (no tests) | Those trees are not scored |
 | Killing the genuine `duration.ts` `<` vs `<=` survivors | Score is not 100%; the skill says hand-apply survivors |
-| van-damme `HARNESS_BASE_REF` / multi-remote `changed-src.sh` | This clone's remote is `vn`; a fork with only `origin/main` must set tracking or add an arm later |
+| donor-bot-repo `HARNESS_BASE_REF` / multi-remote `changed-src.sh` | This clone's remote is `vn`; a fork with only `origin/main` must set tracking or add an arm later |
 | Fixing open stryker-js#6192 | Single-project mutation config avoids the reported projects repro; survivors are still hand-checked |
 | Git hooks | Still none |
-| Range-scoped `--mutate file:start-end` | Incremental mutates whole changed files, like reports_service |
+| Range-scoped `--mutate file:start-end` | Incremental mutates whole changed files, like a-consumer-service |
 
 ## Acceptance mapping
 
 1. `vitest.workspace.ts` is gone; `vitest.config.ts` has `test.projects` listing the published packages and the four root `test/` projects; `npm test` still uses package `vite.config.ts` (dist).
-2. `vitest.mutation.config.ts` aliases every `@vnatures/test-kit*` workspace package to `packages/<dir>/src/index.ts`, disables typecheck, inlines `@vnatures/`, and does not use `defineWorkspace` / `test.projects`.
+2. `vitest.mutation.config.ts` aliases every `@hochgi/test-kit*` workspace package to `packages/<dir>/src/index.ts`, disables typecheck, inlines `@hochgi/`, and does not use `defineWorkspace` / `test.projects`.
 3. Stryker config: `testRunner` vitest, `configFile` `vitest.mutation.config.ts`, `related` false, `break` null.
 4. `.stryker-package` + `scripts/mutation-package.sh` scope mutate and test include per package; core include adds sibling in-process tests and excludes mysql plus the four layout files.
 5. `test:mutation` / `test:mutation:changed` exist; `scripts.check` is unchanged; zero-mutant runs exit non-zero; `duration.ts` mutation reports >0 mutants and >0 killed.

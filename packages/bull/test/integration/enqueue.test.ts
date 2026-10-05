@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRig, milliseconds, seconds, viFakeClock, type Rig } from '@vnatures/test-kit';
-import { createProbedBullQueue, maxRetriesPerRequestError, type ProbedBullQueue } from '@vnatures/test-kit-bull';
+import { createRig, milliseconds, seconds, viFakeClock, type Rig } from '@hochgi/test-kit';
+import { createProbedBullQueue, maxRetriesPerRequestError, type ProbedBullQueue } from '@hochgi/test-kit-bull';
 
 // eslint-disable-next-line max-lines-per-function -- existing test suite over the published budget; extract on next touch
 describe('createProbedBullQueue', () => {

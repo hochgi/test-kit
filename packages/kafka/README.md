@@ -1,4 +1,4 @@
-# @vnatures/test-kit-kafka
+# @hochgi/test-kit-kafka
 
 Probe-driven Kafka **producer** boundary adapter with an in-memory topic
 log — no broker, no Zookeeper, no Docker.
@@ -16,22 +16,22 @@ appends sent messages to an in-memory per-topic log you can read back for
 assertions.
 
 If your boundary is SQS, use
-[`@vnatures/test-kit-sqs`](../sqs/README.md). If you need a
+[`@hochgi/test-kit-sqs`](../sqs/README.md). If you need a
 consumer-side stream mock, see
-[`@vnatures/test-kit-mock`](../mock/README.md).
+[`@hochgi/test-kit-mock`](../mock/README.md).
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-kafka
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-kafka
 # peer: kafkajs (consumer provides its own version)
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedKafkaProducer } from "@vnatures/test-kit-kafka";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedKafkaProducer } from "@hochgi/test-kit-kafka";
 
 const rig = createRig();
 const kafka = rig.attach(createProbedKafkaProducer({ harness: rig }));
@@ -88,7 +88,7 @@ Every intercepted call can be settled three ways:
 
 ```typescript
 // Simulate broker-down on the next send.
-import { brokerDownError } from "@vnatures/test-kit-kafka";
+import { brokerDownError } from "@hochgi/test-kit-kafka";
 kafka.probe.on("send").once().reject(brokerDownError());
 
 // Intercept a send to a specific topic, inspect it, then forward.
@@ -138,5 +138,5 @@ await expect(kafka.adapter.connect()).rejects.toMatchObject({
   backed-adapter model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
   reference.
-- [`@vnatures/test-kit-sqs`](../sqs/README.md) for the sibling messaging
+- [`@hochgi/test-kit-sqs`](../sqs/README.md) for the sibling messaging
   adapter.

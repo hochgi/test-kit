@@ -16,7 +16,7 @@ import {
     type CheckedMethods,
     type MethodProbe,
     type ProbedMock,
-} from '@vnatures/test-kit-mock';
+} from '@hochgi/test-kit-mock';
 
 interface AllAsync {
     getUser(id: number): Promise<{ id: number }>;

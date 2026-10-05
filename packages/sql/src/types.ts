@@ -1,4 +1,4 @@
-import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@vnatures/test-kit';
+import type { ForwardablePendingCall, ForwardableProbe, ForwardableSelection } from '@hochgi/test-kit';
 
 export interface QueryCall {
     readonly sql: string;

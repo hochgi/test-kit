@@ -95,7 +95,7 @@ sequenceDiagram
 | Mixed addition + non-addition for one path | Net addition (`any` touch is an addition). That is the observed PR #51 false failure: committed `A` plus unstaged ` M`. | Explicitly requested — RD-24162: "coalesce touches by path and classify on the net base-to-working-tree state." |
 | Porcelain `AM` as a single status | Unchanged. `AM` is already one addition (`status.startsWith('A')`). This delta covers the two-record case the single-status test does not. | Source — `packages/core/test/unit/rig-rename-layout.test.ts` "an archive addition is allowed, even with further unstaged edits (`AM`)". |
 | Strip / trim on `-z` paths | Remove. Keep only the empty-field drop. | Explicitly requested — RD-24162 finding 2. |
-| Semver | Not a semver event. No exported name, type, or runtime behaviour of `@vnatures/test-kit` changes. | Source — shipped code is untouched. |
+| Semver | Not a semver event. No exported name, type, or runtime behaviour of `@hochgi/test-kit` changes. | Source — shipped code is untouched. |
 | MR/MC porcelain records | No change. | Explicitly requested — RD-24162: rejected in the same review round; not valid porcelain v1 combinations, and git 2.50.1 does no worktree rename detection in status. |
 
 ## Out of scope (deferred)

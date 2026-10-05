@@ -31,7 +31,7 @@ Only the atomic shape is safe.
   `HarnessExpectations`→`RigExpectations`,
   `CreateHarnessOptions`→`CreateRigOptions`, `createHarness`→`createRig`.
 - Clean break, **no deprecated alias** — settled.
-- All 13 packages → `2.0.0`. The 11 core consumers move `@vnatures/test-kit`
+- All 13 packages → `2.0.0`. The 11 core consumers move `@hochgi/test-kit`
   from `dependencies` to `peerDependencies` at `^2.0.0`; that is what stops the
   nested dual-install recurring. `pglite-driver` consumes no core and gains none.
 - Docs move with the code in the same commit — P01 just made them trustworthy.
@@ -99,6 +99,6 @@ a second major bump; see the delta's out-of-scope table.
 
 A green suite does not prove the rename worked: because tests resolve through
 `dist/`, green is compatible with having loaded the wrong core. Verify from a
-clean `npm install` that every `packages/*/node_modules/@vnatures/test-kit` is
+clean `npm install` that every `packages/*/node_modules/@hochgi/test-kit` is
 still a workspace symlink and not a materialized 1.x directory, and state that
 result explicitly.

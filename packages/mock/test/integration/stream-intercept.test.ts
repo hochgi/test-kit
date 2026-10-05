@@ -6,8 +6,8 @@
  * decide whether to end normally or fail mid-stream.
  */
 import { describe, expect, it } from 'vitest';
-import { milliseconds } from '@vnatures/test-kit';
-import { createProbedStreamMock } from '@vnatures/test-kit-mock';
+import { milliseconds } from '@hochgi/test-kit';
+import { createProbedStreamMock } from '@hochgi/test-kit-mock';
 
 interface StreamService {
     stream(id: number): AsyncIterable<string>;

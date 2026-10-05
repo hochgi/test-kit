@@ -174,7 +174,7 @@ types as declared in `packages/pg-kysely/src/factory.ts`,
 - **THEN** it includes `pglite` and `notifications`
 
 ### Requirement: Unshipped HTTP package is not presented as current
-Library docs SHALL NOT present `@vnatures/test-kit-http` as a shipped
+Library docs SHALL NOT present `@hochgi/test-kit-http` as a shipped
 package, a reserved API with types, or a runnable probe. There is no
 `packages/http/` workspace. A single explicit "not shipped" mention is
 allowed; whole sections of types and examples are not.
@@ -199,7 +199,7 @@ Library docs and the implementation corpus SHALL cite the live paths
 
 ### Requirement: pglite-driver is documented as published
 Library docs and `packages/pglite-driver/src/index.ts` comments SHALL NOT
-claim `@vnatures/test-kit-pglite-driver` is `private: true` or
+claim `@hochgi/test-kit-pglite-driver` is `private: true` or
 workspace-internal-only. The package is published (`publishConfig` set, no
 `private` field, version `1.0.4`).
 
@@ -222,13 +222,13 @@ Root `README.md`, `docs/architecture.md` (package graph and domain-layer
 sentence), and `docs/api-surface.md` (Package Names) SHALL each name all
 thirteen published packages:
 
-`@vnatures/test-kit`, `@vnatures/test-kit-pglite-driver`,
-`@vnatures/test-kit-mock`, `@vnatures/test-kit-sql`,
-`@vnatures/test-kit-redis`, `@vnatures/test-kit-bull`,
-`@vnatures/test-kit-s3`, `@vnatures/test-kit-sqs`,
-`@vnatures/test-kit-kafka`, `@vnatures/test-kit-mysql`,
-`@vnatures/test-kit-pg-kysely`, `@vnatures/test-kit-pg-knex`,
-`@vnatures/test-kit-pg-sequelize`.
+`@hochgi/test-kit`, `@hochgi/test-kit-pglite-driver`,
+`@hochgi/test-kit-mock`, `@hochgi/test-kit-sql`,
+`@hochgi/test-kit-redis`, `@hochgi/test-kit-bull`,
+`@hochgi/test-kit-s3`, `@hochgi/test-kit-sqs`,
+`@hochgi/test-kit-kafka`, `@hochgi/test-kit-mysql`,
+`@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`,
+`@hochgi/test-kit-pg-sequelize`.
 
 #### Scenario: root README package table is complete
 - **WHEN** the Packages table in root `README.md` is read
@@ -242,8 +242,8 @@ thirteen published packages:
 
 #### Scenario: api-surface package names list is complete
 - **WHEN** the Package Names list in `docs/api-surface.md` is read
-- **THEN** it includes `@vnatures/test-kit-sql` and
-  `@vnatures/test-kit-pglite-driver` as well as the packages already listed
+- **THEN** it includes `@hochgi/test-kit-sql` and
+  `@hochgi/test-kit-pglite-driver` as well as the packages already listed
 
 ### Requirement: architecture repository layout matches the tree
 The "Repository Layout" tree and per-package "Module layout" lists in
@@ -317,10 +317,10 @@ claim the family is at `2.0.0` while packages are at 1.x.
 rename framing in `docs/internal/tech-design.md` SHALL NOT present as
 unresolved things that shipped: `createProbeRoot` exists; storage model is
 implemented; pglite-driver is published; errors are plain `Error` /
-`RangeError`; packages ship as `@vnatures/test-kit-*` at 1.x (not as a
+`RangeError`; packages ship as `@hochgi/test-kit-*` at 1.x (not as a
 placeholder pending `boundary-probe`). `docs/api-surface.md` SHALL NOT
-hedge whether `QueryProbe` lives in core or `@vnatures/test-kit-sql` — it
-lives in `@vnatures/test-kit-sql`.
+hedge whether `QueryProbe` lives in core or `@hochgi/test-kit-sql` — it
+lives in `@hochgi/test-kit-sql`.
 
 #### Scenario: architecture does not list shipped decisions as open
 - **WHEN** `docs/architecture.md` "Decisions Still Open" is read
@@ -330,7 +330,7 @@ lives in `@vnatures/test-kit-sql`.
 
 #### Scenario: QueryProbe package location is not hedged
 - **WHEN** `docs/api-surface.md` names the package that defines `QueryProbe`
-- **THEN** it names `@vnatures/test-kit-sql` without an "or a sibling"
+- **THEN** it names `@hochgi/test-kit-sql` without an "or a sibling"
   hedge
 
 ### Requirement: Named consumer-facing exports appear in api-surface
@@ -486,14 +486,14 @@ sequenceDiagram
 4. SQL README `QueryCall` is `{ sql, parameters }`; architecture `SqlDriver` matches source (no driver `forward()`).
 5. S3 backing is in-memory; `mock-aws-s3-v3` is not the current backing in docs or S3 test titles; `reset`/`close` are not filesystem ops; `localDirectory` is deprecated/ignored; presigner has no default rule; call shapes match `S3Call` / `PresignCall`.
 6. api-surface knex options include `extensions` and `knexConfig`; sequelize `bootstrap` is optional and the other real options exist; sequelize `seed(table, rows)`; kysely handle includes `pglite` and `notifications`.
-7. `@vnatures/test-kit-http` is not a live API section; `packages/http/` is not in the live tree.
+7. `@hochgi/test-kit-http` is not a live API section; `packages/http/` is not in the live tree.
 8. `v2-concepts.md` / `v2-api-surface.md` / `v2-architecture.md` / `v2-tech-design.md` are not cited as live paths in library docs or `packages/**/*.ts`.
 9. pglite-driver is not documented as `private: true`.
 10. `APPENDIX.md` names `kysely-pglite-dialect` for pg-kysely.
 11. README, architecture package graph, and api-surface Package Names each list all thirteen published packages.
 12. architecture Repository Layout names only files that exist and includes bull, kafka, mysql, sqs, `tech-design.md`, and the real core/mock/sql/redis/s3/pglite-driver filenames.
 13. tech-design Build & Distribution matches live manifests (`dist/index.js`, workspace build, vite 6 / vitest 3 / eslint 8, no false pglite-driver `test/` or installed `tsd`).
-14. Shipped decisions are not listed as open; QueryProbe is in `@vnatures/test-kit-sql` without a hedge.
+14. Shipped decisions are not listed as open; QueryProbe is in `@hochgi/test-kit-sql` without a hedge.
 15. The named consumer-facing exports appear in `docs/api-surface.md`.
 16. `QueryProbe` / `CacheProbe` / `S3Probe` extend `ForwardableProbe`; listed call shapes are `interface`; unsupported-forward says `command`; `atLeast` and `cannotForwardNoBacking` are in the error list.
 17. migration-from-v1 tables are not `| v1 | v2 |`; concepts.md does not describe shipped behaviour as "v2".
@@ -501,4 +501,4 @@ sequenceDiagram
 19. Harness markdown does not claim the 41 defects are still outstanding.
 20. Docs-truth tests are in `vitest.workspace.ts` (root `format:check` already covers `test/**/*.ts`).
 
-Doc/code discrepancies resolved by this delta (code was already right): package READMEs documenting `commandsOf`, `unordered`, `InMemoryCache`, `NotImplementedError`, `QueryProbe.queries`, `SqlDriver.executeForward`; redis README raw-number TTLs vs Duration-only; s3 README `call.input` on `PresignCall`; api-surface sequelize/knex/kysely factory types; `mock-aws-s3-v3` as current backing; `@vnatures/test-kit-http` as live; stale `docs/v2-*.md` paths; pglite-driver described as private; architecture Repository Layout vs the real tree.
+Doc/code discrepancies resolved by this delta (code was already right): package READMEs documenting `commandsOf`, `unordered`, `InMemoryCache`, `NotImplementedError`, `QueryProbe.queries`, `SqlDriver.executeForward`; redis README raw-number TTLs vs Duration-only; s3 README `call.input` on `PresignCall`; api-surface sequelize/knex/kysely factory types; `mock-aws-s3-v3` as current backing; `@hochgi/test-kit-http` as live; stale `docs/v2-*.md` paths; pglite-driver described as private; architecture Repository Layout vs the real tree.

@@ -11,7 +11,7 @@ import {
     type Rig,
     type ProbeRoot,
     type ProbedAdapterWithLifecycle,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { S3Call, S3CommandConstructor, S3PendingCall, S3Probe } from '../types.js';
 import { InMemoryS3Backing } from './in-memory-backing.js';
 

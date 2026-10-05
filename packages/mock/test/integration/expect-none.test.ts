@@ -7,8 +7,8 @@
  *   scheduled with fake timers will NOT fire because of expect.none.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, milliseconds, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 interface Service {
     doThing(arg: number): Promise<void>;

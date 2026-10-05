@@ -14,7 +14,7 @@ import {
     type PendingCallBase,
     type ProbeRoot,
     type Selection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 import type { GrpcCall, GrpcClient, GrpcPendingCall, GrpcProbe, ProbedGrpcClient } from './types.js';
 
 export interface CreateProbedGrpcClientOptions {

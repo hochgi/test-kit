@@ -21,7 +21,7 @@
  * Drive visibility expiry and long-poll waits with `harness.clock.advance(...)`
  * under fake timers. This mirrors the bull in-memory backing's approach.
  */
-import type { Clock } from '@vnatures/test-kit';
+import type { Clock } from '@hochgi/test-kit';
 
 /** Default visibility timeout (seconds) when neither queue nor receive set it. */
 export const DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;

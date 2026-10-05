@@ -5,7 +5,7 @@ import type {
     StreamProbe,
     StreamRuleBuilder,
     StreamSelection,
-} from '@vnatures/test-kit';
+} from '@hochgi/test-kit';
 
 // ── Stream method call shape ────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import * as testKit from '@vnatures/test-kit';
+import * as testKit from '@hochgi/test-kit';
 
 const repoRoot = path.join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', '..', '..');
 const declarationFile = path.join(repoRoot, 'packages/core/dist/index.d.ts');
@@ -40,7 +40,7 @@ function declarations(): string {
 }
 
 describe('Scenario: Rig surface is exported', () => {
-    it('createRig is a callable export of @vnatures/test-kit', () => {
+    it('createRig is a callable export of @hochgi/test-kit', () => {
         expect(typeof testKit.createRig).toBe('function');
     });
 
@@ -50,7 +50,7 @@ describe('Scenario: Rig surface is exported', () => {
 });
 
 describe('Scenario: the former Harness names are gone', () => {
-    it('createHarness is not a runtime export of @vnatures/test-kit', () => {
+    it('createHarness is not a runtime export of @hochgi/test-kit', () => {
         expect(Object.keys(testKit)).not.toContain('createHarness');
     });
 

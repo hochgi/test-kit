@@ -1,5 +1,5 @@
 /**
- * @vnatures/test-kit-mysql — acceptance tests.
+ * @hochgi/test-kit-mysql — acceptance tests.
  *
  * Uses a real MySQL 8 Testcontainer (requires Docker). The entire suite
  * is skipped via `describe.skipIf` when Docker is not reachable.
@@ -18,8 +18,8 @@
  */
 import { execSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRig, type Rig } from '@vnatures/test-kit';
-import { createProbedMysqlAdapter, type ProbedMysqlAdapter } from '@vnatures/test-kit-mysql';
+import { createRig, type Rig } from '@hochgi/test-kit';
+import { createProbedMysqlAdapter, type ProbedMysqlAdapter } from '@hochgi/test-kit-mysql';
 
 // Evaluate Docker availability once at module load for describe.skipIf.
 function dockerAvailable(): boolean {

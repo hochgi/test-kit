@@ -1,5 +1,5 @@
 /**
- * @vnatures/test-kit-sqs — acceptance tests.
+ * @hochgi/test-kit-sqs — acceptance tests.
  *
  * Mirrors the assertion style in packages/pg-kysely/test/integration/probe.test.ts.
  *
@@ -22,8 +22,8 @@ import {
     ReceiveMessageCommand,
     SendMessageCommand,
 } from '@aws-sdk/client-sqs';
-import { createRig, seconds, type Rig } from '@vnatures/test-kit';
-import { createProbedSqsAdapter, type ProbedSqsAdapter } from '@vnatures/test-kit-sqs';
+import { createRig, seconds, type Rig } from '@hochgi/test-kit';
+import { createProbedSqsAdapter, type ProbedSqsAdapter } from '@hochgi/test-kit-sqs';
 
 const QUEUE_NAME = 'test-queue';
 

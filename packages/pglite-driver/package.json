@@ -1,11 +1,25 @@
 {
-  "name": "@vnatures/test-kit-pglite-driver",
+  "name": "@hochgi/test-kit-pglite-driver",
   "version": "2.0.1",
   "description": "Internal PGlite lifecycle helper shared across pg-* packages",
-  "license": "UNLICENSED",
+  "keywords": [
+    "testing",
+    "component-testing",
+    "test-double",
+    "fake",
+    "probe",
+    "vitest",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Gilad Hoch <giladhoch@gmail.com> (https://github.com/hochgi)",
+  "homepage": "https://github.com/hochgi/test-kit/tree/main/packages/pglite-driver#readme",
+  "bugs": {
+    "url": "https://github.com/hochgi/test-kit/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/vnatures/test-kit.git",
+    "url": "https://github.com/hochgi/test-kit.git",
     "directory": "packages/pglite-driver"
   },
   "type": "module",
@@ -24,10 +38,12 @@
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "LICENSE"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "vite build && cp dist/index.d.ts dist/index.d.cts",

@@ -1,21 +1,21 @@
-# @vnatures/test-kit-pg-knex
+# @hochgi/test-kit-pg-knex
 
 PGlite-backed Knex adapter for component tests, with the same probe
-model as [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md). Uses
+model as [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md). Uses
 [`knex-pglite`](https://www.npmjs.com/package/knex-pglite); requires
 **Knex 3.x**.
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-pg-knex knex
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-pg-knex knex
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig } from "@vnatures/test-kit";
-import { createProbedKnexAdapter } from "@vnatures/test-kit-pg-knex";
+import { createRig } from "@hochgi/test-kit";
+import { createProbedKnexAdapter } from "@hochgi/test-kit-pg-knex";
 import knexStringcase from "knex-stringcase";
 import type { Knex } from "knex";
 
@@ -111,7 +111,7 @@ as supported by `knex-pglite`.
 
 ## See also
 
-- [`@vnatures/test-kit-pg-kysely`](../pg-kysely/README.md) — the same
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) — the same
   model with a Kysely-typed adapter; identical probe surface.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.

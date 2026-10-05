@@ -6,8 +6,8 @@
  * once/always rule grammar, and live intercept-based plumbing assertions.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRig, milliseconds, type Rig } from '@vnatures/test-kit';
-import { createProbedMock } from '@vnatures/test-kit-mock';
+import { createRig, milliseconds, type Rig } from '@hochgi/test-kit';
+import { createProbedMock } from '@hochgi/test-kit-mock';
 
 // ── Domain types ────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ class OrderService {
 
 // ── Test fixtures ───────────────────────────────────────────────────────────
 
-const testUser: User = { id: 1, name: 'Gilad', email: 'gilad@versatile.ai' };
+const testUser: User = { id: 1, name: 'Gilad', email: 'gilad@example.com' };
 const testProducts: Product[] = [
     { id: 101, name: 'Steel Beam', price: 250, stock: 50 },
     { id: 102, name: 'Concrete Block', price: 80, stock: 200 },
@@ -305,7 +305,7 @@ describe('OrderService — event bus assertions', () => {
         const payload = eventCall.args[1] as { type: string; order: Order; user: User };
         expect(payload.type).toBe('OrderCreated');
         expect(payload.order.total).toBe(250);
-        expect(payload.user.email).toBe('gilad@versatile.ai');
+        expect(payload.user.email).toBe('gilad@example.com');
         eventCall.answer(undefined);
 
         await orderPromise;

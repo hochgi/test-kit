@@ -6,7 +6,7 @@ retargets the v1/v2 framing requirement — two edits, see MODIFIED below)
 Tickets: RD-24143, RD-24144
 
 **This is a semver event.** It renames five exported symbols of
-`@vnatures/test-kit` with no deprecated alias, and republishes all 13 workspace
+`@hochgi/test-kit` with no deprecated alias, and republishes all 13 workspace
 packages at `2.0.0`. Under npm every consumer pins with a caret, so the leftmost
 digit is the only lever that prevents a silent auto-pull. The two tickets ship as
 one PR because no ordering of them avoids both the nested dual-install and the
@@ -20,7 +20,7 @@ about the Rig surface and the package graph.
 ## ADDED Requirements
 
 ### Requirement: The lifecycle owner is named Rig
-`@vnatures/test-kit` SHALL export the lifecycle owner of probes and adapters
+`@hochgi/test-kit` SHALL export the lifecycle owner of probes and adapters
 under the name `Rig`, created by `createRig`. The published names SHALL be:
 
 | exported name | kind |
@@ -37,12 +37,12 @@ No alias, re-export, or deprecation shim for the former `Harness` names SHALL be
 published. The former names SHALL be absent from the built type declarations.
 
 #### Scenario: Rig surface is exported
-- **WHEN** `@vnatures/test-kit` is imported
+- **WHEN** `@hochgi/test-kit` is imported
 - **THEN** `createRig` is a callable export and `Rig`, `RigRef`,
   `RigExpectations` and `CreateRigOptions` are exported types
 
 #### Scenario: the former Harness names are gone
-- **WHEN** the built declarations of `@vnatures/test-kit` are read
+- **WHEN** the built declarations of `@hochgi/test-kit` are read
 - **THEN** none of `Harness`, `HarnessRef`, `HarnessExpectations`,
   `CreateHarnessOptions` or `createHarness` appears as an exported name
 
@@ -74,7 +74,7 @@ rename, and any 2.x satisfies the siblings' `^2.0.0` peer range.
   `1.x`
 
 ### Requirement: Core is a peer dependency of every sibling that needs it
-Every package under `packages/` that requires `@vnatures/test-kit` SHALL declare
+Every package under `packages/` that requires `@hochgi/test-kit` SHALL declare
 it in `peerDependencies` at `^2.0.0` and SHALL NOT declare it in
 `dependencies`. This scopes to `packages/`: `examples/grpc-client` is a private
 workspace *consumer*, not a plugin, and correctly keeps core in `dependencies`
@@ -84,25 +84,25 @@ This applies to the 11 packages that consume core: `bull`, `kafka`, `mock`,
 `mysql`, `pg-knex`, `pg-kysely`, `pg-sequelize`, `redis`, `s3`, `sql`, `sqs`.
 `pglite-driver` does not consume core and SHALL NOT gain a dependency on it.
 
-Sibling-to-sibling workspace dependencies (`@vnatures/test-kit-sql`,
-`@vnatures/test-kit-pglite-driver`) SHALL be repointed to `^2.0.0` and SHALL
+Sibling-to-sibling workspace dependencies (`@hochgi/test-kit-sql`,
+`@hochgi/test-kit-pglite-driver`) SHALL be repointed to `^2.0.0` and SHALL
 remain in `dependencies`.
 
 #### Scenario: core is a peer, never a direct dependency
 - **WHEN** each `packages/*/package.json` is parsed
-- **THEN** no `dependencies` map contains `@vnatures/test-kit`, and each of the
-  11 consuming packages has `peerDependencies["@vnatures/test-kit"]` equal to
+- **THEN** no `dependencies` map contains `@hochgi/test-kit`, and each of the
+  11 consuming packages has `peerDependencies["@hochgi/test-kit"]` equal to
   `^2.0.0`
 
 #### Scenario: internal sibling ranges admit 2.0.0
 - **WHEN** each `packages/*/package.json` is parsed
-- **THEN** every `@vnatures/test-kit-sql` and
-  `@vnatures/test-kit-pglite-driver` range is `^2.0.0`
+- **THEN** every `@hochgi/test-kit-sql` and
+  `@hochgi/test-kit-pglite-driver` range is `^2.0.0`
 
 #### Scenario: the workspace copy is still linked after a clean install
 - **WHEN** `node_modules` is removed and `npm install` is run from the repo root
 - **THEN** for every package under `packages/`, any
-  `packages/<name>/node_modules/@vnatures/test-kit` entry is a symlink into
+  `packages/<name>/node_modules/@hochgi/test-kit` entry is a symlink into
   `packages/core` and never a materialized directory containing a 1.x manifest
 
 ### Requirement: An ADR records the collision and the versioning choice
@@ -214,7 +214,7 @@ sequenceDiagram
 
 | Decision | Outcome | Rung |
 | --- | --- | --- |
-| Do the 5 named symbols only, or also the `harness` option key? | Key stays `harness`; only the 5 symbols rename | Explicitly requested — RD-24145's forced-site table defines "forced" as *touching test-kit's exported names* and commits to 118 sites (craneview-admin 0 despite depending on core). Renaming the key would force nearly every consumer call site and invalidate that committed estimate, which another session owns. |
+| Do the 5 named symbols only, or also the `harness` option key? | Key stays `harness`; only the 5 symbols rename | Explicitly requested — RD-24145's forced-site table defines "forced" as *touching test-kit's exported names* and commits to 118 sites (a-consumer-repo-admin 0 despite depending on core). Renaming the key would force nearly every consumer call site and invalidate that committed estimate, which another session owns. |
 | Rename `origin: 'harness' \| 'user'` (public union, 6 sites)? | No | Explicitly requested — not among the 5 named symbols; it is an observable string value whose change would break consumer assertions at runtime, not compile time, and is not counted in RD-24145. |
 | Rename `errors.harnessClosed()` and its message text (6 sites)? | No | Explicitly requested — a property of the `errors` export, not an exported name; same RD-24145 reasoning. |
 | Does anything under `test/` change? | No | Source — every `harness` token under `test/` is the agent-harness sense. The one published-API-sense assertion (`docs-truth.test.ts:496`, "options must include harness and driver") stays *correct* precisely because the option key does not change. |
@@ -238,16 +238,16 @@ sequenceDiagram
 ## Acceptance mapping
 
 1. `packages/core/src/rig.ts` exists; `packages/core/src/harness.ts` does not.
-2. `@vnatures/test-kit` exports `createRig`, `Rig`, `RigRef`, `RigExpectations`,
+2. `@hochgi/test-kit` exports `createRig`, `Rig`, `RigRef`, `RigExpectations`,
    `CreateRigOptions`; exports none of the five former names.
 3. Attach / reset / close / closed-rig-rejects behaviour is unchanged.
 4. All 13 `packages/*/package.json` declare a 2.x version (this PR sets 2.0.0;
    CI's patch bump makes the first published 2.x 2.0.1).
-5. No `dependencies` map under `packages/` contains `@vnatures/test-kit`; the 11 consumers declare
+5. No `dependencies` map under `packages/` contains `@hochgi/test-kit`; the 11 consumers declare
    it in `peerDependencies` at `^2.0.0`; `pglite-driver` declares it nowhere.
 6. Every internal `test-kit-sql` / `test-kit-pglite-driver` range is `^2.0.0`.
 7. After `rm -rf node_modules && npm install`, every
-   `packages/*/node_modules/@vnatures/test-kit` is a symlink into
+   `packages/*/node_modules/@hochgi/test-kit` is a symlink into
    `packages/core`, not a materialized 1.x directory.
 8. `packages/mock/test/integration/rig-lifecycle.test.ts` exists;
    `harness-lifecycle.test.ts` does not.

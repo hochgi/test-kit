@@ -1,4 +1,4 @@
-# @vnatures/test-kit-sqs
+# @hochgi/test-kit-sqs
 
 Probe-driven SQS adapter for component tests, backed by a functional
 in-memory queue — no elasticmq, no localstack, no Docker.
@@ -16,22 +16,22 @@ component tests: visibility timeout, long-poll receive, receipt-handle
 deletion, and `ChangeMessageVisibility`.
 
 If your boundary is S3, use
-[`@vnatures/test-kit-s3`](../s3/README.md) instead.
+[`@hochgi/test-kit-s3`](../s3/README.md) instead.
 
 ## Install
 
 ```bash
-npm install --save-dev @vnatures/test-kit @vnatures/test-kit-sqs
+npm install --save-dev @hochgi/test-kit @hochgi/test-kit-sqs
 # peer: @aws-sdk/client-sqs (consumer provides its own version)
 ```
 
 ## Quick start
 
 ```typescript
-import { createRig, seconds } from "@vnatures/test-kit";
+import { createRig, seconds } from "@hochgi/test-kit";
 import {
     createProbedSqsAdapter,
-} from "@vnatures/test-kit-sqs";
+} from "@hochgi/test-kit-sqs";
 import {
     SendMessageCommand,
     ReceiveMessageCommand,
@@ -144,7 +144,7 @@ standard queues).
 
 ```typescript
 import { vi } from "vitest";
-import { createRig, seconds } from "@vnatures/test-kit";
+import { createRig, seconds } from "@hochgi/test-kit";
 
 beforeEach(() => {
     vi.useFakeTimers();
@@ -173,5 +173,5 @@ it("redelivers after the visibility timeout", async () => {
   backed-adapter model.
 - [`docs/api-surface.md`](../../docs/api-surface.md) for the full probe
   reference.
-- [`@vnatures/test-kit-s3`](../s3/README.md) for the sibling AWS SDK
+- [`@hochgi/test-kit-s3`](../s3/README.md) for the sibling AWS SDK
   client adapter.

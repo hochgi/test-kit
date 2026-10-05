@@ -1,7 +1,7 @@
 # Internal Documentation
 
-This folder contains documentation for **contributors and the vnatures team**.
-OSS adopters can ignore everything here — the consumer-facing reference lives
+This folder contains documentation for **contributors**. If you only use the
+packages, you can ignore everything here — the consumer-facing reference lives
 one level up in [`../README.md`](../README.md).
 
 ## Contents
@@ -9,8 +9,8 @@ one level up in [`../README.md`](../README.md).
 - [`tech-design.md`](tech-design.md) — Implementation specification for
   the engine, domain adapters, and infra. Anyone modifying the core probe
   engine, the SQL driver seam, or a domain adapter should read this first.
-- [`migration-from-v1.md`](migration-from-v1.md) — Mapping from the
-  pre-OSS internal test-kit API to 2.0.0. Used by the team to rewrite
-  legacy tests in internal services. From an OSS adopter's perspective
-  the OSS release is a fresh library; there is no v1 to
-  migrate from.
+- [`spec/`](spec/) — Current truth per capability: EARS requirements and
+  Gherkin scenarios that the repository's own tests enforce.
+- [`packets/`](packets/) — Work packets in flight (input to `/spec-to-ship`).
+- [`archive/`](archive/) — Applied packets and spec deltas, kept for the
+  reasoning behind past decisions.

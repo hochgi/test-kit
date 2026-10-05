@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { milliseconds, minutes, seconds } from '@vnatures/test-kit';
+import { milliseconds, minutes, seconds } from '@hochgi/test-kit';
 
 describe('Duration factories', () => {
     it('milliseconds(0) is valid', () => {
