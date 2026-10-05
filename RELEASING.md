@@ -81,7 +81,7 @@ for p in test-kit test-kit-mock test-kit-sql test-kit-pglite-driver \
          test-kit-redis test-kit-bull test-kit-s3 test-kit-sqs \
          test-kit-kafka test-kit-mysql; do
   npm trust github "@hochgi/$p" --file release.yml --repo hochgi/test-kit \
-    --env npm --allow-publish -y
+    --env npm -y
 done
 ```
 
