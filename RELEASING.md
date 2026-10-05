@@ -53,8 +53,12 @@ In the GitHub repository, **Settings → Environments → New environment**, nam
 1. On npmjs: **Avatar → Access Tokens → Generate New Token → Granular Access
    Token**.
    - Expiration: 7 days.
-   - Packages and scopes: **Read and write**, all packages (none exist yet).
-   - Tick **Bypass two-factor authentication** — CI cannot answer a 2FA prompt.
+   - Permissions: **Read and write (publish and stage)**, all packages (none
+     exist yet). npm warns that direct publishing with such tokens ends in
+     January 2027; that does not matter for a token that lives a week.
+   - Tick **Bypass two-factor authentication (2FA)**. Without it the publish
+     fails with `EOTP` ("This operation requires a one-time password"): CI
+     cannot answer a 2FA prompt.
 2. Store it as the environment secret (paste it at the prompt; it is never
    echoed):
 
@@ -66,7 +70,22 @@ In the GitHub repository, **Settings → Environments → New environment**, nam
 
 ### 4. Switch to trusted publishing
 
-For **each** of the 13 packages on npmjs: **Package → Settings → Trusted
+`npm trust` (npm ≥ 11.5.1) configures the trusted publisher from the CLI. It
+only works on a package that already exists, which is why step 3 comes first,
+and it needs your interactive npm login with 2FA:
+
+```bash
+npm login
+for p in test-kit test-kit-mock test-kit-sql test-kit-pglite-driver \
+         test-kit-pg-kysely test-kit-pg-knex test-kit-pg-sequelize \
+         test-kit-redis test-kit-bull test-kit-s3 test-kit-sqs \
+         test-kit-kafka test-kit-mysql; do
+  npm trust github "@hochgi/$p" --file release.yml --repo hochgi/test-kit \
+    --env npm --allow-publish -y
+done
+```
+
+The same can be done on npmjs, per package, under **Settings → Trusted
 Publisher → GitHub Actions**:
 
 | Field | Value |
@@ -76,8 +95,8 @@ Publisher → GitHub Actions**:
 | Workflow filename | `release.yml` |
 | Environment | `npm` |
 
-Then, on the same settings page, set **Publishing access** to *Require
-two-factor authentication and disallow tokens*.
+Then, on each package's npmjs settings page, set **Publishing access** to
+*Require two-factor authentication and disallow tokens*.
 
 Finally remove the bootstrap token everywhere:
 
