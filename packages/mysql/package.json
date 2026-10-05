@@ -58,7 +58,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@testcontainers/mysql": "^12.0.4",
+    "@testcontainers/mysql": "^12.2.0",
     "@hochgi/test-kit-sql": "^2.0.0"
   },
   "peerDependencies": {
