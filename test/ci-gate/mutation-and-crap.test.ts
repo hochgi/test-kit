@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
     chmodSync,
     copyFileSync,
@@ -293,12 +293,33 @@ function coverageKeys(): string[] {
     return isRecord(parsed) ? Object.keys(parsed) : [];
 }
 
-function spawnTimeout(command: string, args: string[], timeout: number) {
-    return spawnSync(command, args, {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        timeout,
-        env: process.env,
+type SpawnResult = { status: number | null; stdout: string; stderr: string; error: Error | undefined };
+
+/**
+ * Asynchronous on purpose. Stryker and the coverage run take well over a
+ * minute on a CI runner; a spawnSync that long blocks the Vitest worker's event
+ * loop, its onTaskUpdate RPC to the main process times out, and the run fails
+ * with an unhandled error even though every test passed.
+ */
+function spawnTimeout(command: string, args: string[], timeout: number): Promise<SpawnResult> {
+    return new Promise((resolve) => {
+        const child = spawn(command, args, { cwd: repoRoot, env: process.env, timeout });
+        let stdout = '';
+        let stderr = '';
+        let error: Error | undefined;
+        child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+            stdout += chunk;
+        });
+        child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+            stderr += chunk;
+        });
+        child.on('error', (spawnError) => {
+            error = spawnError;
+        });
+        child.on('close', (status, signal) => {
+            const killed = signal === null ? undefined : new Error(`${command} was killed by ${signal}`);
+            resolve({ status, stdout, stderr, error: error ?? killed });
+        });
     });
 }
 
@@ -502,15 +523,15 @@ describe('Incremental mutation runner', () => {
 });
 
 describe('A zero-mutant Stryker success is a failure', () => {
-    it('mutating a glob that matches no source fails', () => {
+    it('mutating a glob that matches no source fails', async () => {
         const script = path.join(repoRoot, mutationPackageRelative);
         expect(existsSync(script), `${mutationPackageRelative} must exist`).toBe(true);
-        const result = spawnTimeout('bash', [script, '__no_such_package__'], 30_000);
+        const result = await spawnTimeout('bash', [script, '__no_such_package__'], 30_000);
         expect(result.error, 'per-package runner must not time out').toBeUndefined();
         expect(result.status, 'a mutate glob that matches no source must exit non-zero').not.toBe(0);
     });
 
-    it('duration.ts mutation produces a non-zero mutant count', () => {
+    it('duration.ts mutation produces a non-zero mutant count', async () => {
         expect(existsSync(path.join(repoRoot, mutationConfigRelative)), 'vitest.mutation.config.ts must exist').toBe(
             true,
         );
@@ -519,7 +540,7 @@ describe('A zero-mutant Stryker success is a failure', () => {
         expect(existsSync(strykerBin), 'stryker must be installed').toBe(true);
         writeStrykerPackage('core');
         rmSync(path.join(repoRoot, 'reports', 'mutation'), { recursive: true, force: true });
-        const result = spawnTimeout(strykerBin, ['run', '--mutate', 'packages/core/src/duration.ts'], 180_000);
+        const result = await spawnTimeout(strykerBin, ['run', '--mutate', 'packages/core/src/duration.ts'], 180_000);
         expect(result.error, 'duration.ts mutation must not time out').toBeUndefined();
         expect(result.status, 'duration.ts mutation must exit 0').toBe(0);
         const reportRelative = mutationJsonCandidates.find((candidate) => existsSync(path.join(repoRoot, candidate)));
@@ -530,12 +551,12 @@ describe('A zero-mutant Stryker success is a failure', () => {
         expect(counts.killed, 'JSON report must record more than 0 killed mutants').toBeGreaterThan(0);
     }, 180_000);
 
-    it('the shipped per-package runner instruments and kills mutants for sql', () => {
+    it('the shipped per-package runner instruments and kills mutants for sql', async () => {
         const script = path.join(repoRoot, mutationPackageRelative);
         expect(existsSync(script), `${mutationPackageRelative} must exist`).toBe(true);
         expect(existsSync(path.join(repoRoot, 'packages', 'sql', 'src')), 'packages/sql/src must exist').toBe(true);
         rmSync(path.join(repoRoot, 'reports', 'mutation'), { recursive: true, force: true });
-        const result = spawnTimeout('bash', [script, 'sql'], 300_000);
+        const result = await spawnTimeout('bash', [script, 'sql'], 300_000);
         expect(result.error, 'the shipped runner must not time out').toBeUndefined();
         expect(
             result.status,
@@ -616,14 +637,14 @@ describe('CRAP scores source functions from istanbul coverage', () => {
 });
 
 describe('Istanbul coverage keys are TypeScript sources', () => {
-    it('istanbul coverage keys are TypeScript sources', () => {
+    it('istanbul coverage keys are TypeScript sources', async () => {
         expect(existsSync(path.join(repoRoot, mutationConfigRelative)), 'vitest.mutation.config.ts must exist').toBe(
             true,
         );
         writeStrykerPackage('core');
         rmSync(path.join(repoRoot, 'coverage'), { recursive: true, force: true });
         const vitestBin = path.join(repoRoot, 'node_modules', '.bin', 'vitest');
-        const result = spawnTimeout(
+        const result = await spawnTimeout(
             vitestBin,
             [
                 'run',

@@ -15,7 +15,7 @@ keeping that surface narrow, consistent across the family, and documented.
 
 ## Development
 
-Requires Node.js ≥ 20 and npm. `packages/mysql` also needs Docker.
+Requires Node.js ≥ 22 and npm. `packages/mysql` also needs Docker.
 
 ```bash
 npm ci

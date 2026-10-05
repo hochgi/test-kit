@@ -23,7 +23,7 @@
     "check-agent-skills": "./scripts/check-agent-skills.sh"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "overrides": {
     "underscore": "^1.13.8"

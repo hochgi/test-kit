@@ -1639,7 +1639,8 @@ Notes:
   dependencies. Anything not externalized gets bundled into the output.
   Each package adds its own peer/dep externals (e.g., `'kysely'`,
   `'knex'`, `'@aws-sdk/client-s3'`).
-- `target: 'node20'` matches the `engines.node: ">=20"` declaration. No
+- `target: 'node20'` sits below the `engines.node: ">=22"` declaration, so
+  the output never needs a newer runtime than the one consumers declare. No
   legacy-Node downleveling.
 - `minify: false` — libraries should not minify. The consumer's bundler
   decides minification policy.

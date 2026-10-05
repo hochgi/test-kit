@@ -200,7 +200,7 @@ Docker. Everything else runs in-process.
 
 ## Requirements
 
-- Node.js ≥ 20.
+- Node.js ≥ 22.
 - TypeScript ≥ 5.0 (strict mode supported and recommended).
 - A test runner of your choice (Vitest and Jest are both first-class; see
   `Clock` in [`docs/api-surface.md`](docs/api-surface.md) for fake-timer
