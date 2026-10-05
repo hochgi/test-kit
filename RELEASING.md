@@ -70,7 +70,8 @@ In the GitHub repository, **Settings → Environments → New environment**, nam
 
 ### 4. Switch to trusted publishing
 
-`npm trust` (npm ≥ 11.5.1) configures the trusted publisher from the CLI. It
+`npm trust` (npm ≥ 12; older 11.x clients lack `--allow-publish`, and the
+registry rejects their requests with `400 permissions is required`) configures the trusted publisher from the CLI. It
 only works on a package that already exists, which is why step 3 comes first,
 and it needs your interactive npm login with 2FA:
 
@@ -81,7 +82,7 @@ for p in test-kit test-kit-mock test-kit-sql test-kit-pglite-driver \
          test-kit-redis test-kit-bull test-kit-s3 test-kit-sqs \
          test-kit-kafka test-kit-mysql; do
   npm trust github "@hochgi/$p" --file release.yml --repo hochgi/test-kit \
-    --env npm -y
+    --env npm --allow-publish -y
 done
 ```
 
