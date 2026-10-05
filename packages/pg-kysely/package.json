@@ -58,7 +58,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.3.2",
+    "@electric-sql/pglite": "^0.5.8",
     "@hochgi/test-kit-pglite-driver": "^2.0.0",
     "@hochgi/test-kit-sql": "^2.0.0",
     "kysely-pglite-dialect": "^1.2.0"
