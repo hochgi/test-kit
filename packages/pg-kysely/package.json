@@ -61,7 +61,7 @@
     "@electric-sql/pglite": "^0.3.2",
     "@hochgi/test-kit-pglite-driver": "^2.0.0",
     "@hochgi/test-kit-sql": "^2.0.0",
-    "kysely-pglite-dialect": "^1.2.0"
+    "kysely-pglite-dialect": "^1.4.0"
   },
   "peerDependencies": {
     "@hochgi/test-kit": "^2.0.0",
