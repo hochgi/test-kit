@@ -69,7 +69,7 @@
     "kafkajs": "^2.2.4",
     "prettier": "^3.4.0",
     "typescript": "^5.8.0",
-    "vite": "^6.0.0",
+    "vite": "^6.4.5",
     "vite-plugin-dts": "^4.0.0",
     "vitest": "^3.0.0"
   },
