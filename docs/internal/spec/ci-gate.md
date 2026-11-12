@@ -107,7 +107,7 @@ is.
   the only secret it names is `NPM_TOKEN`
 
 ### Requirement: Every published package is publicly publishable
-Root `LICENSE` SHALL be the MIT license. Each of the thirteen
+Root `LICENSE` SHALL be the MIT license. Each of the fourteen
 `packages/<name>/package.json` manifests SHALL have `license` `MIT`,
 `publishConfig` exactly `{ "access": "public", "provenance": true }`, and
 `LICENSE` in `files`, and `packages/<name>/LICENSE` SHALL equal the root
