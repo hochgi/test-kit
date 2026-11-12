@@ -17,6 +17,7 @@ Test-kit ships as a small family of packages:
 - `@hochgi/test-kit-pg-kysely`: Kysely + PGlite backed adapter.
 - `@hochgi/test-kit-pg-knex`: Knex + PGlite backed adapter.
 - `@hochgi/test-kit-pg-sequelize`: Sequelize v6 + PGlite backed adapter.
+- `@hochgi/test-kit-pg-drizzle`: Drizzle (`drizzle-orm/pglite`) + PGlite backed adapter.
 - `@hochgi/test-kit-redis`: cache adapter backed by a Redis-compatible fake.
 - `@hochgi/test-kit-bull`: Bull `Queue` adapter with an in-memory backing.
 - `@hochgi/test-kit-s3`: S3 and presigner adapters.
@@ -1059,9 +1060,9 @@ for await (const chunk of model.adapter.stream('hi')) {
 
 ## Backed Database Adapters
 
-Packages: `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`.
+Packages: `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`, `@hochgi/test-kit-pg-drizzle`.
 
-All three packages share the same probe surface, defined in
+All four packages share the same probe surface, defined in
 `@hochgi/test-kit-sql`. What differs across them is the
 `adapter` type (Kysely, Knex, Sequelize instance) and the construction
 mechanics (which underlying driver wraps PGlite, how schema bootstrap is
@@ -1147,7 +1148,39 @@ export type CreateProbedSequelizeAdapterOptions = {
 export function createProbedSequelizeAdapter(
     options: CreateProbedSequelizeAdapterOptions,
 ): Promise<ProbedSequelizeAdapter>;
+
+// @hochgi/test-kit-pg-drizzle
+export interface CreateProbedDrizzleAdapterOptions<TSchema extends Record<string, unknown> = Record<string, never>> {
+    readonly harness: Rig;
+    readonly schema?: TSchema;
+    readonly bootstrap: (db: PgliteDatabase<TSchema>) => Promise<void>;
+    readonly role?: string;
+    readonly extensions?: Record<string, unknown>;
+    readonly defaultTimeout?: Duration;
+}
+
+export type ProbedDrizzleAdapter<TSchema extends Record<string, unknown> = Record<string, never>> =
+    ProbedAdapterWithLifecycle<PgliteDatabase<TSchema>, QueryProbe> & {
+        seed<TTable extends PgTable>(table: TTable, rows: ReadonlyArray<TTable['$inferInsert']>): Promise<void>;
+        readonly pglite: PgliteHandle;
+        readonly notifications: PgliteHandle['notifications'];
+    };
+
+export function createProbedDrizzleAdapter<TSchema extends Record<string, unknown> = Record<string, never>>(
+    options: CreateProbedDrizzleAdapterOptions<TSchema>,
+): Promise<ProbedDrizzleAdapter<TSchema>>;
 ```
+
+Drizzle specifics: the probe sits below Drizzle, at the PGlite client, so
+every Drizzle entry point (query builder, `db.query.*`, `db.execute`,
+prepared queries, transactions) produces a `QueryCall`. `BEGIN` / `COMMIT`
+/ `ROLLBACK` are not calls; nested-transaction `savepoint` statements are.
+`bootstrap` and `seed` run on an unprobed Drizzle over the same PGlite.
+With `role` set, every application statement runs under an unprobed
+`SET LOCAL ROLE "<role>"`; bootstrap, seed and reset stay on the owner.
+`answer(value)` resolves PGlite's `query()` with `value` unchanged.
+PGlite runs one transaction at a time, so a pending call in one
+transaction blocks every other transaction until it is settled.
 
 The shared surface is `rig`, `defaultTimeout`, the returned `probe`,
 and the `reset`/`close` lifecycle. What differs:
@@ -1161,17 +1194,20 @@ and the `reset`/`close` lifecycle. What differs:
 3. The `seed` helper's input shape (typed for the ORM's idiom).
 4. Adapter-specific construction options: Kysely and Knex `extensions`;
    Knex `knexConfig`; Sequelize `preBootstrap`, `models`,
-   `SequelizeClass`, `extensions`, and `sequelizeOptions`.
+   `SequelizeClass`, `extensions`, and `sequelizeOptions`; Drizzle
+   `schema`, `role`, and `extensions`.
 
 ### Behavior (shared)
 
 - Each factory installs a default rule: `probe.always().forward()` at the
   bottom of the rule stack.
-- `reset()` truncates all user tables (the bootstrap-defined schema is
-  preserved). Equivalent to dropping and recreating the data, not the
-  schema. The exact mechanism is ORM-specific (Kysely/Knex use raw
-  truncate; Sequelize uses model-level `destroy({ truncate: true })` or
-  raw truncate via the underlying driver).
+- `reset()` drops every user table in the `public` schema
+  (`DROP TABLE IF EXISTS … CASCADE`) and then rebuilds the schema on the
+  maintenance connection, so `bootstrap` must be re-runnable from an
+  empty `public` schema. Kysely, Knex, and Drizzle re-run `bootstrap`.
+  Sequelize also drops the `public` enum types, then re-runs
+  `preBootstrap`, re-registers and syncs `models` (when given), and
+  re-runs `bootstrap` (when given).
 - `close()` shuts down the underlying PGlite instance and the ORM's
   connection pool. After `close()`, all probe operations throw.
 - Bootstrap, `seed`, and `reset` use a maintenance connection that
@@ -1960,8 +1996,8 @@ These decisions are part of the shipped 1.x API unless explicitly revisited:
     interceptable. The pre-register pattern (intercept before SUT
     triggers the call) is the canonical way to capture a call that
     a rule would otherwise handle.
-26. The `pg-kysely`, `pg-knex`, and `pg-sequelize` packages share an
-    identical `QueryProbe` surface. The packages differ only in the
+26. The `pg-kysely`, `pg-knex`, `pg-sequelize`, and `pg-drizzle`
+    packages share an identical `QueryProbe` surface. The packages differ only in the
     `adapter` type, the `bootstrap` callback signature, and the
     `seed` helper's input shape. Tests written against one ORM port
     to another with minimal change to non-ORM-specific code.

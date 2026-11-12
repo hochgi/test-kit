@@ -6,8 +6,9 @@ disposes the instance on close.
 
 This package **is published**. You typically consume it through
 [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md),
-[`@hochgi/test-kit-pg-knex`](../pg-knex/README.md), or
-[`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md) rather than
+[`@hochgi/test-kit-pg-knex`](../pg-knex/README.md),
+[`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md), or
+[`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md) rather than
 installing it directly.
 
 ## `createPgliteHandle`

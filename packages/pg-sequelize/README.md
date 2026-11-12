@@ -181,8 +181,9 @@ await queryPromise;
 
 ## See also
 
-- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) and
-  [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md) — siblings
+- [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md),
+  [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md), and
+  [`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md) — siblings
   with identical probe semantics.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.
