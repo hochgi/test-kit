@@ -20,6 +20,7 @@ instead:
 
 - [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md)
 - [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md)
+- [`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md)
 
 ## Install
 

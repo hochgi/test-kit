@@ -104,7 +104,8 @@ is a worked walkthrough; the implementation specification lives in
   adapters for arbitrary TypeScript interfaces.
 - [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md),
   [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md),
-  [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md) — SQL
+  [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md),
+  [`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md) — SQL
   adapters backed by PGlite.
 - [`@hochgi/test-kit-redis`](../redis/README.md) — cache adapter.
 - [`@hochgi/test-kit-s3`](../s3/README.md) — S3 + presigner adapters.

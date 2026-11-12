@@ -4,6 +4,9 @@
  *   "Requirement: Core is a peer dependency of every sibling that needs it"
  * (acceptance items 4, 5, 6).
  *
+ * Delta docs/internal/spec/deltas/P14-pg-drizzle.md (acceptance item 3) adds
+ * packages/pg-drizzle: 14 package dirs, 12 core consumers.
+ *
  * Reads the manifests off disk rather than through a resolver, so a stale
  * node_modules tree cannot make this pass.
  */
@@ -18,12 +21,13 @@ const packagesDir = path.join(repoRoot, 'packages');
 const CORE = '@hochgi/test-kit';
 const SIBLINGS = ['@hochgi/test-kit-sql', '@hochgi/test-kit-pglite-driver'] as const;
 
-/** The 11 packages the delta names as consumers of core. */
+/** The 12 packages the deltas name as consumers of core. */
 const CORE_CONSUMERS = [
     'bull',
     'kafka',
     'mock',
     'mysql',
+    'pg-drizzle',
     'pg-knex',
     'pg-kysely',
     'pg-sequelize',
@@ -64,8 +68,8 @@ const manifests = new Map(dirs.map((dir) => [dir, manifest(dir)] as const));
  * 2.x. So pin the major and require a valid semver, not a frozen string.
  */
 describe('Scenario: all manifests are on major 2', () => {
-    it('there are 13 workspace packages under packages/', () => {
-        expect(dirs).toHaveLength(13);
+    it('there are 14 workspace packages under packages/', () => {
+        expect(dirs).toHaveLength(14);
     });
 
     it.each(dirs)('packages/%s/package.json declares a 2.x version', (dir) => {
@@ -89,7 +93,7 @@ describe('Scenario: core is a peer, never a direct dependency', () => {
         expect(manifests.get(dir)?.peerDependencies?.[CORE]).toBe('^2.0.0');
     });
 
-    it('the set of packages peer-depending on core is exactly the 11 consumers', () => {
+    it('the set of packages peer-depending on core is exactly the 12 consumers', () => {
         const peers = dirs.filter((dir) => manifests.get(dir)?.peerDependencies?.[CORE] !== undefined).sort();
         expect(peers).toEqual([...CORE_CONSUMERS].sort());
     });

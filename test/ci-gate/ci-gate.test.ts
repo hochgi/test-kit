@@ -41,6 +41,7 @@ const publishedPackages = [
     'pg-kysely',
     'pg-knex',
     'pg-sequelize',
+    'pg-drizzle',
 ] as const;
 
 const checkSteps = ['format:check', 'lint', 'typecheck', 'build', 'test'] as const;
@@ -826,5 +827,35 @@ describe('Existing ratchet violations use next-line disables with a justificatio
             hits,
             'each eslint-disable-next-line or eslint-disable-line that names a ratchet rule must include -- plus a non-empty justification',
         ).toEqual([]);
+    });
+});
+
+/**
+ * Delta docs/internal/spec/deltas/P14-pg-drizzle.md
+ * → "Requirement: Workspace wiring for pg-drizzle" (acceptance item 6).
+ */
+describe('Workspace wiring for pg-drizzle', () => {
+    const newWorkspaces = ['packages/pg-drizzle', 'examples/pg-drizzle-rls'] as const;
+
+    function tsconfigReferencePaths(): string[] {
+        const parsed: unknown = JSON.parse(readUtf8(path.join(repoRoot, 'tsconfig.json')));
+        if (!isRecord(parsed) || !Array.isArray(parsed['references'])) {
+            return [];
+        }
+        return parsed['references']
+            .map((ref: unknown) => (isRecord(ref) && typeof ref['path'] === 'string' ? ref['path'] : ''))
+            .map((ref) => ref.replace(/^\.\//, '').replace(/\/$/, ''));
+    }
+
+    it('Scenario: projects and references list the new workspaces', () => {
+        const vitestConfig = readUtf8(vitestConfigPath);
+        const references = tsconfigReferencePaths();
+        for (const workspace of newWorkspaces) {
+            expect(
+                vitestConfig.includes(`'${workspace}'`),
+                `vitest.config.ts test.projects must list ${workspace}`,
+            ).toBe(true);
+            expect(references, `tsconfig.json references must include ./${workspace}`).toContain(workspace);
+        }
     });
 });

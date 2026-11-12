@@ -3,7 +3,7 @@
 Shared probe surface and `SqlDriver` seam for SQL-family adapters. This
 package is the foundation that the per-ORM packages
 (`@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`,
-`@hochgi/test-kit-pg-sequelize`) plug into.
+`@hochgi/test-kit-pg-sequelize`, `@hochgi/test-kit-pg-drizzle`) plug into.
 
 You typically do **not** install this directly. Install the per-ORM
 package matching your database boundary:
@@ -11,6 +11,7 @@ package matching your database boundary:
 - [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md)
 - [`@hochgi/test-kit-pg-knex`](../pg-knex/README.md)
 - [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md)
+- [`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md)
 
 ## What lives here
 

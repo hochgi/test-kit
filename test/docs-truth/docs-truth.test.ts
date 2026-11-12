@@ -402,6 +402,66 @@ function typeAliasObjectDecl(content: string, name: string): string | undefined 
     return match?.[0];
 }
 
+/**
+ * Body of `export interface NAME … {…}` or `export type NAME … = … {…}`: the
+ * first brace block after the declaration head, brace-matched.
+ */
+function declarationBody(content: string, name: string): string | undefined {
+    const head = new RegExp(`export\\s+(?:interface|type)\\s+${name}\\b`).exec(content);
+    if (head === null) {
+        return undefined;
+    }
+    const open = content.indexOf('{', head.index);
+    if (open === -1) {
+        return undefined;
+    }
+    let depth = 0;
+    for (let i = open; i < content.length; i += 1) {
+        const ch = content[i];
+        if (ch === '{') {
+            depth += 1;
+        } else if (ch === '}') {
+            depth -= 1;
+            if (depth === 0) {
+                return content.slice(open + 1, i);
+            }
+        }
+    }
+    return undefined;
+}
+
+/** Top-level members of a declaration body, split on `;`/`,` outside brackets. */
+function topLevelMembers(body: string): string[] {
+    const stripped = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const members: string[] = [];
+    let depth = 0;
+    let current = '';
+    for (const ch of stripped) {
+        if ('({[<'.includes(ch)) {
+            depth += 1;
+        } else if (')}]>'.includes(ch) && !(ch === '>' && current.endsWith('='))) {
+            depth -= 1;
+        }
+        if ((ch === ';' || ch === ',') && depth === 0) {
+            members.push(current);
+            current = '';
+        } else {
+            current += ch;
+        }
+    }
+    members.push(current);
+    return members.map((member) => member.trim()).filter((member) => member !== '');
+}
+
+/** Top-level member names of a declaration body, `?` kept for optional ones, sorted. */
+function declaredMembers(body: string): string[] {
+    return topLevelMembers(body)
+        .map((member) => /^(?:readonly\s+)?([A-Za-z_$][\w$]*)(\??)/.exec(member))
+        .filter((match): match is RegExpExecArray => match !== null)
+        .map((match) => `${match[1] ?? ''}${match[2] ?? ''}`)
+        .sort();
+}
+
 function extendsForwardableProbe(content: string, name: string): boolean {
     return new RegExp(`export\\s+interface\\s+${name}\\s+extends\\s+ForwardableProbe\\b`).test(content);
 }
@@ -618,6 +678,35 @@ describe('pg factory types in api-surface match source', () => {
         expect(handle).toMatch(/ProbedAdapterWithLifecycle/);
     });
 
+    it('drizzle factory options and handle match source', () => {
+        const source = readUtf8(path.join(repoRoot, 'packages/pg-drizzle/src/factory.ts'));
+        for (const name of ['CreateProbedDrizzleAdapterOptions', 'ProbedDrizzleAdapter']) {
+            const sourceBody = declarationBody(source, name);
+            expect(sourceBody, `${name} must be declared in packages/pg-drizzle/src/factory.ts`).toBeDefined();
+            const docBody = declarationBody(apiSurface, name);
+            expect(docBody, `${name} declaration must exist in docs/api-surface.md`).toBeDefined();
+            expect(declaredMembers(docBody ?? ''), `${name} members in api-surface must match source`).toEqual(
+                declaredMembers(sourceBody ?? ''),
+            );
+        }
+        expect(declaredMembers(declarationBody(apiSurface, 'CreateProbedDrizzleAdapterOptions') ?? '')).toEqual([
+            'bootstrap',
+            'defaultTimeout?',
+            'extensions?',
+            'harness',
+            'role?',
+            'schema?',
+        ]);
+        expect(declaredMembers(declarationBody(apiSurface, 'ProbedDrizzleAdapter') ?? '')).toEqual([
+            'notifications',
+            'pglite',
+            'seed',
+        ]);
+        const handleStart = apiSurface.search(/export\s+type\s+ProbedDrizzleAdapter\b/);
+        const handle = apiSurface.slice(Math.max(handleStart, 0), Math.max(handleStart, 0) + 400);
+        expect(handle).toMatch(/ProbedAdapterWithLifecycle<\s*PgliteDatabase<TSchema>,\s*QueryProbe\s*>/);
+    });
+
     it('kysely handle documents pglite and notifications', () => {
         const handleStart = apiSurface.indexOf('export type ProbedKyselyAdapter');
         expect(handleStart, 'ProbedKyselyAdapter declaration must exist').toBeGreaterThan(-1);
@@ -625,6 +714,35 @@ describe('pg factory types in api-surface match source', () => {
         expect(handle).toMatch(/\bpglite\b/);
         expect(handle).toMatch(/\bnotifications\b/);
         expect(handle).toMatch(/ProbedAdapterWithLifecycle/);
+    });
+});
+
+/**
+ * Delta P14 → "Requirement: Workspace wiring for pg-drizzle" (README clause)
+ * and "Requirement: Cross-transaction serialisation is a documented
+ * limitation" (README clause), including the two seam limits.
+ */
+describe('pg-drizzle README documents the adapter', () => {
+    it('README covers install, quick start, handle, role, savepoints, answer(), the transaction limitation and the seam limits', () => {
+        const readmePath = path.join(repoRoot, 'packages/pg-drizzle/README.md');
+        expect(existsSync(readmePath), 'packages/pg-drizzle/README.md must exist').toBe(true);
+        const readme = existsSync(readmePath) ? readUtf8(readmePath) : '';
+        expect(readme, 'install').toMatch(/npm install[^\n]*@hochgi\/test-kit-pg-drizzle/);
+        expect(readme, 'quick start').toMatch(/createProbedDrizzleAdapter\(/);
+        for (const member of ['adapter', 'probe', 'seed', 'reset', 'close', 'pglite', 'notifications']) {
+            expect(readme, `handle member ${member}`).toMatch(new RegExp(`\\b${member}\\b`));
+        }
+        expect(readme, 'role option').toMatch(/\brole\b[\s\S]*SET LOCAL ROLE/);
+        expect(readme, 'savepoint visibility').toMatch(/savepoint/i);
+        expect(readme, 'answer() pass-through').toMatch(/answer\(/);
+        expect(readme, 'cross-transaction limitation').toMatch(/one transaction at a time/i);
+        expect(readme, 'multi-connection backing needed for cross-transaction races').toMatch(/multi-connection/i);
+        expect(readme, 'seam limit: $client members bypass the probe').toMatch(/\$client/);
+        expect(readme, 'seam limit: $client exec bypasses the probe').toMatch(/\bexec\b/);
+        expect(readme, 'seam limit: role-wrapped plain statements cannot run VACUUM').toMatch(/\bVACUUM\b/i);
+        expect(readme, 'seam limit: role-wrapped plain statements cannot run CONCURRENTLY').toMatch(
+            /\bCONCURRENTLY\b/i,
+        );
     });
 });
 
@@ -678,9 +796,19 @@ describe("pg-kysely's dialect dependency is named correctly", () => {
     });
 });
 
+/**
+ * Delta P14 adds a fourteenth published package. `publishedPackages` is read
+ * from `git ls-files`, so an uncommitted package directory is invisible to it;
+ * the explicit checks below name the new package independently of the index.
+ */
+const DRIZZLE_PACKAGE = '@hochgi/test-kit-pg-drizzle';
+
 describe('Package inventories list every published workspace package', () => {
     it('root README package table is complete', () => {
         const table = markdownSection(rootReadme, '## Packages');
+        expect(namesPublishedPackage(table, DRIZZLE_PACKAGE), `Packages table must include ${DRIZZLE_PACKAGE}`).toBe(
+            true,
+        );
         expect(missingPublishedPackages(table), 'Packages table must include a row for each published package').toEqual(
             [],
         );
@@ -691,9 +819,10 @@ describe('Package inventories list every published workspace package', () => {
         expect(graph.includes('kafka') || namesPublishedPackage(graph, '@hochgi/test-kit-kafka')).toBe(true);
         expect(graph.includes('sqs') || namesPublishedPackage(graph, '@hochgi/test-kit-sqs')).toBe(true);
         expect(graph.includes('mysql') || namesPublishedPackage(graph, '@hochgi/test-kit-mysql')).toBe(true);
+        expect(namesPublishedPackage(graph, DRIZZLE_PACKAGE) || /\bpg-drizzle\b/.test(graph)).toBe(true);
         expect(
             missingPublishedPackages(graph),
-            'Package Graph and domain-layer list must name all thirteen packages',
+            'Package Graph and domain-layer list must name all fourteen packages',
         ).toEqual([]);
     });
 
@@ -701,7 +830,8 @@ describe('Package inventories list every published workspace package', () => {
         const names = markdownSection(apiSurface, '## Package Names');
         expect(names.includes('@hochgi/test-kit-sql')).toBe(true);
         expect(names.includes('@hochgi/test-kit-pglite-driver')).toBe(true);
-        expect(missingPublishedPackages(names), 'Package Names must list all thirteen published packages').toEqual([]);
+        expect(names.includes(DRIZZLE_PACKAGE), `Package Names must list ${DRIZZLE_PACKAGE}`).toBe(true);
+        expect(missingPublishedPackages(names), 'Package Names must list all fourteen published packages').toEqual([]);
     });
 });
 
@@ -738,6 +868,10 @@ describe('architecture repository layout matches the tree', () => {
         expect(layoutMentionsPath(parsed.files, parsed.dirs, 'packages/kafka')).toBe(true);
         expect(layoutMentionsPath(parsed.files, parsed.dirs, 'packages/mysql')).toBe(true);
         expect(layoutMentionsPath(parsed.files, parsed.dirs, 'packages/sqs')).toBe(true);
+        expect(
+            layoutMentionsPath(parsed.files, parsed.dirs, 'packages/pg-drizzle'),
+            'Repository Layout must include packages/pg-drizzle',
+        ).toBe(true);
         expect(parsed.files.includes('docs/internal/tech-design.md') || tree.includes('tech-design.md')).toBe(true);
         expect(parsed.files.includes('packages/core/src/expectation-engine.ts')).toBe(true);
         expect(parsed.files.includes('packages/core/src/stream-probe-engine.ts')).toBe(true);
@@ -776,6 +910,10 @@ describe('tech-design build section matches the manifests', () => {
         expect(build).toMatch(/\.\/packages\/mysql/);
         expect(build).toMatch(/\.\/packages\/sqs/);
         expect(build).toMatch(/\.\/examples\/grpc-client/);
+        expect(build, 'tsconfig references must include ./packages/pg-drizzle').toMatch(/\.\/packages\/pg-drizzle/);
+        expect(build, 'tsconfig references must include ./examples/pg-drizzle-rls').toMatch(
+            /\.\/examples\/pg-drizzle-rls/,
+        );
         expect(build).not.toMatch(/lists no `devDependencies`/);
         expect(build).toMatch(/own `devDependencies`|declare their own `devDependencies`/);
     });

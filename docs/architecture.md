@@ -26,10 +26,11 @@ contracts (function signatures, file layouts, etc.) are described in
        │      │       │
        │      │       ├── @hochgi/test-kit-pg-kysely     ← KyselySqlDriver + Kysely typing
        │      │       ├── @hochgi/test-kit-pg-knex       ← KnexSqlDriver + Knex typing
-       │      │       └── @hochgi/test-kit-pg-sequelize  ← SequelizeSqlDriver + Sequelize typing
+       │      │       ├── @hochgi/test-kit-pg-sequelize  ← SequelizeSqlDriver + Sequelize typing
+       │      │       └── @hochgi/test-kit-pg-drizzle    ← probed PGlite client + Drizzle typing
        │      │
        │      ├── @hochgi/test-kit-mysql         ← real MySQL 8 via Testcontainers
-       │      └── (future SQL ORMs slot in here, e.g. drizzle, typeorm)
+       │      └── (future SQL ORMs slot in here, e.g. typeorm)
        │
        ├── @hochgi/test-kit-redis               ← createProbedCacheAdapter
        │
@@ -49,7 +50,7 @@ Two horizontal layers:
 - **Domain layer** (`@hochgi/test-kit-mock`, `@hochgi/test-kit-sql`,
   `@hochgi/test-kit-pglite-driver`, `@hochgi/test-kit-pg-kysely`,
   `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`,
-  `@hochgi/test-kit-mysql`, `@hochgi/test-kit-redis`,
+  `@hochgi/test-kit-pg-drizzle`, `@hochgi/test-kit-mysql`, `@hochgi/test-kit-redis`,
   `@hochgi/test-kit-bull`, `@hochgi/test-kit-s3`,
   `@hochgi/test-kit-sqs`, `@hochgi/test-kit-kafka`): per-boundary
   packages that wrap the core engine with domain-specific call shapes,
@@ -165,7 +166,8 @@ encapsulates:
 - Running a user-supplied bootstrap script against it.
 - Providing a "maintenance connection" that the pg-* packages use for
   `seed`/`reset`/`close` operations without going through the probe.
-- Truncate-all-user-tables logic for `reset()`.
+- Drop-all-user-tables logic for `reset()` (`DROP TABLE IF EXISTS … CASCADE`
+  on every `public` user table; each factory then re-runs its bootstrap).
 - Disposing the PGlite instance on `close()`.
 
 It does NOT know anything about Kysely/Knex/Sequelize. Each pg-* package
@@ -176,7 +178,7 @@ This package is published (`@hochgi/test-kit-pglite-driver`) so
 community ORM packages can reuse the same PGlite lifecycle. Direct
 consumption is still uncommon; pg-* factories are the usual entry.
 
-### `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`
+### `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`, `@hochgi/test-kit-pg-sequelize`, `@hochgi/test-kit-pg-drizzle`
 
 Each is a thin wrapper that:
 
@@ -192,10 +194,13 @@ package-specific types. The shared probe behavior comes for free from
 
 **Module layout (per pg-* package):**
 
-- `factory.ts`: `createProbed{Kysely,Knex,Sequelize}Adapter(...)`,
+- `factory.ts`: `createProbed{Kysely,Knex,Sequelize,Drizzle}Adapter(...)`,
   including typed `seed` / `reset` helpers.
 - Kysely and Knex: `driver.ts` implements `SqlDriver` for that ORM.
   Sequelize: `dialect.ts` implements the probed `pg`-compatible dialect.
+  Drizzle: `driver.ts` builds a pass-through Proxy over the PGlite
+  instance whose `query()` (and the transaction client's `query()`) is
+  probed; Drizzle runs on that proxy unchanged.
 - `index.ts`: re-exports.
 
 The total per-package code should be under 500 lines including types.
@@ -270,8 +275,9 @@ export interface SqlDriver {
 
     /**
      * Fired by rig.reset() (with default options). The driver
-     * truncates all user tables on the maintenance connection,
-     * bypassing the probe.
+     * drops all public user tables (CASCADE) on the maintenance
+     * connection, bypassing the probe; the factory then re-runs
+     * its bootstrap to rebuild the schema.
      */
     reset(): Promise<void>;
 
@@ -453,6 +459,14 @@ test-kit/
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── dialect.ts
+│   │   │   └── factory.ts
+│   │   └── test/
+│   │
+│   ├── pg-drizzle/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── driver.ts                   (probed PGlite proxy + SqlDriver)
 │   │   │   └── factory.ts
 │   │   └── test/
 │   │

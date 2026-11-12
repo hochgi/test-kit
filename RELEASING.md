@@ -1,6 +1,6 @@
 # Releasing
 
-All 13 packages publish to npmjs under the `@hochgi` scope, from the manual
+All 14 packages publish to npmjs under the `@hochgi` scope, from the manual
 **Release** workflow (`.github/workflows/release.yml`). That workflow runs the
 full gate, then `scripts/publish-unpublished.mjs`, which publishes, in
 dependency order, every `packages/*` whose `package.json` version is not on
@@ -66,7 +66,7 @@ In the GitHub repository, **Settings → Environments → New environment**, nam
    gh secret set NPM_TOKEN --env npm --repo hochgi/test-kit
    ```
 
-3. Run the Release workflow and approve it. All 13 packages publish.
+3. Run the Release workflow and approve it. All 14 packages publish.
 
 ### 4. Switch to trusted publishing
 
@@ -79,6 +79,7 @@ and it needs your interactive npm login with 2FA:
 npm login
 for p in test-kit test-kit-mock test-kit-sql test-kit-pglite-driver \
          test-kit-pg-kysely test-kit-pg-knex test-kit-pg-sequelize \
+         test-kit-pg-drizzle \
          test-kit-redis test-kit-bull test-kit-s3 test-kit-sqs \
          test-kit-kafka test-kit-mysql; do
   npm trust github "@hochgi/$p" --file release.yml --repo hochgi/test-kit \

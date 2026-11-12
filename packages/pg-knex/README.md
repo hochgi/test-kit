@@ -113,6 +113,9 @@ as supported by `knex-pglite`.
 
 - [`@hochgi/test-kit-pg-kysely`](../pg-kysely/README.md) — the same
   model with a Kysely-typed adapter; identical probe surface.
+- [`@hochgi/test-kit-pg-sequelize`](../pg-sequelize/README.md) and
+  [`@hochgi/test-kit-pg-drizzle`](../pg-drizzle/README.md) — siblings
+  with identical probe semantics.
 - [`docs/api-surface.md`](../../docs/api-surface.md) — `QueryProbe`
   reference.
 

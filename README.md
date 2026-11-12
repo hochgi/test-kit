@@ -79,6 +79,7 @@ For the longer rationale, the boundary heuristic, and the mental model, read
 | [`@hochgi/test-kit-pg-kysely`](packages/pg-kysely/README.md) | `createProbedKyselyAdapter` — Kysely-typed PGlite-backed adapter. |
 | [`@hochgi/test-kit-pg-knex`](packages/pg-knex/README.md) | `createProbedKnexAdapter` — Knex-typed PGlite-backed adapter. |
 | [`@hochgi/test-kit-pg-sequelize`](packages/pg-sequelize/README.md) | `createProbedSequelizeAdapter` — Sequelize v6 PGlite-backed adapter. |
+| [`@hochgi/test-kit-pg-drizzle`](packages/pg-drizzle/README.md) | `createProbedDrizzleAdapter` — Drizzle `PgliteDatabase` adapter, probed at the PGlite client, with an optional application `role` for RLS. |
 | [`@hochgi/test-kit-redis`](packages/redis/README.md) | `createProbedCacheAdapter` — focused cache interface backed by `ioredis-mock`. |
 | [`@hochgi/test-kit-bull`](packages/bull/README.md) | `createProbedBullQueue` — drop-in probed Bull `Queue` with an in-memory backing. |
 | [`@hochgi/test-kit-s3`](packages/s3/README.md) | `createProbedS3Adapter` and `createProbedPresignerAdapter` with an in-memory backing. |
