@@ -151,8 +151,9 @@ a plain `Error` whose message uses `command`, matching
 ### Requirement: pg factory types in api-surface match source
 `docs/api-surface.md` SHALL document the pg-* factory option and handle
 types as declared in `packages/pg-kysely/src/factory.ts`,
-`packages/pg-knex/src/factory.ts`, and
-`packages/pg-sequelize/src/factory.ts`.
+`packages/pg-knex/src/factory.ts`,
+`packages/pg-sequelize/src/factory.ts`, and
+`packages/pg-drizzle/src/factory.ts`.
 
 #### Scenario: knex factory options include extensions and knexConfig
 - **WHEN** `CreateProbedKnexAdapterOptions` is documented in
@@ -217,7 +218,7 @@ workspace-internal-only. The package is published (`publishConfig` set, no
 ### Requirement: Package inventories list every published workspace package
 Root `README.md`, `docs/architecture.md` (package graph and domain-layer
 sentence), and `docs/api-surface.md` (Package Names) SHALL each name all
-thirteen published packages:
+fourteen published packages:
 
 `@hochgi/test-kit`, `@hochgi/test-kit-pglite-driver`,
 `@hochgi/test-kit-mock`, `@hochgi/test-kit-sql`,
@@ -225,11 +226,11 @@ thirteen published packages:
 `@hochgi/test-kit-s3`, `@hochgi/test-kit-sqs`,
 `@hochgi/test-kit-kafka`, `@hochgi/test-kit-mysql`,
 `@hochgi/test-kit-pg-kysely`, `@hochgi/test-kit-pg-knex`,
-`@hochgi/test-kit-pg-sequelize`.
+`@hochgi/test-kit-pg-sequelize`, `@hochgi/test-kit-pg-drizzle`.
 
 #### Scenario: root README package table is complete
 - **WHEN** the Packages table in root `README.md` is read
-- **THEN** it includes a row for each of those thirteen packages
+- **THEN** it includes a row for each of those fourteen packages
 
 #### Scenario: architecture package graph is complete
 - **WHEN** the Package Graph and domain-layer list in
@@ -246,7 +247,7 @@ thirteen published packages:
 The "Repository Layout" tree and per-package "Module layout" lists in
 `docs/architecture.md` SHALL name files that exist under `packages/*/src`
 and `docs/`, SHALL NOT name files that do not exist, and SHALL include all
-thirteen package directories (not omit bull, kafka, mysql, sqs).
+fourteen package directories (not omit bull, kafka, mysql, sqs).
 `docs/internal/` SHALL list `tech-design.md`. `docs/` SHALL list
 `concepts.md`, `api-surface.md`, and `architecture.md` (not `v2-*`
 filenames). Core source SHALL include `expectation-engine.ts`,
@@ -284,8 +285,8 @@ root `package.json`, per-package `package.json` files, and root
 `build` is `npm run build --workspaces --if-present` (no preceding
 `tsc --build`); tooling majors vite 6 / vitest 3 / eslint 8; per-package
 scripts include `pretest` (except pglite-driver) rather than `test:watch`;
-tsconfig references include all thirteen packages plus
-`examples/grpc-client`; packages *do* declare their own `devDependencies`
+tsconfig references include all fourteen packages plus
+`examples/grpc-client` and `examples/pg-drizzle-rls`; packages *do* declare their own `devDependencies`
 for vite/vitest/eslint/typescript. It SHALL NOT claim pglite-driver has a
 `test/` directory. It SHALL NOT offer `tsd` as an installed type-testing
 tool (`expect-type` is what is installed). Version examples SHALL not
@@ -472,7 +473,7 @@ sequenceDiagram
 8. `v2-concepts.md` / `v2-api-surface.md` / `v2-architecture.md` / `v2-tech-design.md` are not cited as live paths in library docs or `packages/**/*.ts`.
 9. pglite-driver is not documented as `private: true`.
 10. `APPENDIX.md` names `kysely-pglite-dialect` for pg-kysely.
-11. README, architecture package graph, and api-surface Package Names each list all thirteen published packages.
+11. README, architecture package graph, and api-surface Package Names each list all fourteen published packages.
 12. architecture Repository Layout names only files that exist and includes bull, kafka, mysql, sqs, `tech-design.md`, and the real core/mock/sql/redis/s3/pglite-driver filenames.
 13. tech-design Build & Distribution matches live manifests (`dist/index.js`, workspace build, vite 6 / vitest 3 / eslint 8, no false pglite-driver `test/` or installed `tsd`).
 14. Shipped decisions are not listed as open; QueryProbe is in `@hochgi/test-kit-sql` without a hedge.

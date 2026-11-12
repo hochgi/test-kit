@@ -2,7 +2,7 @@
 
 Current truth for the published surface of `@hochgi/test-kit` and the shape of
 the workspace package graph. One file, not a pile of packet histories: if you
-want to know what the library exports and how the 13 packages depend on each
+want to know what the library exports and how the 14 packages depend on each
 other today, this is the file.
 
 Folded from the P02–P03 delta (RD-24143, RD-24144), preserved at
@@ -103,7 +103,7 @@ A `Rig` SHALL behave as follows:
   with `Harness is closed.`, and `close` returns without error
 
 ### Requirement: Every workspace package is on major version 2
-All 13 workspace packages under `packages/` SHALL declare a version on major
+All 14 workspace packages under `packages/` SHALL declare a version on major
 `2`. The requirement is the **major digit**, not an exact patch.
 
 Each package bumps its own patch in the PR that changes it, so manifests drift
@@ -123,8 +123,9 @@ out from under it, and main goes red on the next merge.
 Every package under `packages/` that requires `@hochgi/test-kit` SHALL declare
 it in `peerDependencies` at `^2.0.0` and SHALL NOT declare it in `dependencies`.
 
-This applies to the 11 packages that consume core: `bull`, `kafka`, `mock`,
-`mysql`, `pg-knex`, `pg-kysely`, `pg-sequelize`, `redis`, `s3`, `sql`, `sqs`.
+This applies to the 12 packages that consume core: `bull`, `kafka`, `mock`,
+`mysql`, `pg-drizzle`, `pg-knex`, `pg-kysely`, `pg-sequelize`, `redis`, `s3`,
+`sql`, `sqs`.
 `pglite-driver` does not consume core and SHALL NOT gain a dependency on it.
 
 Sibling-to-sibling workspace dependencies (`@hochgi/test-kit-sql`,
@@ -132,7 +133,8 @@ Sibling-to-sibling workspace dependencies (`@hochgi/test-kit-sql`,
 `dependencies`. They are safe there because core is a peer of `sql`, so no
 nested core can appear beneath it.
 
-`examples/grpc-client` is a private workspace **consumer**, not a plugin, and
+`examples/grpc-client` and `examples/pg-drizzle-rls` are private workspace
+**consumers**, not plugins, and each
 correctly keeps `@hochgi/test-kit` in `dependencies` at `^2.0.0`.
 
 **Why peer, not dependency.** A plugin family that must share one core instance
@@ -145,7 +147,7 @@ nested copy. Two Rig implementations in one process share no probe registry, so 
 #### Scenario: core is a peer, never a direct dependency
 - **WHEN** each `packages/*/package.json` is parsed
 - **THEN** no `dependencies` map contains `@hochgi/test-kit`, and each of the
-  11 consuming packages has `peerDependencies["@hochgi/test-kit"]` equal to
+  12 consuming packages has `peerDependencies["@hochgi/test-kit"]` equal to
   `^2.0.0`
 
 #### Scenario: the workspace copy is still linked after a clean install
